@@ -60,7 +60,11 @@ python main.py
 
 ## Contexto Acadêmico
 Projeto desenvolvido para análise de materiais eletroquímicos em contexto de iniciação científica.
-
+## How to present this work ✅
+- Short demo: run `python scripts/regenerate_figures.py` to generate an example PCA figure in `outputs/figures`.
+- Key slides: Motivation, Methods (metrics: Rs, Rp, C_eff, Tau), Results (Nyquist & PCA), Reproducibility.
+- One-pager: see `docs/ONE_PAGER.md` for a 1-page summary and demo steps.
+- Notes: aim for a 5–10 minute demo focusing on motivation, a single clear result, and how to reproduce it locally.
 ## Licença
 Este projeto está licenciado sob a Licença MIT — veja o arquivo `LICENSE` para detalhes.
 
