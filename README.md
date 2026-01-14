@@ -58,3 +58,6 @@ python main.py
 
 ## Contexto Acadêmico
 Projeto desenvolvido para análise de materiais eletroquímicos em contexto de iniciação científica.
+
+## Licença
+Este projeto está licenciado sob a Licença MIT — veja o arquivo `LICENSE` para detalhes.
