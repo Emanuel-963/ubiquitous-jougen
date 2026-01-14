@@ -7,6 +7,7 @@ This script will create a set of suggested labels for PR triage.
 """
 import os
 import sys
+
 import requests
 
 REPO = "Emanuel-963/ubiquitous-jougen"
@@ -26,7 +27,9 @@ if not TOKEN:
 headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github+json"}
 
 for label in LABELS:
-    r = requests.post(f"https://api.github.com/repos/{REPO}/labels", json=label, headers=headers)
+    r = requests.post(
+        f"https://api.github.com/repos/{REPO}/labels", json=label, headers=headers
+    )
     if r.status_code in (200, 201):
         print("Created label:", label["name"])
     elif r.status_code == 422:
