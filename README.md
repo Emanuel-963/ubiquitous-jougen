@@ -1,0 +1,60 @@
+# EIS Analytics Framework
+
+Framework para análise automática de dados de Espectroscopia de Impedância Eletroquímica (EIS), com extração de métricas físicas, análise multivariada (PCA) e inferência da aplicação tecnológica mais adequada para cada amostra.
+
+## Objetivo
+- Processar qualquer número de amostras de EIS
+- Extrair parâmetros físicos sem forçar circuitos equivalentes
+- Comparar materiais de forma objetiva
+- Classificar aplicação provável:
+  - Bateria
+  - Supercapacitor
+  - Célula eletroquímica genérica
+  - Célula fotoeletroquímica / fotovoltaica
+
+## Estrutura do Projeto
+eis_analytics/
+├── data/
+│   ├── raw/
+│   └── processed/
+├── src/
+├── outputs/
+│   ├── tables/
+│   └── figures/
+└── main.py
+
+## Instalação
+Execute o script de configuração do ambiente:
+
+bash setup_env.sh
+source venv/bin/activate
+
+## Execução
+Coloque os arquivos de EIS em data/raw/ e execute:
+
+python main.py
+
+## Desenvolvimento
+
+- Criar e ativar ambiente virtual (Windows):
+  - `python -m venv venv && venv\Scripts\Activate.ps1`
+- Instalar dependências de desenvolvimento: `pip install -r requirements-dev.txt`
+- Instalar pacote em modo editável: `pip install -e .`
+- Rodar testes: `pytest -q`
+- Rodar linters/formatters: `black . && isort . && flake8 .`
+- Instalar hooks do pre-commit: `pre-commit install`
+
+## Saídas
+- Tabela com propriedades físicas extraídas
+- Scores de PCA
+- Classificação automática de aplicação
+
+## Metodologia
+- Capacitância efetiva dependente da frequência
+- Resistência série (Rs) e resistência de polarização (Rp)
+- Energia acumulada
+- Constante de tempo dominante
+- PCA interpretado fisicamente
+
+## Contexto Acadêmico
+Projeto desenvolvido para análise de materiais eletroquímicos em contexto de iniciação científica.

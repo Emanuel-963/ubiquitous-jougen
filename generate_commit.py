@@ -1,0 +1,40 @@
+commit_content = (
+    "# Commit Log – EIS Analytics Framework\n\n"
+    "Este arquivo documenta decisões técnicas, mudanças estruturais "
+    "e evoluções metodológicas do projeto.\n\n"
+    "---\n\n"
+    "## Commit 001 – Estrutura inicial\n"
+    "- Criação da arquitetura de pastas\n"
+    "- Separação modular do código\n"
+    "- Definição do fluxo físico de dados EIS\n\n"
+    "## Commit 002 – Núcleo físico\n"
+    "- Implementação da capacitância efetiva espectral\n"
+    "- Cálculo de Rs e Rp sem uso de circuito equivalente\n"
+    "- Introdução de energia acumulada e constante de tempo\n\n"
+    "## Commit 003 – Análise multivariada\n"
+    "- Implementação de PCA\n"
+    "- Padronização das features físicas\n"
+    "- Interpretação física dos componentes principais\n\n"
+    "## Commit 004 – Classificação de aplicação\n"
+    "- Heurísticas físicas para:\n"
+    "  - Supercapacitor\n"
+    "  - Bateria\n"
+    "  - Célula eletroquímica genérica\n"
+    "  - Fotovoltaica / PEC\n"
+    "- Ranking por aplicação\n\n"
+    "## Commit 005 – Visualização\n"
+    "- Gráficos de Nyquist\n"
+    "- Diagramas de Bode\n"
+    "- Projeções PCA\n\n"
+    "---\n\n"
+    "## Observação\n"
+    "Este projeto prioriza:\n"
+    "- Extração direta de propriedades físicas\n"
+    "- Interpretabilidade dos resultados\n"
+    "- Reprodutibilidade científica\n"
+)
+
+with open("COMMIT.md", "w", encoding="utf-8") as f:
+    f.write(commit_content)
+
+print("COMMIT.md criado com sucesso.")
