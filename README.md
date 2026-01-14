@@ -44,6 +44,8 @@ python main.py
 - Rodar linters/formatters: `black . && isort . && flake8 .`
 - Instalar hooks do pre-commit: `pre-commit install`
 
+> Dica: para desenvolvimento local recomendamos usar **Python 3.11** para garantir compatibilidade com as ferramentas de linting (pre-commit irá criar ambientes com Python 3.11 quando possível).
+
 ## Saídas
 - Tabela com propriedades físicas extraídas
 - Scores de PCA
