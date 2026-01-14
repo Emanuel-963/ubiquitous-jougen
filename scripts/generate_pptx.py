@@ -1,10 +1,13 @@
 """Generate a simple PPTX from `docs/PRESENTATION.md`.
 
 Usage:
-    python scripts/generate_pptx.py --in docs/PRESENTATION.md --out docs/presentation.pptx
+    python scripts/generate_pptx.py --in docs/PRESENTATION.md \
+        --out docs/presentation.pptx
 
-This script creates one slide for each top-level section and smaller headings become bullets.
+This script creates one slide per top-level section.
+Smaller headings become bullets.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -12,7 +15,7 @@ from pathlib import Path
 from typing import List
 
 from pptx import Presentation
-from pptx.util import Inches, Pt
+from pptx.util import Pt
 
 
 def parse_markdown(md_text: str) -> List[dict]:
