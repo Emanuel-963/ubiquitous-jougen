@@ -3987,9 +3987,14 @@ class PipelineApp(ctk.CTk):
             self._open_interactive_window(preferred_tab="DRT")
 
 
-if __name__ == "__main__":
+def main():
+    """Entry-point for the GUI application."""
     app = PipelineApp()
     try:
         app.mainloop()
     except KeyboardInterrupt:
         pass
+
+
+if __name__ == "__main__":
+    main()
