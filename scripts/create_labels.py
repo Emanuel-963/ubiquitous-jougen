@@ -5,6 +5,7 @@ Usage:
 
 This script will create a set of suggested labels for PR triage.
 """
+
 import os
 import sys
 
