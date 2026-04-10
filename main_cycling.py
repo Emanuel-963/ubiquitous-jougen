@@ -6,7 +6,7 @@ displays table, and plots Time vs Potential with integral.
 
 import sys
 from pathlib import Path
-import os
+
 import numpy as np
 import pandas as pd
 from src.cycling_loader import load_cycling_files

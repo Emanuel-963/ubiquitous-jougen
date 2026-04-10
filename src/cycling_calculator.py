@@ -5,7 +5,7 @@ Calculates energy (Wh/kg) and power (W/kg) for each cycle.
 
 import pandas as pd
 import numpy as np
-from typing import Dict, List
+from typing import Dict
 from scipy.signal import find_peaks
 
 
@@ -134,5 +134,5 @@ def process_all_files(data: Dict[str, pd.DataFrame], scan_rate: float) -> Dict[s
         excel_path = os.path.join(excel_dir, f"{name}.xlsx")
         df_result.to_excel(excel_path, index=False)
         print(f"Exported to {excel_path}")
-    
+
     return results

@@ -30,6 +30,7 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
 )
 
+
 def run_eis_pipeline() -> dict:
     # ===============================
     # CONFIG

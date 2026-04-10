@@ -1,14 +1,12 @@
 import os
 import re
-from typing import Optional
 
 import matplotlib
-import numpy as np
-import pandas as pd
-from scipy.stats import spearmanr
-
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
+from scipy.stats import spearmanr  # noqa: E402
 
 # Paleta base para subclasses
 COLOR_MAP = {
@@ -229,7 +227,7 @@ def pca_2d_metric(df_pca, metric: pd.Series, title="PCA 2D (métrica contínua)"
     plt.xlabel("PC1")
     plt.ylabel("PC2")
     plt.title(title)
-    cb = plt.colorbar(sc, label=metric.name or "métrica")
+    plt.colorbar(sc, label=metric.name or "métrica")
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
 
@@ -330,6 +328,7 @@ def series_by_prefix(df, value_col: str, out_dir="outputs/figures"):
     os.makedirs(out_dir, exist_ok=True)
     if value_col not in df.columns:
         return None
+
     def _split(name: str):
         parts = name.replace(".txt", "").split()
         if not parts:

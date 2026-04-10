@@ -41,7 +41,7 @@ def apply_classification(df: pd.DataFrame, safe: bool = True) -> pd.DataFrame:
         }
 
         df["Subclass"] = "Indefinida (dados insuficientes)"
-        df.loc[subset.index, "Subclass"] = [label_map[l] for l in labels]
+        df.loc[subset.index, "Subclass"] = [label_map[lbl] for lbl in labels]
         return df
 
     # Fallback baseado em quartis (robusto a outliers)
