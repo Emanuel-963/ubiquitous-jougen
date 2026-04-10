@@ -58,11 +58,17 @@ def extract_features(df):
     rs = series_resistance(df)
     rp = polarization_resistance(df)
 
+    # Capacitância na menor frequência disponível (após ordenação desc em preprocess)
+    c_low = np.nan
+    if len(c_eff) > 0:
+        c_low = c_eff[-1]
+
     return {
         "Rs": rs,
         "Rp": rp,
         "C_mean": np.nan if len(c_eff) == 0 else np.mean(c_eff),
         "C_max": np.nan if len(c_eff) == 0 else np.max(c_eff),
+        "C_lowfreq": c_low,
         "Energy_mean": (np.nan if len(c_eff) == 0 else np.mean(stored_energy(c_eff))),
         "Tau": dominant_tau(rp, c_eff),
         "Dispersion": dispersion_index(c_eff),

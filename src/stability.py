@@ -28,7 +28,8 @@ def stability_metrics(df: pd.DataFrame, param: str) -> pd.DataFrame:
     std = grouped.std()
 
     # Evitar divisão por zero
-    cv = std / mean.replace({0: np.nan})
+    mean_clean = mean.mask(mean == 0)
+    cv = std / mean_clean
 
     result = pd.DataFrame({"Mean": mean, "Std": std, "CV": cv})
 

@@ -7,12 +7,14 @@ from sklearn.preprocessing import StandardScaler
 
 def run_pca(
     df_features: pd.DataFrame, n_components: int = 3, var_threshold: float = 1e-12
-) -> Tuple[PCA, pd.DataFrame]:
-    """Executa PCA em `df_features` retornando o objeto PCA e o DataFrame de scores.
+) -> Tuple[PCA, pd.DataFrame, pd.DataFrame, pd.Series]:
+    """Executa PCA retornando modelo, scores, loadings e variância explicada.
 
     - Remove colunas com variância negligível
-    - Faz imputação mínima nas colunas restantes
+    - Imputa NaNs com quantil 5% (conservador)
+    - Retorna também loadings para interpretação
     """
+
     X = df_features.copy()
 
     # Remove colunas com variância ~ zero
@@ -25,15 +27,26 @@ def run_pca(
             "todas as métricas são quase constantes."
         )
 
-    # Imputação física mínima
+    # Imputação mínima
     for col in X.columns:
         if X[col].isna().any():
             X[col] = X[col].fillna(X[col].quantile(0.05))
 
-    X_scaled = StandardScaler(with_mean=True, with_std=True).fit_transform(X)
+    scaler = StandardScaler(with_mean=True, with_std=True)
+    X_scaled = scaler.fit_transform(X)
 
     pca = PCA(n_components=min(n_components, X.shape[1]))
     Xp = pca.fit_transform(X_scaled)
 
     cols = [f"PC{i+1}" for i in range(Xp.shape[1])]
-    return pca, pd.DataFrame(Xp, columns=cols, index=df_features.index)
+    scores = pd.DataFrame(Xp, columns=cols, index=df_features.index)
+
+    loadings = pd.DataFrame(
+        pca.components_.T,
+        index=X.columns,
+        columns=cols,
+    )
+
+    evr = pd.Series(pca.explained_variance_ratio_, index=cols)
+
+    return pca, scores, loadings, evr
