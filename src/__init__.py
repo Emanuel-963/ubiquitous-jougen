@@ -1,3 +1,3 @@
-"""eis_analytics package."""
+"""IonFlow Pipeline — EIS analytics package."""
 
 __version__ = "0.1.0"

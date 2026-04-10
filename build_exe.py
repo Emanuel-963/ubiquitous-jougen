@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Build a standalone .exe of EIS Analytics using PyInstaller.
+"""Build a standalone .exe of IonFlow Pipeline using PyInstaller.
 
 Usage
 -----
@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parent
 
 ICON = ROOT / "data" / "ionflow.ico"
 MAIN_SCRIPT = ROOT / "gui_app.py"
-APP_NAME = "EIS_Analytics"
+APP_NAME = "IonFlow_Pipeline"
 
 # Extra data the app needs at runtime
 DATA_ITEMS = [
@@ -89,7 +89,7 @@ def build(onefile: bool = False) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Build EIS Analytics .exe")
+    parser = argparse.ArgumentParser(description="Build IonFlow Pipeline .exe")
     parser.add_argument(
         "--onefile", action="store_true",
         help="Package as a single .exe (slower startup)",
