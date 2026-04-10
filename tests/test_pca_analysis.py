@@ -16,12 +16,14 @@ def test_run_pca_basic():
         index=["s1", "s2", "s3", "s4"],
     )
 
-    pca, scores = run_pca(df, n_components=2)
+    pca, scores, loadings, evr = run_pca(df, n_components=2)
     assert scores.shape[0] == df.shape[0]
     # At least 2 principal components were returned (or min(n_components, features))
     assert scores.shape[1] >= 2
     # pca is a fitted object with explained_variance_ attribute
     assert hasattr(pca, "explained_variance_")
+    assert loadings.shape[1] == scores.shape[1]
+    assert not evr.empty
 
 
 def test_run_pca_insufficient_variance():
@@ -40,7 +42,9 @@ def test_imputation_uses_quantile():
             "b": [1.0, 2.0, 3.0, 4.0, 5.0],
         }
     )
-    pca, scores = run_pca(df, n_components=2)
+    pca, scores, loadings, evr = run_pca(df, n_components=2)
     # If run_pca succeeded, NaN was filled and scores produced for all rows
     assert scores.shape[0] == df.shape[0]
     assert not scores.isna().any().any()
+    assert loadings.shape[0] == df.shape[1]
+    assert evr.sum() <= 1.0 + 1e-6
