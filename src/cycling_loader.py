@@ -28,6 +28,9 @@ def load_cycling_files(directory: Path) -> dict[str, pd.DataFrame]:
             raise ValueError(f"File {file} missing required columns after mapping: {required_cols}")
         # Select only required columns
         df = df[required_cols]
+        # Drop rows with NaN/inf before converting ciclo to int
+        df = df.dropna(subset=["ciclo", "tempo", "potencial", "corrente"])
+        df = df[df["ciclo"].apply(lambda x: pd.notna(x) and x != float("inf") and x != float("-inf"))]
         df["ciclo"] = df["ciclo"].astype(int)
         data[file.stem] = df
     return data
