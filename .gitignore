@@ -1,0 +1,39 @@
+venv/
+__pycache__/
+*.pyc
+.env
+.ipynb_checkpoints/
+outputs/
+
+# Local Python embeddable and wrapper
+python-3.11-embed-amd64.zip
+python3.11.cmd
+python311_embed/
+
+# Build / packaging artifacts
+*.egg-info/
+eis_analytics.egg-info/
+dist/
+build/
+*.spec
+
+# Test / lint caches
+.coverage
+.mypy_cache/
+.pytest_cache/
+.precommit_home/
+
+# IDE / editor
+.vscode/
+*.swp
+
+# User-local GUI settings (contains personal paths)
+.ionflow_gui_settings.json
+
+# Large cycling data (download separately or provide your own)
+data/processed/*.txt
+data/organnnn/*GCD*
+data/organnnn/discharge*
+
+# Generated docs
+docs/*.pptx

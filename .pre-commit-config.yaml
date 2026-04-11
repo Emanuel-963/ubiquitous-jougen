@@ -1,0 +1,19 @@
+repos:
+  - repo: https://github.com/psf/black
+    rev: 23.12.0
+    hooks:
+      - id: black
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+# flake8 hook re-enabled; prefer Python 3.11 for creating hook environments
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.0.0
+    hooks:
+      - id: flake8
+
+# Force pre-commit to create hook environments using Python 3.11 where possible
+# This helps avoid local interpreter compatibility issues (e.g., py3.14 AST changes)
+default_language_version:
+  python: python3.11
