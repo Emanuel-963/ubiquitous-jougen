@@ -563,7 +563,7 @@ def plot_boxplot_metrics(
 
         bp = ax.boxplot(
             groups,
-            labels=labels_list,
+            tick_labels=labels_list,
             patch_artist=True,
             showfliers=True,
             widths=0.55,
@@ -578,7 +578,7 @@ def plot_boxplot_metrics(
     else:
         bp = ax.boxplot(
             [valid.values],
-            labels=["Todas"],
+            tick_labels=["Todas"],
             patch_artist=True,
             showfliers=True,
             widths=0.55,

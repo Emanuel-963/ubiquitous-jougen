@@ -36,6 +36,8 @@ from src.eis_plots import (
     plot_ragone,
     plot_retention_cycle,
 )
+from src.i18n import get_language, set_language, tr
+from src.updater import check_for_updates
 
 
 @dataclass
@@ -122,8 +124,10 @@ class PipelineApp(ctk.CTk):
 
         self._build_layout()
         self._restore_ui_preferences()
+        self._restore_language()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.after(100, self._process_queue)
+        self.after(2000, self._check_for_updates_async)
 
     def _load_theme_with_fallback(self, theme_path: str):
         """Carrega tema customizado; se inválido/incompleto, cai para tema padrão."""
@@ -189,6 +193,26 @@ class PipelineApp(ctk.CTk):
         except Exception as exc:
             self._append_log(f"Falha ao trocar tema: {exc}")
             self._set_appearance_mode("dark", persist=True)
+
+    def _on_language_change(self, value: str):
+        """Switch the application language and persist the preference."""
+        lang = "en" if value == "English" else "pt"
+        set_language(lang)
+        self.gui_settings["language"] = lang
+        self._save_gui_settings()
+        self._append_log(
+            f"Language set to {'English' if lang == 'en' else 'Português'}. "
+            "Restart for full effect."
+        )
+
+    def _check_for_updates_async(self):
+        """Run version check in background thread so it never blocks the GUI."""
+        def _worker():
+            result = check_for_updates()
+            if result:
+                self.log_queue.put(("log", result))
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     def _log_interactive_unavailable(self):
         self._append_log("Interativo não disponível para este gráfico.")
@@ -276,6 +300,16 @@ class PipelineApp(ctk.CTk):
         if isinstance(folder, str) and os.path.isdir(folder):
             return folder
         return None
+
+    def _restore_language(self):
+        """Restore persisted language preference."""
+        lang = self.gui_settings.get("language", "pt")
+        if lang not in ("pt", "en"):
+            lang = "pt"
+        set_language(lang)
+        label = "English" if lang == "en" else "Português"
+        with contextlib.suppress(Exception):
+            self.language_selector.set(label)
 
     def _restore_ui_preferences(self):
         appearance_mode = self.gui_settings.get("appearance_mode", "dark")
@@ -365,6 +399,8 @@ class PipelineApp(ctk.CTk):
                 filters[key] = state["filter_entry"].get().strip()
         self.gui_settings["table_filters"] = filters
         self.gui_settings["drt_ui"] = dict(self.drt_ui_prefs)
+        with contextlib.suppress(Exception):
+            self.gui_settings["language"] = get_language()
 
         self._save_gui_settings()
         self.destroy()
@@ -379,11 +415,11 @@ class PipelineApp(ctk.CTk):
 
         ctk.CTkLabel(
             sidebar,
-            text="Pipelines",
+            text=tr("Pipelines"),
             font=ctk.CTkFont(size=20, weight="bold"),
         ).grid(row=0, column=0, padx=16, pady=(16, 8), sticky="w")
 
-        ctk.CTkLabel(sidebar, text="Scan rate (A/g)").grid(
+        ctk.CTkLabel(sidebar, text=tr("Scan rate (A/g)")).grid(
             row=1, column=0, padx=16, pady=(8, 4), sticky="w"
         )
         self.scan_rate_entry = ctk.CTkEntry(sidebar)
@@ -392,7 +428,7 @@ class PipelineApp(ctk.CTk):
 
         self.btn_import_raw = ctk.CTkButton(
             sidebar,
-            text="Importar EIS para raw",
+            text=tr("Importar EIS para raw"),
             command=lambda: self._import_files(
                 target_dir="data/raw",
                 label="Selecione arquivos EIS",
@@ -402,7 +438,7 @@ class PipelineApp(ctk.CTk):
 
         self.btn_import_processed = ctk.CTkButton(
             sidebar,
-            text="Importar Ciclagem para processed",
+            text=tr("Importar Ciclagem para processed"),
             command=lambda: self._import_files(
                 target_dir="data/processed",
                 label="Selecione arquivos de Ciclagem",
@@ -418,35 +454,35 @@ class PipelineApp(ctk.CTk):
 
         self.btn_interactive = ctk.CTkButton(
             sidebar,
-            text="Gráficos Interativos",
+            text=tr("Gráficos Interativos"),
             command=self._open_interactive_window,
         )
         self.btn_interactive.grid(row=5, column=0, padx=16, pady=(0, 12), sticky="ew")
 
         self.btn_eis = ctk.CTkButton(
             sidebar,
-            text="Rodar Pipeline EIS",
+            text=tr("Rodar Pipeline EIS"),
             command=self._run_eis_clicked,
         )
         self.btn_eis.grid(row=6, column=0, padx=16, pady=8, sticky="ew")
 
         self.btn_ciclagem = ctk.CTkButton(
             sidebar,
-            text="Rodar Pipeline Ciclagem",
+            text=tr("Rodar Pipeline Ciclagem"),
             command=self._run_ciclagem_clicked,
         )
         self.btn_ciclagem.grid(row=7, column=0, padx=16, pady=8, sticky="ew")
 
         self.btn_both = ctk.CTkButton(
             sidebar,
-            text="Rodar Ambos",
+            text=tr("Rodar Ambos"),
             command=self._run_both_clicked,
         )
         self.btn_both.grid(row=8, column=0, padx=16, pady=8, sticky="ew")
 
         self.btn_drt = ctk.CTkButton(
             sidebar,
-            text="Rodar Pipeline DRT",
+            text=tr("Rodar Pipeline DRT"),
             command=self._run_drt_clicked,
         )
         self.btn_drt.grid(row=9, column=0, padx=16, pady=8, sticky="ew")
@@ -455,10 +491,10 @@ class PipelineApp(ctk.CTk):
         drt_param_frame.grid(row=10, column=0, padx=16, pady=(6, 8), sticky="ew")
         drt_param_frame.grid_columnconfigure((0, 1), weight=1)
 
-        ctk.CTkLabel(drt_param_frame, text="λ DRT").grid(
+        ctk.CTkLabel(drt_param_frame, text=tr("λ DRT")).grid(
             row=0, column=0, padx=(8, 4), pady=(6, 2), sticky="w"
         )
-        ctk.CTkLabel(drt_param_frame, text="n_taus").grid(
+        ctk.CTkLabel(drt_param_frame, text=tr("n_taus")).grid(
             row=0, column=1, padx=(4, 8), pady=(6, 2), sticky="w"
         )
 
@@ -484,7 +520,7 @@ class PipelineApp(ctk.CTk):
         self.drt_lambda_entry.bind("<KeyRelease>", self._mark_drt_preset_custom)
         self.drt_n_taus_entry.bind("<KeyRelease>", self._mark_drt_preset_custom)
 
-        ctk.CTkLabel(drt_param_frame, text="Preset DRT").grid(
+        ctk.CTkLabel(drt_param_frame, text=tr("Preset DRT")).grid(
             row=2,
             column=0,
             padx=(8, 4),
@@ -513,7 +549,7 @@ class PipelineApp(ctk.CTk):
 
         ctk.CTkButton(
             drt_param_frame,
-            text="Aplicar preset",
+            text=tr("Aplicar preset"),
             width=120,
             command=lambda: self._apply_drt_preset(
                 self.drt_preset_selector.get(),
@@ -523,49 +559,62 @@ class PipelineApp(ctk.CTk):
 
         ctk.CTkButton(
             drt_param_frame,
-            text="Reset DRT",
+            text=tr("Reset DRT"),
             width=120,
             command=self._reset_drt_defaults,
         ).grid(row=4, column=1, padx=(4, 8), pady=(0, 8), sticky="ew")
 
         ctk.CTkLabel(
             drt_param_frame,
-            text="Rápido:30 | Balanceado:50 | Alta:80",
+            text=tr("Rápido:30 | Balanceado:50 | Alta:80"),
             font=ctk.CTkFont(size=10),
             anchor="w",
         ).grid(row=4, column=0, padx=(8, 4), pady=(0, 8), sticky="ew")
 
         self.status_label = ctk.CTkLabel(
-            sidebar, text="Status: pronto", anchor="w"
+            sidebar, text=tr("Status: pronto"), anchor="w"
         )
         self.status_label.grid(row=11, column=0, padx=16, pady=8, sticky="ew")
 
-        self.progress_label = ctk.CTkLabel(sidebar, text="Pronto", anchor="w")
+        self.progress_label = ctk.CTkLabel(sidebar, text=tr("Pronto"), anchor="w")
         self.progress_label.grid(row=12, column=0, padx=16, pady=(0, 4), sticky="ew")
 
         self.progress_bar = ctk.CTkProgressBar(sidebar, mode="indeterminate")
         self.progress_bar.grid(row=13, column=0, padx=16, pady=(0, 12), sticky="ew")
         self.progress_bar.set(0)
 
-        ctk.CTkLabel(sidebar, text="Tema", anchor="w").grid(
+        ctk.CTkLabel(sidebar, text=tr("Tema"), anchor="w").grid(
             row=14, column=0, padx=16, pady=(0, 4), sticky="ew"
         )
         self.appearance_mode_selector = ctk.CTkSegmentedButton(
             sidebar,
-            values=["Claro", "Escuro", "Sistema"],
+            values=[tr("Claro"), tr("Escuro"), tr("Sistema")],
             command=self._on_appearance_mode_change,
         )
         self.appearance_mode_selector.grid(
             row=15, column=0, padx=16, pady=(0, 12), sticky="ew"
         )
-        self.appearance_mode_selector.set("Escuro")
+        self.appearance_mode_selector.set(tr("Escuro"))
+
+        ctk.CTkLabel(sidebar, text=tr("Idioma"), anchor="w").grid(
+            row=16, column=0, padx=16, pady=(0, 4), sticky="ew"
+        )
+        self.language_selector = ctk.CTkSegmentedButton(
+            sidebar,
+            values=["Português", "English"],
+            command=self._on_language_change,
+        )
+        self.language_selector.grid(
+            row=17, column=0, padx=16, pady=(0, 12), sticky="ew"
+        )
+        self.language_selector.set("Português")
 
         self.tabs = ctk.CTkTabview(self)
         self.tabs.grid(row=0, column=1, sticky="nsew", padx=16, pady=16)
 
-        self.tab_plots = self.tabs.add("Gráficos")
-        self.tab_tables = self.tabs.add("Tabelas")
-        self.tab_logs = self.tabs.add("Logs")
+        self.tab_plots = self.tabs.add(tr("Gráficos"))
+        self.tab_tables = self.tabs.add(tr("Tabelas"))
+        self.tab_logs = self.tabs.add(tr("Logs"))
 
         # Plots area
         self.plots_frame = ctk.CTkScrollableFrame(self.tab_plots)
@@ -574,12 +623,12 @@ class PipelineApp(ctk.CTk):
         # Tables area
         self.tables_tabs = ctk.CTkTabview(self.tab_tables)
         self.tables_tabs.pack(fill="both", expand=True, padx=8, pady=8)
-        self.tab_table_eis = self.tables_tabs.add("EIS")
-        self.tab_table_cic = self.tables_tabs.add("Ciclagem")
-        self.tab_table_circuit = self.tables_tabs.add("Circuitos")
-        self.tab_table_drt = self.tables_tabs.add("DRT")
-        self.tab_table_drt_peaks = self.tables_tabs.add("DRT Peaks")
-        self.tab_table_drt_eis = self.tables_tabs.add("DRT + EIS")
+        self.tab_table_eis = self.tables_tabs.add(tr("EIS"))
+        self.tab_table_cic = self.tables_tabs.add(tr("Ciclagem"))
+        self.tab_table_circuit = self.tables_tabs.add(tr("Circuitos"))
+        self.tab_table_drt = self.tables_tabs.add(tr("DRT"))
+        self.tab_table_drt_peaks = self.tables_tabs.add(tr("DRT Peaks"))
+        self.tab_table_drt_eis = self.tables_tabs.add(tr("DRT + EIS"))
 
         self.eis_table = self._create_table(self.tab_table_eis, "eis")
         self.cic_table = self._create_table(self.tab_table_cic, "cic")
