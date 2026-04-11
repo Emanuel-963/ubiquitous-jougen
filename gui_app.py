@@ -4,6 +4,7 @@ import json
 import os
 import queue
 import shutil
+import sys
 import threading
 import traceback
 from dataclasses import dataclass
@@ -4038,6 +4039,27 @@ class PipelineApp(ctk.CTk):
 
 def main():
     """Entry-point for the GUI application."""
+    # When running as a PyInstaller .exe, the working directory may be
+    # something unexpected (e.g. C:\Windows\System32).  All pipeline code
+    # uses relative paths like "data/raw" and "outputs/", so we must
+    # ensure the CWD is the directory that contains the executable (or
+    # the script, when running from source).
+    if getattr(sys, "frozen", False):
+        # PyInstaller: sys.executable is the .exe path
+        app_dir = os.path.dirname(sys.executable)
+    else:
+        # Running from source
+        app_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(app_dir)
+
+    # Ensure required directories exist (first run / clean install)
+    for d in (
+        "data/raw", "data/processed",
+        "outputs/figures", "outputs/tables",
+        "outputs/excel", "outputs/circuit_reports",
+    ):
+        os.makedirs(d, exist_ok=True)
+
     app = PipelineApp()
     try:
         app.mainloop()
