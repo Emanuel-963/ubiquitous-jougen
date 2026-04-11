@@ -35,12 +35,26 @@ function Install-Python311 {
 # Função para criar ambiente virtual
 function Create-Venv {
     $venvPath = "venv"
-    if (-not (Test-Path $venvPath)) {
-        Write-Host "Criando ambiente virtual..."
-        python3.11 -m venv $venvPath
-    } else {
-        Write-Host "Ambiente virtual já existe."
+    # Se existir um venv antigo (copiado de outro PC), remover antes
+    if (Test-Path $venvPath) {
+        # Verificar se o venv é deste computador
+        $venvPy = Join-Path $venvPath "Scripts\python.exe"
+        if (Test-Path $venvPy) {
+            $result = & $venvPy -c "print('ok')" 2>&1
+            if ($result -ne "ok") {
+                Write-Host "Removendo venv antigo (incompatível/copiado de outro computador)..."
+                Remove-Item -Recurse -Force $venvPath
+            } else {
+                Write-Host "Ambiente virtual já existe e está funcional."
+                return
+            }
+        } else {
+            Write-Host "Removendo venv incompleto..."
+            Remove-Item -Recurse -Force $venvPath
+        }
     }
+    Write-Host "Criando ambiente virtual..."
+    python3.11 -m venv $venvPath
 }
 
 # Função para instalar dependências
@@ -94,6 +108,11 @@ elseif ($choice -eq "3") { $Ciclagem = $true; $EIS = $true }
 else { Write-Host "Opção inválida."; exit 1 }
 
 Install-Python311
+
+# Desbloquear arquivos se vieram de outro computador (Windows MOTW)
+Write-Host "Desbloqueando arquivos (proteção do Windows)..."
+Get-ChildItem -Path . -Recurse -File | Unblock-File -ErrorAction SilentlyContinue
+
 Create-Venv
 Install-Requirements
 if ($Ciclagem -or $EIS) { Setup-Pipelines }

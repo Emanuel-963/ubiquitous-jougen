@@ -84,11 +84,26 @@ fi
 info "tkinter disponível."
 
 # ── 3. Criar ambiente virtual ────────────────────────────────
-if [ ! -d "venv" ]; then
+if [ -d "venv" ]; then
+    # Verificar se o venv funciona (pode ter sido copiado de outro PC/Windows)
+    if [ -x "./venv/bin/python" ]; then
+        if ./venv/bin/python -c "print('ok')" &>/dev/null; then
+            info "Ambiente virtual já existe e está funcional."
+        else
+            warn "Removendo venv antigo (incompatível/copiado de outro computador)..."
+            rm -rf venv
+            info "Criando ambiente virtual novo..."
+            "$PYTHON" -m venv venv
+        fi
+    else
+        warn "Removendo venv inválido (provavelmente de Windows)..."
+        rm -rf venv
+        info "Criando ambiente virtual novo..."
+        "$PYTHON" -m venv venv
+    fi
+else
     info "Criando ambiente virtual..."
     "$PYTHON" -m venv venv
-else
-    info "Ambiente virtual já existe."
 fi
 
 VENV_PYTHON="./venv/bin/python"

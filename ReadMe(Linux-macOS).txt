@@ -143,6 +143,14 @@ Este guia explica como instalar e usar o programa no Linux ou macOS.
   P: Erro de permissão ao rodar install_linux.sh
   R: Execute: chmod +x install_linux.sh
 
+  P: O venv não funciona (erros ao ativar ou importar módulos).
+  R: Se a pasta veio copiada de outro computador (Windows, OneDrive,
+     USB), o venv antigo tem caminhos incompatíveis. O instalador
+     agora detecta e recria automaticamente. Se preferir fazer
+     manualmente:
+       rm -rf venv
+       ./install_linux.sh
+
   P: Onde ficam os resultados?
   R:  outputs/figures/   → gráficos em .png
       outputs/tables/    → tabelas em .csv
