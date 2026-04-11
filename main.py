@@ -153,6 +153,22 @@ def run_eis_pipeline() -> dict:
 
     df = pd.DataFrame(records).T
 
+    if df.empty:
+        print("Nenhum arquivo EIS encontrado em data/raw/.")
+        print("Use o botão 'Importar EIS para raw' para adicionar arquivos.")
+        return {
+            "df": df,
+            "df_ranked": df,
+            "cap_energy": pd.DataFrame(),
+            "df_pca": None,
+            "pca_loadings": None,
+            "pca_evr": None,
+            "pca_paths": [],
+            "out_dir": out_dir,
+            "circuit_table": None,
+            "raw_eis": raw_eis,
+        }
+
     # ===============================
     # METADADOS
     # ===============================

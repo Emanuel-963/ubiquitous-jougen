@@ -21,12 +21,19 @@ def run_ciclagem_pipeline(scan_rate: float, show_plots: bool = True) -> dict:
     # Directory
     data_dir = Path("data/processed")
     if not data_dir.exists():
-        raise FileNotFoundError(f"Directory {data_dir} does not exist.")
+        data_dir.mkdir(parents=True, exist_ok=True)
+        raise FileNotFoundError(
+            "Pasta data/processed/ não encontrada (foi criada agora).\n"
+            "Use 'Importar Ciclagem para processed' para adicionar arquivos."
+        )
 
     # Load data
     data = load_cycling_files(data_dir)
     if not data:
-        raise FileNotFoundError("No .txt files found in data/processed.")
+        raise FileNotFoundError(
+            "Nenhum arquivo .txt encontrado em data/processed/.\n"
+            "Use 'Importar Ciclagem para processed' para adicionar arquivos."
+        )
 
     # Process
     results = process_all_files(data, scan_rate)
