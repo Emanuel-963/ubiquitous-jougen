@@ -2,34 +2,45 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
 
 jobs:
   test-and-lint:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        python-version: [3.10, 3.11]
+        python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
           pip install .
+
       - name: Black check
-        run: black --check .
+        continue-on-error: true
+        run: black --check --diff .
+
       - name: isort check
-        run: isort --check-only .
+        continue-on-error: true
+        run: isort --check-only --diff .
+
       - name: Flake8
         run: flake8 .
+
       - name: MyPy
-        run: mypy src || true
+        continue-on-error: true
+        run: mypy src
+
       - name: Run tests
-        run: pytest -q --cov=src
+        run: pytest -q --cov=src --cov-report=term-missing

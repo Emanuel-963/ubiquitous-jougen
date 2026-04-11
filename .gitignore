@@ -30,5 +30,10 @@ build/
 # User-local GUI settings (contains personal paths)
 .ionflow_gui_settings.json
 
+# Large cycling data (download separately or provide your own)
+data/processed/*.txt
+data/organnnn/*GCD*
+data/organnnn/discharge*
+
 # Generated docs
 docs/*.pptx
