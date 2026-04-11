@@ -21,6 +21,8 @@ import urllib.request
 import json
 from typing import Optional
 
+from src import __version__ as _LOCAL_VERSION
+
 # ── Constants ────────────────────────────────────────────────────────
 _REPO_OWNER = "Emanuel-963"
 _REPO_NAME = "ubiquitous-jougen"
@@ -28,10 +30,6 @@ _API_URL = (
     f"https://api.github.com/repos/{_REPO_OWNER}/{_REPO_NAME}/releases/latest"
 )
 _TIMEOUT_S = 5
-
-# Pulled from pyproject.toml at build time; kept here as single source
-# so the module is self-contained.
-_LOCAL_VERSION = "0.1.0"
 
 _TAG_RE = re.compile(r"v?(\d+(?:\.\d+)*)")
 

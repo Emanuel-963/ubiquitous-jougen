@@ -15,6 +15,9 @@ Toolkit completo para análise de **Espectroscopia de Impedância Eletroquímica
 | **Pipeline DRT** | Distribution of Relaxation Times via regularização de Tikhonov |
 | **Pipeline Ciclagem** | Energia e potência por ciclo a partir de curvas galvanostáticas |
 | **GUI Interativa** | 17 abas com gráficos interativos (hover, zoom, pan) via customtkinter + matplotlib |
+| **Internacionalização (i18n)** | Interface traduzível pt ↔ en via `src.i18n` |
+| **Auto-update** | Verificação automática de nova versão no GitHub Releases via `src.updater` |
+| **Instalador Windows** | Script Inno Setup (`installer/ionflow_setup.iss`) para gerar instalador `.exe` |
 
 ### 17 Abas da GUI
 
@@ -61,14 +64,17 @@ eis_analytics/
 │   ├── cpe_fit.py          # Ajuste CPE
 │   ├── cycling_loader.py   # Loader de ciclagem
 │   ├── cycling_calculator.py # Cálculo energia/potência
-│   └── cycling_plotter.py  # Gráficos de ciclagem
+│   ├── cycling_plotter.py  # Gráficos de ciclagem
+│   ├── i18n.py             # Internacionalização (pt/en)
+│   ├── updater.py          # Auto-update via GitHub Releases
+│   └── metadata.py         # Extração de metadados do filename
 ├── data/
 │   ├── raw/                # Arquivos EIS (.txt)
 │   ├── processed/          # Dados de ciclagem
 │   └── ionflowMarca.png    # Logo
 ├── themes/
 │   └── ionflow.json        # Tema visual da GUI
-├── tests/                  # 44 testes unitários
+├── tests/                  # 99 testes unitários
 └── outputs/                # Tabelas, figuras, Excel
 ```
 
@@ -96,6 +102,17 @@ python build_exe.py --onefile  # arquivo único .exe
 
 O executável fica em `dist/IonFlow_Pipeline/IonFlow_Pipeline.exe`.
 
+### Instalador Windows (Inno Setup)
+
+Após gerar o executável, compile o instalador:
+
+```bash
+# Requer Inno Setup 6 instalado (https://jrsoftware.org/isinfo.php)
+iscc installer/ionflow_setup.iss
+```
+
+O instalador `.exe` será gerado na pasta `installer/Output/`.
+
 ## ▶️ Uso
 
 ### GUI
@@ -119,7 +136,7 @@ Coloque os arquivos `.txt` de EIS em `data/raw/` e de ciclagem em `data/processe
 
 ```bash
 pip install -e ".[dev]"
-pytest -q                # 44 testes
+pytest -q                # 99 testes
 black . && isort .       # formatação
 flake8 .                 # linting
 mypy src                 # type checking
@@ -139,13 +156,13 @@ mypy src                 # type checking
 
 MIT — veja [LICENSE](LICENSE).
 
-## Contexto Acadêmico
+## 🎓 Contexto Acadêmico
+
 Projeto desenvolvido para análise de materiais eletroquímicos em contexto de iniciação científica.
-## How to present this work ✅
-- Short demo: run `python scripts/regenerate_figures.py` to generate an example PCA figure in `outputs/figures`.
-- Key slides: Motivation, Methods (metrics: Rs, Rp, C_eff, Tau), Results (Nyquist & PCA), Reproducibility.
-- One-pager: see `docs/ONE_PAGER.md` for a 1-page summary and demo steps.
-- Notes: aim for a 5–10 minute demo focusing on motivation, a single clear result, and how to reproduce it locally.
-## Licença
-Este projeto está licenciado sob a Licença MIT — veja o arquivo `LICENSE` para detalhes.
+
+## 🎤 Como apresentar
+
+- Demo rápida: `python scripts/regenerate_figures.py` gera figuras PCA em `outputs/figures`.
+- Slides: Motivação → Métodos (Rs, Rp, C_eff, Tau) → Resultados (Nyquist & PCA) → Reprodutibilidade.
+- Resumo de 1 página: veja `docs/ONE_PAGER.md`.
 
