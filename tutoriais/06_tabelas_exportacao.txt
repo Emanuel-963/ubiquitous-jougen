@@ -1,0 +1,250 @@
+================================================================================
+       TUTORIAL 6 — TABELAS, EXPORTAÇÃO E ANÁLISE DE DADOS
+================================================================================
+
+Versão: 0.1.0
+Última atualização: Abril 2026
+
+Este tutorial explica as tabelas geradas, como filtrá-las, exportá-las
+e como usar os dados para análise aprofundada.
+
+--------------------------------------------------------------------------------
+1. ABAS DE TABELA NA GUI
+--------------------------------------------------------------------------------
+
+A aba "Tabelas" na GUI contém 6 sub-abas:
+
+  ┌─────────────────────────────────────────────────────┐
+  │  EIS │ Ciclagem │ Circuitos │ DRT │ DRT Peaks │    │
+  │                                      DRT + EIS      │
+  └─────────────────────────────────────────────────────┘
+
+Cada sub-aba tem:
+  • Campo de filtro (busca em todas as colunas)
+  • Tabela ordenável (clique no cabeçalho)
+  • Dados atualizados automaticamente após cada pipeline
+
+--------------------------------------------------------------------------------
+2. TABELA EIS
+--------------------------------------------------------------------------------
+
+Fonte: outputs/tables/ranked_results.csv
+
+Colunas e significado:
+
+  IDENTIFICAÇÃO:
+  │ (índice)    → Nome do arquivo original
+  │ Sample      → Identificador extraído (ex: "1Nb2")
+  │ Electrolyte → Eletrólito detectado no nome (Na2SO4, H2SO4, NaOH...)
+  │ Current     → Corrente/informação do nome
+  │ Treatment   → Tratamento detectado (Am1, Am2, Am4...)
+
+  MÉTRICAS BRUTAS (physics_metrics):
+  │ Rs          → Resistência série (Ω) — mediana primeiros 5 pontos
+  │ Rp          → Resistência polarização (Ω) — diferença Z'(low f) - Z'(high f)
+  │ C_mean      → Capacitância efetiva média (F)
+  │ C_max       → Capacitância máxima (F)
+  │ C_lowfreq   → Capacitância na menor frequência (F)
+  │ Energy_mean → Energia armazenada média (J)
+  │ Tau         → Constante de tempo (s)
+  │ Dispersion  → Índice de dispersão (adimensional)
+
+  FIT CPE+WARBURG:
+  │ Rs_fit      → Rs ajustado pelo modelo (Ω)
+  │ Rp_fit      → Rp ajustado (Ω)
+  │ Q           → Pseudo-capacitância CPE (S·s^n)
+  │ n           → Expoente CPE (0-1)
+  │ Sigma       → Coeficiente Warburg (Ω·s^-½)
+
+  CLASSIFICAÇÃO:
+  │ Subclass    → "Interface eficiente" ou "Genérica estável"
+  │ Score       → Score composto ponderado (maior = melhor)
+  │ Rank        → Posição no ranking (1 = melhor na subclasse)
+
+COMO USAR:
+  • Ordene por Score (desc) para ver as melhores amostras no topo
+  • Ordene por Rs_fit (asc) para menor resistência
+  • Filtre por eletrólito (ex: "Na2SO4") para comparar condições
+  • Compare Rank entre subclasses diferentes
+
+--------------------------------------------------------------------------------
+3. TABELA DE CICLAGEM
+--------------------------------------------------------------------------------
+
+Fonte: tabela consolidada de todos os arquivos processados
+
+  │ Arquivo             → Nome do arquivo de ciclagem
+  │ Ciclos (numero)     → Grupo de ciclos (5, 10, 15...)
+  │ Duração dos Ciclos  → Tempo total do grupo (s)
+  │ Valor da Integral   → Integral |V×I| dt (V/s)
+  │ Energia (Wh/kg)     → Energia específica calculada
+  │ Potência (W/kg)     → Potência específica calculada
+
+COMO USAR:
+  • Compare Energia entre arquivos para ver qual material armazena mais
+  • Acompanhe Potência para identificar degradação de rate capability
+  • Filtre por nome do arquivo para focar em uma amostra
+
+--------------------------------------------------------------------------------
+4. TABELA DE CIRCUITOS
+--------------------------------------------------------------------------------
+
+Fonte: outputs/tables/circuit_fits.csv
+
+  RESULTADO PRINCIPAL:
+  │ Arquivo         → Nome da amostra
+  │ Circuito        → Nome do melhor modelo (Randles-CPE-W, Two-Arc-CPE...)
+  │ Representacao   → Diagrama do circuito (ex: "Rs - (Rp || CPE) - W")
+  │ BIC             → Critério de Informação Bayesiano (menor = melhor)
+  │ BIC_penalizado  → BIC + penalidades diagnósticas
+  │ AIC             → Critério de Informação Akaike
+  │ RSS             → Soma dos quadrados dos resíduos
+  │ Confianca       → Probabilidade relativa (0-1, maior = melhor)
+  │ Sucesso         → True/False do fitting
+
+  DIAGNÓSTICOS:
+  │ Res_autocorr    → Autocorrelação lag-1 dos resíduos
+  │                   |valor| < 0.3 → OK (resíduos aleatórios)
+  │                   |valor| > 0.3 → resíduos estruturados (modelo insuficiente)
+  │ Res_estruturado → True se autocorrelação > 0.3 (flag de alerta)
+  │ Bound_hits      → Nº de parâmetros que bateram no limite
+  │                   0 → ideal, todos os parâmetros convergem livremente
+  │                   >0 → modelo pode estar forçando valores
+
+  SEGUNDO MELHOR:
+  │ Circuito2       → Nome do 2º melhor modelo
+  │ Confianca2      → Confiança do 2º modelo
+  │ BIC2            → BIC do 2º modelo
+
+  PARÂMETROS:
+  │ Params          → Dicionário com valores ajustados
+  │ Params_std      → Incerteza de cada parâmetro
+  │ Shortlist       → Circuitos testados
+  │ Diag_plot       → Caminho do gráfico diagnóstico
+
+COMO USAR:
+  • Veja o Circuito mais frequente → modelo dominante no seu sistema
+  • Compare Confiança: > 0.7 → alta confiança, < 0.3 → considere alternativas
+  • Se Res_estruturado = True → modelo pode ser melhorado
+  • Se Bound_hits > 0 → ajustar bounds ou usar outro circuito
+  • Compare BIC do 1º e 2º: diferença < 2 → modelos equivalentes
+  • Diferença > 10 → modelo 1 é claramente superior
+
+RELATÓRIOS JSON:
+  Para cada amostra, outputs/circuit_reports/[nome].json contém:
+  • Todos os resultados detalhados
+  • Features espectrais usadas na seleção
+  • Lista completa dos fits tentados
+
+--------------------------------------------------------------------------------
+5. TABELAS DRT
+--------------------------------------------------------------------------------
+
+5.1 SUB-ABA "DRT":
+  │ Arquivo     → Nome do arquivo
+  │ R_inf       → Resistência de alta frequência (Ω)
+  │ n_peaks     → Número de picos DRT detectados
+  │ tau_peak_N  → Tempo de relaxação do pico N (s)
+  │ gamma_peak_N → Amplitude do pico N (Ω)
+
+5.2 SUB-ABA "DRT Peaks":
+  │ Arquivo       → Arquivo de origem
+  │ Sample        → Identificador da amostra
+  │ peak_order    → Ordem do pico (1 = mais intenso)
+  │ tau_peak      → τ do pico (s)
+  │ gamma_peak    → Amplitude γ do pico (Ω)
+  │ width_decades → Largura em décadas de log₁₀(τ)
+
+5.3 SUB-ABA "DRT + EIS":
+  Tabela cruzada combinando resultados DRT com métricas EIS.
+  Permite correlacionar picos de relaxação com parâmetros de impedância.
+
+--------------------------------------------------------------------------------
+6. ARQUIVOS CSV EXPORTADOS
+--------------------------------------------------------------------------------
+
+Todos os resultados são salvos automaticamente em CSV:
+
+  outputs/tables/
+  ├── summary_features.csv      → Todas as features EIS
+  ├── ranked_results.csv        → Com classificação e ranking
+  ├── capacitance_energy.csv    → Cap., energia, retenção
+  ├── circuit_fits.csv          → Circuitos equivalentes
+  ├── circuit_summary.csv       → Resumo por tipo de circuito
+  ├── pca_scores.csv            → Coordenadas PCA
+  ├── pca_loadings.csv          → Pesos PCA por variável
+  ├── stability_Rs_fit.csv      → Estabilidade de Rs
+  ├── stability_Rp_fit.csv      → Estabilidade de Rp
+  ├── stability_Q.csv           → Estabilidade de Q
+  └── stability_n.csv           → Estabilidade de n
+
+  outputs/figures/analytics/
+  ├── correlation_matrix.csv    → Matriz de correlação Spearman
+  └── correlation_pvalues.csv   → P-values das correlações
+
+DICA: Importe os CSV no Excel, Origin, ou Python/R para análises
+customizadas além do que o IonFlow oferece.
+
+--------------------------------------------------------------------------------
+7. EXPORTAÇÃO EXCEL (CICLAGEM)
+--------------------------------------------------------------------------------
+
+  outputs/excel/
+  └── [nome_arquivo].xlsx       → Uma planilha por arquivo de ciclagem
+
+  Estrutura do Excel:
+  • Linha 1: Unidades (numero, s, V/s, Wh/kg, W/kg)
+  • Linhas 2+: Dados por grupo de ciclos
+
+  O Excel pode ser aberto diretamente para:
+  • Criar gráficos customizados
+  • Calcular médias, tendências
+  • Combinar com dados de outras fontes
+
+--------------------------------------------------------------------------------
+8. GRÁFICOS PNG EXPORTADOS
+--------------------------------------------------------------------------------
+
+Todos os gráficos estáticos são salvos como PNG em 300 DPI:
+
+  outputs/figures/
+  ├── pca_2d.png               → PCA 2D por subclasse
+  ├── pca_3d.png               → PCA 3D
+  ├── pca_scree.png            → Scree plot
+  ├── pca_biplot.png           → Biplot 2D
+  ├── drt/
+  │   └── [amostra]_drt.png   → Espectro DRT individual
+  ├── circuits/
+  │   └── [amostra]_*.png     → Diagnóstico circuito
+  └── analytics/
+      ├── correlation_heatmap.png → Mapa de correlação
+      ├── rank_vs_retencao.png    → Rank vs retenção
+      ├── pca_2d_metric.png       → PCA por retenção
+      └── series_*.png            → Séries temporais
+
+  Marca d'água "IonFlow Pipeline" discreta no canto inferior direito.
+  Prontos para publicação ou apresentação.
+
+--------------------------------------------------------------------------------
+9. DICAS DE ANÁLISE DE DADOS
+--------------------------------------------------------------------------------
+
+WORKFLOW RECOMENDADO PARA PUBLICAÇÃO:
+
+  1. Rode "Ambos" (EIS + Ciclagem) para ter o conjunto completo
+  2. Rode "DRT" para a análise de tempos de relaxação
+  3. Verifique a aba Logs para erros ou alertas
+  4. Na tabela EIS, identifique as melhores amostras (Rank 1)
+  5. No heatmap de correlação, identifique relações significativas
+  6. No Ragone Plot, posicione seus materiais vs. literatura
+  7. No DRT, identifique os processos dominantes
+  8. Exporte os CSVs para análise estatística complementar
+
+USANDO FILTROS DAS TABELAS:
+  • Digite parte do nome → filtra por amostra
+  • Digite um eletrólito → filtra por condição
+  • Use para isolar subconjuntos e comparar
+
+================================================================================
+  Próximo tutorial: 07_interpretacao_cientifica.txt — Como tirar conclusões
+================================================================================

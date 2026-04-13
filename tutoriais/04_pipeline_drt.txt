@@ -1,0 +1,244 @@
+================================================================================
+       TUTORIAL 4 — PIPELINE DRT: DISTRIBUIÇÃO DE TEMPOS DE RELAXAÇÃO
+================================================================================
+
+Versão: 0.1.0
+Última atualização: Abril 2026
+
+Este tutorial explica a análise DRT (Distribution of Relaxation Times),
+uma técnica avançada para decompor espectros de impedância em processos
+eletroquímicos individuais.
+
+--------------------------------------------------------------------------------
+1. O QUE É DRT?
+--------------------------------------------------------------------------------
+
+A DRT transforma um espectro de impedância (Nyquist) em uma distribuição
+de tempos de relaxação γ(τ), onde cada pico corresponde a um processo
+eletroquímico distinto.
+
+VANTAGEM SOBRE CIRCUITOS EQUIVALENTES:
+  • Circuitos: você ESCOLHE quantos processos existem (1 arco, 2 arcos...)
+  • DRT: REVELA quantos processos existem, sem assumir um modelo
+
+A relação matemática é:
+  −Z″(ω) = ∫ γ(τ) × (ωτ)/(1 + (ωτ)²) d(ln τ)
+
+Onde:
+  ω = 2πf = frequência angular
+  τ = tempo de relaxação
+  γ(τ) = distribuição DRT (em Ω)
+
+O IonFlow usa regularização de Tikhonov com suavização de segunda ordem
+para resolver este problema inverso mal condicionado.
+
+--------------------------------------------------------------------------------
+2. COMO RODAR O PIPELINE DRT
+--------------------------------------------------------------------------------
+
+PASSO 1: Importe seus arquivos EIS para data/raw/
+  (Mesmos arquivos do pipeline EIS — frequência, zreal, zimag)
+
+PASSO 2: Configure os parâmetros DRT na sidebar:
+
+  ┌─────────────────────────────────────────────────────────┐
+  │ Parâmetro  │ Significado              │ Valores típicos  │
+  ├────────────┼──────────────────────────┼──────────────────┤
+  │ λ DRT      │ Regularização Tikhonov   │ 5e-4 a 5e-3     │
+  │            │ (maior = mais suave)     │                  │
+  ├────────────┼──────────────────────────┼──────────────────┤
+  │ n_taus     │ Resolução da grade τ     │ 30 a 80          │
+  │            │ (mais = mais detalhes)   │                  │
+  └────────────┴──────────────────────────┴──────────────────┘
+
+  OU use um preset:
+  • Rápido:          λ = 5×10⁻³, n_taus = 30  (processamento veloz)
+  • Balanceado:      λ = 1×10⁻³, n_taus = 50  (padrão recomendado)
+  • Alta resolução:  λ = 5×10⁻⁴, n_taus = 80  (máximo detalhe)
+
+PASSO 3: Clique em "Rodar Pipeline DRT"
+
+PASSO 4: Veja os resultados nas abas:
+  • Tabelas → DRT, DRT Peaks, DRT+EIS
+  • Gráficos Interativos → DRT, DRT×EIS
+
+--------------------------------------------------------------------------------
+3. ENTENDENDO O PARÂMETRO λ (LAMBDA)
+--------------------------------------------------------------------------------
+
+O λ controla o trade-off entre ajuste e suavidade:
+
+  λ muito pequeno (ex: 1e-5):
+  ├── ✅ Captura detalhes finos
+  ├── ❌ Muitos picos espúrios (ruído)
+  └── ❌ Resultado oscilatório e difícil de interpretar
+
+  λ moderado (ex: 1e-3):       ← RECOMENDADO
+  ├── ✅ Bom equilíbrio
+  ├── ✅ Picos reais bem definidos
+  └── ✅ Suave o suficiente para interpretação
+
+  λ muito grande (ex: 1e-1):
+  ├── ✅ Muito suave, sem ruído
+  ├── ❌ Perde detalhes / picos reais
+  └── ❌ Alarga e mescla picos que deveriam ser distintos
+
+DICA: Comece com "Balanceado" e ajuste se necessário:
+  • Muitos picos estranhos → aumente λ
+  • Picos esperados não aparecem → diminua λ ou aumente n_taus
+
+--------------------------------------------------------------------------------
+4. GRÁFICOS DRT
+--------------------------------------------------------------------------------
+
+4.1 ESPECTRO DRT (por amostra):
+
+  Eixo X: log₁₀(τ) — tempo de relaxação em segundos
+  Eixo Y: γ(τ) — amplitude da DRT em Ohm
+
+  ┌──────────────────────────────────────────────┐
+  │  γ(τ)                                        │
+  │   ↑     Pico 1       Pico 2                  │
+  │   │      ╱╲           ╱╲                      │
+  │   │    ╱    ╲       ╱    ╲                    │
+  │   │  ╱        ╲   ╱        ╲                  │
+  │   │╱            ╲╱            ╲               │
+  │   └──────────────────────────────→ log₁₀(τ)  │
+  │       τ₁ (rápido)   τ₂ (lento)               │
+  └──────────────────────────────────────────────┘
+
+  COMO INTERPRETAR CADA PICO:
+
+  • Posição (τ): identifica o processo
+    ┌──────────────────────────────────────────────────────┐
+    │ log₁₀(τ)    │ τ (s)          │ Processo típico       │
+    ├──────────────┼────────────────┼───────────────────────┤
+    │ -7 a -5      │ 0.1 μs - 10 μs│ Migração iônica       │
+    │ -5 a -3      │ 10 μs - 1 ms  │ Transferência de carga│
+    │ -3 a -1      │ 1 ms - 100 ms │ Difusão / adsorção    │
+    │ -1 a +1      │ 100 ms - 10 s │ Difusão lenta / filme │
+    └──────────────┴────────────────┴───────────────────────┘
+
+  • Amplitude (γ): resistência associada ao processo
+    → Pico alto = alta contribuição à impedância total
+    → Pico baixo = processo com pouca influência
+
+  • Largura: homogeneidade do processo
+    → Pico estreito = processo bem definido (único τ)
+    → Pico largo = distribuição de tempos (heterogêneo)
+
+4.2 OVERLAY DRT (várias amostras):
+
+  Sobreposição dos espectros DRT de múltiplas amostras.
+  Útil para comparar:
+  • Mesma amostra em condições diferentes
+  • Diferentes materiais
+  • Evolução ao longo de tratamentos
+
+4.3 HEATMAP DRT:
+
+  Mapa de calor mostrando γ(τ) para todas as amostras.
+  • Eixo X: log₁₀(τ)
+  • Eixo Y: nome da amostra
+  • Cor: intensidade de γ(τ)
+  → Permite identificar rapidamente quais amostras têm
+    processos em determinadas faixas de τ
+
+--------------------------------------------------------------------------------
+5. TABELAS DRT
+--------------------------------------------------------------------------------
+
+5.1 TABELA DRT (drt_table):
+  Uma linha por amostra processada:
+  • Arquivo: nome do arquivo original
+  • R_inf: resistência em alta frequência (Ω)
+  • n_peaks: número de picos detectados
+  • tau_peak_1, gamma_peak_1: posição e amplitude do pico 1
+  • tau_peak_2, gamma_peak_2: posição e amplitude do pico 2
+  • tau_peak_3, gamma_peak_3: posição e amplitude do pico 3
+
+  Os picos são ordenados por amplitude decrescente (pico 1 = mais intenso).
+
+5.2 TABELA DRT PEAKS (drt_peaks_table):
+  Uma linha por PICO detectado (granularidade fina):
+  • Arquivo, Sample: identificação
+  • peak_order: ordem do pico (1, 2, 3...)
+  • tau_peak: tempo de relaxação (s)
+  • gamma_peak: amplitude (Ω)
+  • width_decades: largura do pico em décadas de τ
+
+5.3 TABELA DRT SUMMARY (drt_summary_table):
+  Resumo estatístico por amostra:
+  • n_peaks: número de picos
+  • R_inf: resistência de alta frequência
+  • tau_peak_main: τ do pico principal
+  • gamma_peak_main: γ do pico principal
+  • residual_mean: erro médio do ajuste
+  • residual_max: erro máximo do ajuste
+
+5.4 TABELA DRT + EIS (cruzamento):
+  Combina resultados DRT com métricas EIS quando ambos pipelines
+  são executados. Permite correlacionar:
+  • Picos DRT com Rs, Rp, capacitância, ranking
+  • Identificar quais processos dominam em amostras de alto/baixo desempenho
+
+--------------------------------------------------------------------------------
+6. METADADOS DA EXECUÇÃO
+--------------------------------------------------------------------------------
+
+O pipeline salva metadados para rastreabilidade (run_meta):
+  • lambda_reg: λ utilizado
+  • n_taus: resolução utilizada
+  • data_dir: diretório de entrada
+  • n_files: total de arquivos encontrados
+  • n_success: processados com sucesso
+  • n_failed: falhas
+  • generated_at: timestamp da execução
+
+Se arquivos falharem, os erros são reportados no dicionário 'errors'
+e exibidos no log da GUI.
+
+--------------------------------------------------------------------------------
+7. EXEMPLOS PRÁTICOS DE INTERPRETAÇÃO DRT
+--------------------------------------------------------------------------------
+
+EXEMPLO 1 — Eletrodo metálico em eletrólito aquoso:
+  • 1 pico principal em τ ≈ 10⁻⁴ s
+  → Transferência de carga (reação redox na interface)
+  • Pequeno ombro em τ ≈ 10⁻² s
+  → Difusão em solução
+
+EXEMPLO 2 — Supercapacitor com PANI:
+  • Pico estreito em τ ≈ 10⁻³ s
+  → Pseudocapacitância do polímero
+  • Pico largo em τ ≈ 10⁻¹ s
+  → Difusão iônica no filme polimérico
+  • Pico em τ ≈ 10⁻⁵ s
+  → Resistência de contato metal/polímero
+
+EXEMPLO 3 — Revestimento protetor (corrosão):
+  • 2 picos bem separados:
+  → τ₁ ≈ 10⁻³ s: interface revestimento/metal
+  → τ₂ ≈ 10⁰ s: difusão através do revestimento
+  • Amplitude τ₂ >> τ₁: revestimento dominante
+
+CORRELAÇÃO DRT × CIRCUITOS:
+  • 1 pico DRT → provavelmente Randles-CPE-W é adequado
+  • 2 picos DRT → Two-Arc-CPE é o melhor modelo
+  • Pico em τ muito curto com fase positiva → Inductive-CPE
+
+--------------------------------------------------------------------------------
+8. DICAS AVANÇADAS
+--------------------------------------------------------------------------------
+
+  • Compare DRT com diferentes λ para verificar robustez dos picos
+    (picos reais aparecem com qualquer λ razoável)
+  • Use "Alta resolução" para publicação e "Rápido" para exploração
+  • Se residual_mean alto (>10% de |Z|): dados ruidosos ou modelo inadequado
+  • Picos com width_decades > 2: processo muito distribuído (não Debye)
+  • R_inf da DRT deve ser próximo do Rs do pipeline EIS
+  • A soma dos gamma_peak deve ser próxima de Rp (resistência total dos processos)
+
+================================================================================
+  Próximo tutorial: 05_graficos_interativos.txt — Os 17 Gráficos
+================================================================================

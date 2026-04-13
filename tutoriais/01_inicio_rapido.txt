@@ -1,0 +1,183 @@
+================================================================================
+          TUTORIAL 1 — INÍCIO RÁPIDO: COMO USAR O IONFLOW PIPELINE
+================================================================================
+
+Versão: 0.1.0
+Última atualização: Abril 2026
+
+--------------------------------------------------------------------------------
+1. O QUE É O IONFLOW PIPELINE?
+--------------------------------------------------------------------------------
+
+O IonFlow Pipeline é um software de análise eletroquímica que processa dados
+de Espectroscopia de Impedância Eletroquímica (EIS), Ciclagem Galvanostática
+e Distribution of Relaxation Times (DRT).
+
+Com ele você pode:
+  • Importar arquivos .txt de equipamentos eletroquímicos
+  • Calcular métricas físicas (Rs, Rp, capacitância, energia, potência)
+  • Ajustar circuitos equivalentes automaticamente (Randles, Two-Arc, Indutivo)
+  • Classificar e ranquear amostras por desempenho
+  • Gerar 17+ gráficos interativos (Nyquist, Bode, Ragone, PCA, DRT...)
+  • Exportar resultados em CSV, Excel e imagens de alta resolução
+
+--------------------------------------------------------------------------------
+2. INSTALAÇÃO
+--------------------------------------------------------------------------------
+
+OPÇÃO A — Instalador Windows (.exe):
+  1. Execute "IonFlow_Pipeline_Setup_0.1.0.exe"
+  2. Siga o assistente de instalação
+  3. O atalho aparecerá no Menu Iniciar e/ou Área de Trabalho
+
+OPÇÃO B — Código-fonte (desenvolvedores):
+  1. Extraia o ZIP do código-fonte
+  2. Abra um terminal na pasta extraída
+  3. Execute: install_pipeline.ps1 (Windows) ou install_linux.sh (Linux/Mac)
+  4. O script criará um venv e instalará as dependências
+
+--------------------------------------------------------------------------------
+3. PRIMEIRA EXECUÇÃO
+--------------------------------------------------------------------------------
+
+Ao abrir o IonFlow Pipeline pela primeira vez, você verá:
+
+  ┌──────────────────────────────────────────────────────────────┐
+  │  SIDEBAR (esquerda)        │     ÁREA PRINCIPAL (direita)    │
+  │                            │                                 │
+  │  [Scan rate: 0.1]         │    Abas: Gráficos │ Tabelas │   │
+  │  [Importar EIS para raw]  │                    Logs         │
+  │  [Importar Ciclagem...]   │                                 │
+  │  [Gráficos Interativos]   │    (vazio até rodar pipeline)   │
+  │  [Rodar Pipeline EIS]     │                                 │
+  │  [Rodar Pipeline Ciclagem]│                                 │
+  │  [Rodar Ambos]            │                                 │
+  │  [Rodar Pipeline DRT]     │                                 │
+  │  [λ DRT] [n_taus]         │                                 │
+  │  [Preset DRT]             │                                 │
+  │  [Tema: Escuro/Claro]     │                                 │
+  │  [Idioma: PT/EN]          │                                 │
+  └──────────────────────────────────────────────────────────────┘
+
+--------------------------------------------------------------------------------
+4. PASSO A PASSO — SUA PRIMEIRA ANÁLISE
+--------------------------------------------------------------------------------
+
+PASSO 1: Importar dados EIS
+  • Clique em "Importar EIS para raw"
+  • Selecione seus arquivos .txt de impedância
+  • Os arquivos serão copiados para a pasta data/raw/
+
+PASSO 2: Configurar scan rate (se for rodar ciclagem)
+  • No campo "Scan rate (A/g)", digite a taxa de varredura
+  • Exemplo: 0.1 para 0.1 A/g
+
+PASSO 3: Rodar o pipeline
+  • Clique em "Rodar Pipeline EIS" para análise de impedância
+  • Ou "Rodar Pipeline Ciclagem" para ciclagem galvanostática
+  • Ou "Rodar Ambos" para as duas análises juntas
+
+PASSO 4: Ver resultados
+  • Aba "Gráficos": mostra os plots estáticos gerados
+  • Aba "Tabelas": mostra tabelas de resultados com filtro
+  • Aba "Logs": mostra o progresso e mensagens do processamento
+  • Botão "Gráficos Interativos": abre janela com 17 gráficos
+
+PASSO 5: Exportar
+  • Tabelas: salvas automaticamente em outputs/tables/ (CSV)
+  • Gráficos: salvos automaticamente em outputs/figures/ (PNG 300 DPI)
+  • Excel de ciclagem: salvo em outputs/excel/
+  • Relatórios de circuito: salvos em outputs/circuit_reports/ (JSON)
+
+--------------------------------------------------------------------------------
+5. FORMATO DOS ARQUIVOS DE ENTRADA
+--------------------------------------------------------------------------------
+
+ARQUIVOS EIS (.txt):
+  Os arquivos devem conter colunas separadas por tabulação ou espaço:
+  • frequency (ou freq) — frequência em Hz
+  • zreal (ou Z') — parte real da impedância em Ohm
+  • zimag (ou Z'') — parte imaginária da impedância em Ohm (negativa)
+
+  Exemplo de arquivo EIS:
+  ┌────────────────────────────────────────┐
+  │ frequency    zreal       zimag         │
+  │ 100000.0     5.234       -0.891        │
+  │ 79432.8      5.245       -1.023        │
+  │ 63095.7      5.267       -1.187        │
+  │ ...                                    │
+  └────────────────────────────────────────┘
+
+ARQUIVOS DE CICLAGEM (.txt):
+  Devem conter:
+  • ciclo — número do ciclo
+  • tempo — tempo em segundos
+  • potencial — potencial em Volts
+  • corrente — corrente em Amperes
+
+  Exemplo de arquivo de ciclagem:
+  ┌────────────────────────────────────────────────────┐
+  │ ciclo   tempo      potencial    corrente           │
+  │ 1       0.000      0.001        0.100              │
+  │ 1       0.100      0.045        0.100              │
+  │ 1       0.200      0.089        0.100              │
+  │ ...                                                │
+  └────────────────────────────────────────────────────┘
+
+DICA PARA NOMES DE ARQUIVOS:
+  Recomenda-se a convenção: "[N] [Amostra] [Eletrólito] [Info].txt"
+  Exemplo: "1 Nb2 S316 Na2SO4 Am2.txt"
+  • O número inicial indica a ordem/ciclo para cálculos de retenção
+  • O segundo token é usado como identificador da amostra
+
+--------------------------------------------------------------------------------
+6. CONFIGURAÇÕES DA INTERFACE
+--------------------------------------------------------------------------------
+
+TEMA:
+  • Escuro (padrão): melhor para visualização de gráficos
+  • Claro: melhor para impressão/apresentações
+  • Sistema: segue o tema do Windows
+
+IDIOMA:
+  • Português (padrão)
+  • English
+
+PARÂMETROS DRT:
+  • λ DRT: parâmetro de regularização (maior = mais suave)
+  • n_taus: resolução da grade de tempos de relaxação
+  • Presets: Rápido (λ=5e-3, n=30), Balanceado (λ=1e-3, n=50),
+             Alta resolução (λ=5e-4, n=80)
+
+Todas as configurações são salvas automaticamente e restauradas na
+próxima abertura do programa.
+
+--------------------------------------------------------------------------------
+7. ESTRUTURA DE PASTAS
+--------------------------------------------------------------------------------
+
+  IonFlow_Pipeline/
+  ├── data/
+  │   ├── raw/           ← Arquivos EIS (.txt) vão aqui
+  │   └── processed/     ← Arquivos de Ciclagem (.txt) vão aqui
+  ├── outputs/
+  │   ├── tables/        ← CSVs: summary_features, ranked_results, etc.
+  │   ├── figures/       ← PNGs: Nyquist, PCA, correlação, etc.
+  │   ├── excel/         ← Planilhas Excel da ciclagem
+  │   └── circuit_reports/ ← JSONs de relatórios de circuitos
+  └── themes/
+      └── ionflow.json   ← Tema visual customizado
+
+--------------------------------------------------------------------------------
+8. ATALHOS E DICAS
+--------------------------------------------------------------------------------
+
+  • A barra de progresso mostra o andamento de cada pipeline
+  • O log em tempo real aparece na aba "Logs"
+  • Clique com o mouse nos gráficos interativos para ver valores
+  • Filtro nas tabelas: digite qualquer texto para buscar nas linhas
+  • As colunas das tabelas podem ser clicadas para ordenar
+
+================================================================================
+  Próximo tutorial: 02_pipeline_eis.txt — Análise detalhada de EIS
+================================================================================

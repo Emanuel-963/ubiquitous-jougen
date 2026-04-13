@@ -1,0 +1,264 @@
+================================================================================
+          TUTORIAL 2 — PIPELINE EIS: ANÁLISE DE IMPEDÂNCIA ELETROQUÍMICA
+================================================================================
+
+Versão: 0.1.0
+Última atualização: Abril 2026
+
+Este tutorial detalha todo o fluxo de análise EIS do IonFlow Pipeline,
+desde a importação até a interpretação dos resultados.
+
+--------------------------------------------------------------------------------
+1. VISÃO GERAL DO PIPELINE EIS
+--------------------------------------------------------------------------------
+
+O Pipeline EIS executa automaticamente estas etapas:
+
+  Arquivo .txt → Carregamento → Pré-processamento → Extração de Features →
+  Fit CPE+Warburg → Fit de Circuitos → Classificação K-Means → PCA →
+  Estabilidade → Ranking → Tabelas CSV → Gráficos PNG
+
+Cada etapa é explicada abaixo.
+
+--------------------------------------------------------------------------------
+2. IMPORTAÇÃO E PRÉ-PROCESSAMENTO
+--------------------------------------------------------------------------------
+
+2.1 CARREGAMENTO (src/loader.py):
+  • Lê cada .txt da pasta data/raw/
+  • Detecta automaticamente separadores (tab, espaço, vírgula)
+  • Identifica colunas: frequency, zreal, zimag
+
+2.2 PRÉ-PROCESSAMENTO (src/preprocessing.py):
+  • Ordena dados por frequência (descendente)
+  • Remove linhas com NaN ou frequência zero/negativa
+  • Calcula ω = 2πf (frequência angular)
+  • Remove duplicatas de frequência
+
+DICA: Se o pipeline reportar "0 arquivos processados", verifique se seus
+arquivos têm as colunas corretas (frequency, zreal, zimag).
+
+--------------------------------------------------------------------------------
+3. MÉTRICAS FÍSICAS EXTRAÍDAS
+--------------------------------------------------------------------------------
+
+Para cada amostra, o pipeline calcula (src/physics_metrics.py):
+
+┌──────────────┬────────────────────────────────────────────────────────┐
+│ Métrica      │ Significado Físico                                     │
+├──────────────┼────────────────────────────────────────────────────────┤
+│ Rs           │ Resistência em série (alta frequência)                 │
+│              │ → Resistência do eletrólito + contatos                 │
+│              │ → Menor = melhor condutividade iônica                  │
+│              │ → Calculado como mediana dos primeiros 5 pontos Z'     │
+├──────────────┼────────────────────────────────────────────────────────┤
+│ Rp           │ Resistência de polarização                             │
+│              │ → Resistência à transferência de carga                 │
+│              │ → Rp = Z'(baixa f) - Z'(alta f)                       │
+│              │ → Maior Rp = mais resistivo, pior cinética             │
+│              │ → Exceção: para proteção, alto Rp = boa barreira      │
+├──────────────┼────────────────────────────────────────────────────────┤
+│ C_mean       │ Capacitância efetiva média (F)                         │
+│              │ → C_eff = -Z'' / (ω × |Z|²)                           │
+│              │ → Maior = mais armazenamento de carga                  │
+├──────────────┼────────────────────────────────────────────────────────┤
+│ C_max        │ Capacitância efetiva máxima (F)                        │
+│              │ → Pico de armazenamento de carga                       │
+├──────────────┼────────────────────────────────────────────────────────┤
+│ C_lowfreq    │ Capacitância na menor frequência (F)                   │
+│              │ → Mais representativa do comportamento quase-DC         │
+├──────────────┼────────────────────────────────────────────────────────┤
+│ Energy_mean  │ Energia armazenada média (J)                           │
+│              │ → E = ½ × C × V²  (com V = 1V por padrão)             │
+├──────────────┼────────────────────────────────────────────────────────┤
+│ Tau          │ Constante de tempo dominante (s)                       │
+│              │ → τ = Rp × C_mediana                                   │
+│              │ → Tempo de resposta do sistema                         │
+│              │ → Menor τ = resposta mais rápida                       │
+├──────────────┼────────────────────────────────────────────────────────┤
+│ Dispersion   │ Índice de dispersão                                    │
+│              │ → std(log₁₀(C_eff))                                    │
+│              │ → Maior = mais heterogêneo / vários processos          │
+└──────────────┴────────────────────────────────────────────────────────┘
+
+--------------------------------------------------------------------------------
+4. AJUSTE CPE + WARBURG
+--------------------------------------------------------------------------------
+
+O pipeline ajusta um modelo CPE (Constant Phase Element) + Warburg para
+cada amostra (src/cpe_fit.py). Os parâmetros resultantes são:
+
+  Rs_fit  → Resistência em série ajustada (Ω)
+  Rp_fit  → Resistência de polarização ajustada (Ω)
+  Q       → Pseudo-capacitância do CPE (S·s^n)
+  n       → Expoente do CPE (0 a 1)
+            n = 1: capacitor ideal
+            n = 0.5: difusão (Warburg)
+            n ≈ 0.8-0.9: CPE típico de superfície rugosa
+  Sigma   → Coeficiente de Warburg (Ω·s^-½)
+
+COMO INTERPRETAR:
+  • Q alto + n perto de 1 → alta capacitância, superfície homogênea
+  • n baixo (< 0.7) → superfície muito rugosa ou processos difusivos
+  • Sigma alto → difusão lenta (massa limitante)
+
+Se o fit falhar para uma amostra, os valores ficam como NaN e não
+afetam a análise das outras amostras.
+
+--------------------------------------------------------------------------------
+5. AJUSTE DE CIRCUITOS EQUIVALENTES
+--------------------------------------------------------------------------------
+
+O pipeline testa automaticamente 3 modelos de circuito (src/circuit_fitting.py):
+
+  1. Randles-CPE-W:  Rs - (Rp || CPE) - W
+     → Modelo clássico: resistência + interface + difusão
+     → Adequado para eletrodos simples com difusão semi-infinita
+
+  2. Two-Arc-CPE:    Rs - (Rp1 || CPE1) - (Rp2 || CPE2)
+     → Dois semicírculos no Nyquist
+     → Para sistemas com 2 processos (ex: transferência de carga + filme)
+
+  3. Inductive-CPE:  Rs - L - (Rp || CPE)
+     → Com componente indutivo
+     → Para sistemas com loops indutivos (corrosão, adsorção)
+
+SELEÇÃO AUTOMÁTICA:
+  • Análise de features espectrais (slope, fase, magnitude)
+  • Shortlist dos circuitos mais prováveis
+  • Fitting de cada candidato por least squares
+  • Seleção pelo BIC (Bayesian Information Criterion) penalizado:
+    - BIC_penalizado = BIC + 5×(resíduos estruturados) + 0.5×(bound_hits)
+  • Confiança via softmax sobre -½ × BIC_penalizado
+
+TABELA DE CIRCUITOS (outputs/tables/circuit_fits.csv):
+  • Circuito: nome do melhor modelo
+  • BIC / BIC_penalizado: critério de seleção (menor = melhor)
+  • AIC: critério alternativo
+  • RSS: soma dos resíduos ao quadrado
+  • Confiança: probabilidade relativa (0 a 1)
+  • Res_autocorr: autocorrelação dos resíduos (< 0.3 = bom)
+  • Bound_hits: parâmetros no limite (0 = ideal)
+
+Gráficos diagnósticos são salvos em outputs/figures/circuits/
+mostrando Nyquist e Bode com dados vs ajuste.
+
+--------------------------------------------------------------------------------
+6. CLASSIFICAÇÃO E RANKING
+--------------------------------------------------------------------------------
+
+6.1 CLASSIFICAÇÃO (src/ranking.py — apply_classification):
+
+  Método: K-Means (2 clusters) sobre Rs_fit e Rp_fit padronizados
+
+  • "Interface eficiente": cluster com menor Rs e maior Rp
+    → Boa condutividade iônica + boa separação interfacial
+  • "Genérica estável": o outro cluster
+    → Comportamento intermediário
+
+  Fallback: se dados insuficientes, usa quartis de Rs e Rp.
+
+6.2 RANKING (src/ranking.py — rank_within_subclass):
+
+  Score composto ponderado:
+    Score = 0.35 × z(Rp_fit) − 0.25 × z(Rs_fit) + 0.25 × z(C_mean)
+            + 0.15 × z(Energy_mean)
+
+  Onde z() é o z-score (normalização por média e desvio padrão).
+
+  • Rp alto → bom (peso positivo +0.35)
+  • Rs baixo → bom (peso negativo −0.25)
+  • C_mean alto → bom (peso +0.25)
+  • Energy_mean alta → bom (peso +0.15)
+
+  Rank 1 = melhor amostra dentro da sua subclasse.
+
+--------------------------------------------------------------------------------
+7. TABELA DE CAPACITÂNCIA E ENERGIA
+--------------------------------------------------------------------------------
+
+Gerada automaticamente (outputs/tables/capacitance_energy.csv):
+
+  • C média (F): capacitância efetiva média
+  • C máxima (F): pico de capacitância
+  • C menor f (F): capacitância na menor frequência
+  • Energia média (J): energia armazenada
+  • C_espec (F/g): capacitância específica (por massa, se disponível)
+  • Retenção (%): retenção de energia entre amostras do mesmo grupo
+
+RETENÇÃO:
+  Calculada agrupando amostras pelo nome base (ex: "Nb2 S316 Na2SO4").
+  O prefixo numérico (1, 2, 3...) indica a ordem cronológica.
+  Retenção = (Energia_final / Energia_inicial) × 100%
+  • > 100%: ganho de capacidade (ativação do material)
+  • 80-100%: boa estabilidade
+  • < 80%: degradação significativa
+
+--------------------------------------------------------------------------------
+8. PCA (ANÁLISE DE COMPONENTES PRINCIPAIS)
+--------------------------------------------------------------------------------
+
+Variáveis usadas: Rs_fit, Rp_fit, Q, n, Sigma
+Condição: mínimo 3 amostras com dados válidos
+
+GRÁFICOS GERADOS:
+  • PCA 2D: amostras no espaço PC1×PC2, coloridas por subclasse
+  • PCA 3D: mesma ideia com 3 componentes
+  • Scree Plot: variância explicada por componente
+  • Biplot: scores + vetores de loadings (mostra contribuição de cada variável)
+  • PCA Retenção: PCA 2D colorido pela % de retenção
+
+COMO INTERPRETAR O PCA:
+  • Amostras próximas → comportamento eletroquímico similar
+  • Amostras distantes → comportamentos distintos
+  • Vetores de loading longos → variável tem forte influência
+  • Vetores na mesma direção → variáveis correlacionadas
+  • Vetores opostos → variáveis inversamente correlacionadas
+
+--------------------------------------------------------------------------------
+9. ESTABILIDADE
+--------------------------------------------------------------------------------
+
+Calculada para cada parâmetro (Rs_fit, Rp_fit, Q, n):
+  • Agrupa amostras pelo identificador (ex: "1Nb2")
+  • Calcula: Média, Desvio Padrão, CV (Coeficiente de Variação)
+  • CV = Std / Mean → menor CV = mais reprodutível
+  • CV < 0.1 (10%): excelente reprodutibilidade
+  • CV 0.1-0.3: razoável
+  • CV > 0.3: alta variabilidade
+
+Resultados: outputs/tables/stability_Rs_fit.csv, stability_Rp_fit.csv, etc.
+
+--------------------------------------------------------------------------------
+10. ARQUIVOS DE SAÍDA DO PIPELINE EIS
+--------------------------------------------------------------------------------
+
+  outputs/tables/
+  ├── summary_features.csv      → Todas as métricas por amostra
+  ├── ranked_results.csv        → Com Score e Rank adicionados
+  ├── capacitance_energy.csv    → Capacitância, energia, retenção
+  ├── circuit_fits.csv          → Circuitos equivalentes por amostra
+  ├── circuit_summary.csv       → Resumo agregado por tipo de circuito
+  ├── pca_scores.csv            → Coordenadas PCA de cada amostra
+  ├── pca_loadings.csv          → Pesos das variáveis em cada PC
+  └── stability_*.csv           → Métricas de estabilidade
+
+  outputs/figures/
+  ├── pca_2d.png                → PCA 2D por subclasse
+  ├── pca_3d.png                → PCA 3D
+  ├── pca_scree.png             → Scree plot
+  ├── pca_biplot.png            → Biplot PCA
+  ├── analytics/
+  │   ├── correlation_heatmap.png → Correlação de Spearman
+  │   ├── rank_vs_retencao.png    → Scatter: rank vs retenção
+  │   ├── pca_2d_metric.png       → PCA colorido por retenção
+  │   └── series_*.png            → Séries temporais por grupo
+  └── circuits/
+      └── [amostra]_[circuito].png → Diagnóstico Nyquist+Bode
+
+  outputs/circuit_reports/
+  └── [amostra].json            → Relatório completo do fitting
+
+================================================================================
+  Próximo tutorial: 03_pipeline_ciclagem.txt — Análise de Ciclagem
+================================================================================

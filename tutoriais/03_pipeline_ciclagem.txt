@@ -1,0 +1,191 @@
+================================================================================
+       TUTORIAL 3 — PIPELINE DE CICLAGEM GALVANOSTÁTICA
+================================================================================
+
+Versão: 0.1.0
+Última atualização: Abril 2026
+
+Este tutorial explica como analisar dados de ciclagem galvanostática
+(carga/descarga) no IonFlow Pipeline.
+
+--------------------------------------------------------------------------------
+1. O QUE É CICLAGEM GALVANOSTÁTICA?
+--------------------------------------------------------------------------------
+
+Ciclagem galvanostática (GCD — Galvanostatic Charge-Discharge) é uma
+técnica onde se aplica uma corrente constante e mede-se o potencial
+ao longo do tempo, em ciclos repetidos de carga e descarga.
+
+É fundamental para avaliar:
+  • Capacidade energética (Wh/kg) — quanta energia o dispositivo armazena
+  • Potência (W/kg) — quão rápido pode entregar/absorver energia
+  • Estabilidade cíclica — como a performance evolui ao longo dos ciclos
+  • Eficiência coulômbica — energia recuperada vs energia fornecida
+
+--------------------------------------------------------------------------------
+2. COMO IMPORTAR DADOS DE CICLAGEM
+--------------------------------------------------------------------------------
+
+PASSO 1: Clique em "Importar Ciclagem para processed"
+PASSO 2: Selecione seus arquivos .txt de ciclagem
+PASSO 3: Os arquivos são copiados para data/processed/
+
+FORMATO ESPERADO:
+  Arquivo .txt com colunas separadas por tab/espaço:
+  • ciclo: número inteiro do ciclo (1, 2, 3, ...)
+  • tempo: tempo em segundos
+  • potencial: potencial em Volts
+  • corrente: corrente em Amperes
+
+  NOTA: Valores NaN ou infinitos na coluna "ciclo" são automaticamente
+  removidos. O pipeline agrupa os dados por ciclo para os cálculos.
+
+DICA: Configure o "Scan rate (A/g)" na sidebar ANTES de rodar o pipeline.
+O scan rate é essencial para calcular energia e potência específicas.
+
+--------------------------------------------------------------------------------
+3. O QUE O PIPELINE CALCULA
+--------------------------------------------------------------------------------
+
+Para cada arquivo, o pipeline (src/cycling_calculator.py) calcula por ciclo:
+
+┌──────────────────────┬────────────────────────────────────────────────┐
+│ Métrica              │ Como é calculada                               │
+├──────────────────────┼────────────────────────────────────────────────┤
+│ Ciclos (número)      │ Identificador do ciclo                         │
+│                      │                                                │
+│ Duração (s)          │ t_final − t_inicial do ciclo                   │
+│                      │                                                │
+│ Integral (V/s)       │ ∫|V × I| dt  (usando trapezoid)               │
+│                      │ → Área sob a curva potencial×corrente          │
+│                      │                                                │
+│ Energia (Wh/kg)      │ Calculada a partir do scan rate e integral     │
+│                      │ → Energia específica do dispositivo            │
+│                      │                                                │
+│ Potência (W/kg)      │ Energia / duração × fator de conversão         │
+│                      │ → Velocidade de entrega de energia             │
+└──────────────────────┴────────────────────────────────────────────────┘
+
+Os resultados são agrupados a cada 5 ciclos para suavizar flutuações.
+
+--------------------------------------------------------------------------------
+4. GRÁFICOS GERADOS
+--------------------------------------------------------------------------------
+
+4.1 TEMPO vs POTENCIAL COM INTEGRAL:
+
+  Para cada arquivo, gera um gráfico mostrando:
+  • Eixo X: Tempo (s)
+  • Eixo Y: Potencial (V)
+  • A curva mostra os ciclos de carga/descarga
+  • Área sombreada = integral (região de interesse)
+
+  COMO INTERPRETAR:
+  • Curvas triangulares simétricas → comportamento capacitivo ideal
+  • Curvas com "plateau" → comportamento faradaico (pseudocapacitância)
+  • Assimetria carga/descarga → perdas por resistência interna
+  • Diminuição da amplitude com ciclos → perda de capacidade
+
+4.2 ENERGIA/POTÊNCIA vs CICLO:
+
+  Mostra a evolução de Energia (Wh/kg) e Potência (W/kg) ao longo dos ciclos.
+  • Eixo X: Número do ciclo
+  • Eixo Y esquerdo: Energia (Wh/kg)
+  • Eixo Y direito: Potência (W/kg)
+
+  COMO INTERPRETAR:
+  • Energia estável → boa ciclabilidade
+  • Energia decrescente → degradação do material
+  • Energia crescente (início) → ativação do material (normal nos primeiros ciclos)
+  • Potência flutuante → variações na resistência interna
+
+--------------------------------------------------------------------------------
+5. EXPORTAÇÃO PARA EXCEL
+--------------------------------------------------------------------------------
+
+Para cada arquivo, o pipeline gera uma planilha Excel em outputs/excel/:
+
+  [nome_arquivo].xlsx contém:
+  • Linha 1: Unidades (número, s, V/s, Wh/kg, W/kg)
+  • Linhas 2+: Dados por grupo de ciclos
+
+  Colunas:
+    Ciclos (numero) | Duração (s) | Integral (V/s) | Energia (Wh/kg) | Potência (W/kg)
+
+  Pode ser aberto diretamente no Excel para análises adicionais.
+
+--------------------------------------------------------------------------------
+6. TABELA CONSOLIDADA NA GUI
+--------------------------------------------------------------------------------
+
+Na aba "Tabelas" → sub-aba "Ciclagem", a GUI mostra uma tabela unificada
+de todos os arquivos com as colunas:
+
+  Arquivo | Ciclos | Duração | Integral | Energia | Potência
+
+  • Use o campo de filtro para buscar por nome de arquivo
+  • Clique no cabeçalho da coluna para ordenar
+  • Permite comparar rapidamente diferentes amostras
+
+--------------------------------------------------------------------------------
+7. EXEMPLOS DE INTERPRETAÇÃO
+--------------------------------------------------------------------------------
+
+EXEMPLO 1 — Supercapacitor EDLC:
+  • Energia: 5-15 Wh/kg
+  • Potência: 1000-10000 W/kg
+  • Retenção > 95% após 1000 ciclos
+  → Alta potência, energia moderada, excelente ciclabilidade
+
+EXEMPLO 2 — Pseudocapacitor (PANI, MnO2):
+  • Energia: 20-50 Wh/kg
+  • Potência: 500-5000 W/kg
+  • Retenção 70-90% após 1000 ciclos
+  → Boa energia, potência razoável, ciclabilidade limitada
+
+EXEMPLO 3 — Bateria (materiais faradaicos):
+  • Energia: 50-200 Wh/kg
+  • Potência: 100-500 W/kg
+  • Retenção variável (depende do material)
+  → Alta energia, baixa potência
+
+CORRELAÇÕES COM EIS (se rodar "Ambos"):
+  • Alto Rs (EIS) ↔ Menor potência (ciclagem): resistência interna limita
+  • Alto Rp (EIS) ↔ Maior queda de energia com ciclos: interfase degradando
+  • Alto C_mean (EIS) ↔ Maior energia (ciclagem): mais carga armazenada
+  • Baixo Tau (EIS) ↔ Maior potência (ciclagem): resposta mais rápida
+
+--------------------------------------------------------------------------------
+8. SCAN RATE — COMO ESCOLHER O VALOR CORRETO
+--------------------------------------------------------------------------------
+
+O scan rate (taxa de varredura em A/g) deve corresponder ao valor usado
+no experimento de ciclagem:
+
+  • 0.1 A/g: taxa baixa (para materiais de alta energia)
+  • 1.0 A/g: taxa média
+  • 5.0 A/g: taxa alta (teste de potência)
+  • 10.0 A/g: taxa muito alta (teste de estabilidade extrema)
+
+Se você não sabe o scan rate, verifique:
+  • O software do potenciostato/galvanostato
+  • A corrente aplicada dividida pela massa do material ativo
+  • Scan rate = I_aplicada (A) / massa_ativa (g)
+
+ATENÇÃO: Um scan rate incorreto resulta em valores absolutos de
+Energia e Potência incorretos, embora as tendências relativas
+(ciclo a ciclo) permaneçam válidas.
+
+--------------------------------------------------------------------------------
+9. DICAS PARA MELHORES RESULTADOS
+--------------------------------------------------------------------------------
+
+  • Arquivos com muitos ciclos (>100): processamento pode levar alguns minutos
+  • Dados ruidosos: os primeiros 2-3 ciclos podem ter valores atípicos
+  • Vários arquivos: o Ragone Plot compara todos num único gráfico
+  • Para publicação: use os PNGs de outputs/figures/ (300 DPI)
+  • Para análise detalhada: use os Excel de outputs/excel/
+
+================================================================================
+  Próximo tutorial: 04_pipeline_drt.txt — Análise DRT
+================================================================================

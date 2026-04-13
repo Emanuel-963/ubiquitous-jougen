@@ -1,0 +1,368 @@
+================================================================================
+       TUTORIAL 5 — OS 17 GRÁFICOS INTERATIVOS DO IONFLOW
+================================================================================
+
+Versão: 0.1.0
+Última atualização: Abril 2026
+
+O botão "Gráficos Interativos" abre uma janela secundária com 17 abas.
+Cada gráfico é interativo: passe o mouse para ver valores, clique para
+selecionar pontos. Este tutorial explica cada um.
+
+================================================================================
+PARTE A — GRÁFICOS DE IMPEDÂNCIA (EIS)
+================================================================================
+
+--------------------------------------------------------------------------------
+GRÁFICO 1: TABELA DE RESULTADOS
+--------------------------------------------------------------------------------
+
+Não é um gráfico, mas uma tabela interativa com TODAS as métricas
+EIS calculadas para cada amostra.
+
+  Colunas principais:
+  • Rs, Rp, C_mean, C_max, C_lowfreq, Energy_mean
+  • Rs_fit, Rp_fit, Q, n, Sigma
+  • Tau, Dispersion
+  • Subclass, Score, Rank
+  • Electrolyte, Current, Treatment
+
+  USO: Referência rápida para comparar números. Use o filtro para
+  encontrar amostras específicas.
+
+--------------------------------------------------------------------------------
+GRÁFICO 2: RANK vs RETENÇÃO
+--------------------------------------------------------------------------------
+
+  Eixo X: Rank (posição no ranking, 1 = melhor)
+  Eixo Y: Retenção (%)
+
+  O QUE MOSTRA:
+  A correlação entre o ranking calculado pelo pipeline e a
+  capacidade de retenção energética da amostra.
+
+  INTERPRETAÇÃO:
+  • Pontos no canto SUPERIOR ESQUERDO (Rank baixo, Retenção alta):
+    → MELHORES AMOSTRAS — alta performance E boa estabilidade
+  • Pontos no canto INFERIOR DIREITO (Rank alto, Retenção baixa):
+    → PIORES AMOSTRAS — baixa performance E degradação
+  • Sem correlação clara:
+    → Ranking baseado em impedância não prediz estabilidade cíclica
+    → Considere outros fatores (material, eletrólito, etc.)
+
+  AÇÃO: Se Rank e Retenção não correlacionam, investigue por quê —
+  pode indicar que a degradação é causada por fatores não capturados
+  pela impedância (ex: dissolução química, delaminação).
+
+--------------------------------------------------------------------------------
+GRÁFICO 3: NYQUIST INTERATIVO
+--------------------------------------------------------------------------------
+
+  Eixo X: Z' (Ω) — parte real da impedância
+  Eixo Y: -Z'' (Ω) — negativo da parte imaginária
+
+  Colorido por log₁₀(frequência) — cores indicam a faixa de frequência.
+
+  O QUE PROCURAR NO NYQUIST:
+
+  SEMICÍRCULO:
+  ┌──────────────────────────────────────────────┐
+  │  -Z''                                        │
+  │   ↑       ╱──╲                               │
+  │   │     ╱      ╲                             │
+  │   │   ╱          ╲                           │
+  │   │  ╱              ╲                        │
+  │   │ •────────────────•──────→ Z'             │
+  │   Rs              Rs+Rp                      │
+  └──────────────────────────────────────────────┘
+
+  • Intercepto esquerdo com eixo X = Rs (resistência da solução)
+  • Diâmetro do semicírculo = Rp (resistência de transferência de carga)
+  • Semicírculo deprimido (achatado) → CPE, superfície rugosa (n < 1)
+  • Semicírculo perfeito → capacitor ideal (n = 1)
+
+  CAUDA DE WARBURG (baixa frequência):
+  • Linha reta a 45° após o semicírculo → difusão semi-infinita
+  • Ângulo > 45° → difusão em camada fina
+  • Ângulo < 45° → difusão anômala / porosidade
+
+  DOIS SEMICÍRCULOS:
+  • Dois arcos consecutivos → dois processos com τ diferentes
+  • Ex: filme passivo + transferência de carga
+
+  LOOP INDUTIVO:
+  • Curva para BAIXO do eixo X em alta frequência → indutância
+  • Comum em corrosão ou cabos longos
+
+--------------------------------------------------------------------------------
+GRÁFICO 4: BODE INTERATIVO
+--------------------------------------------------------------------------------
+
+  Eixo X: Frequência (Hz) — escala logarítmica
+  Eixo Y esquerdo: |Z| (Ω) — módulo da impedância (log)
+  Eixo Y direito: Fase (°) — ângulo de fase
+
+  O QUE PROCURAR:
+
+  |Z| vs f:
+  • Platô em alta frequência → Rs (resistência pura, fase ≈ 0°)
+  • Platô em baixa frequência → Rs + Rp (resistência total)
+  • Declive -1 → comportamento capacitivo puro
+  • Declive -0.5 → difusão (Warburg)
+
+  Fase vs f:
+  • Pico de fase negativa → frequência característica do processo
+  • f no pico = 1/(2π × τ) → frequência de relaxação
+  • Fase = -90° → capacitor ideal
+  • Fase = -45° → Warburg
+  • Fase > 0° → componente indutivo
+
+  DICA: A frequência do pico de fase indica onde cada processo é
+  mais ativo. Compare entre amostras para ver diferenças cinéticas.
+
+--------------------------------------------------------------------------------
+GRÁFICO 5: PCA 2D
+--------------------------------------------------------------------------------
+
+  Eixo X: PC1 (% de variância explicada)
+  Eixo Y: PC2 (% de variância explicada)
+  Cores: Subclasse (Interface eficiente / Genérica estável)
+
+  INTERPRETAÇÃO:
+  • Clusters separados → classificação consistente
+  • Amostras sobrepostas → difícil diferenciar os grupos
+  • Outliers isolados → comportamento atípico (investigar)
+  • PC1 explica >70% → uma dimensão domina a variação
+
+  DICA: Olhe o Biplot (Gráfico 6) para entender QUAIS variáveis
+  separam os grupos no PCA.
+
+--------------------------------------------------------------------------------
+GRÁFICO 6: PCA RETENÇÃO
+--------------------------------------------------------------------------------
+
+  Mesmo layout do PCA 2D, mas colorido por Retenção (%) usando
+  escala contínua (gradiente de cor viridis).
+
+  INTERPRETAÇÃO:
+  • Gradiente suave de cor → retenção correlaciona com PC1 ou PC2
+  • Cores misturadas → retenção é independente das variáveis do PCA
+  • Cluster com cores quentes (alta retenção) → materiais estáveis
+
+  Este gráfico conecta a ESTRUTURA (impedância, PCA) com a
+  PERFORMANCE (retenção cíclica).
+
+--------------------------------------------------------------------------------
+GRÁFICO 7: CORRELAÇÃO (HEATMAP)
+--------------------------------------------------------------------------------
+
+  Matriz de correlação de Spearman entre todas as métricas:
+  Rs_fit, Rp_fit, Q, n, Sigma, C_mean, C_lowfreq, C_espec,
+  Energy_mean, Retenção, Tau, Dispersion, Score, Rank
+
+  Escala: -1 (azul) a +1 (vermelho)
+  • +1: correlação positiva perfeita
+  •  0: sem correlação
+  • -1: correlação negativa perfeita
+
+  CORRELAÇÕES ESPERADAS:
+  • Rs_fit × Rank: positiva (mais resistivo → rank pior)
+  • Rp_fit × Score: positiva (maior Rp → melhor score)
+  • C_mean × Energy_mean: positiva (mais capacitância → mais energia)
+  • Tau × Rs_fit: depende (pode ser positiva ou negativa)
+  • Dispersion × n: geralmente negativa (mais uniforme → menos disperso)
+
+  CORRELAÇÕES SURPREENDENTES:
+  Se uma correlação inesperada aparece, investigue:
+  • Pode indicar um artefato nos dados
+  • Pode revelar uma relação física não óbvia
+  • Pode sugerir um problema no fitting de algumas amostras
+
+  NOTA: Valores p são salvos em correlation_pvalues.csv
+  Use p < 0.05 como critério de significância.
+
+--------------------------------------------------------------------------------
+GRÁFICO 8: SÉRIES
+--------------------------------------------------------------------------------
+
+  Mostra a evolução de uma métrica (Energia, C_espec) ao longo de
+  amostras do mesmo grupo, ordenadas pelo prefixo numérico.
+
+  Exemplo: "1 Nb2...", "2 Nb2...", "3 Nb2..." → série de 3 pontos
+  mostrando como a métrica evolui com repetições/condições.
+
+  INTERPRETAÇÃO:
+  • Série crescente → ativação/melhoria
+  • Série decrescente → degradação
+  • Série estável → boa reprodutibilidade
+  • Outlier em um ponto → verificar amostra problemática
+
+================================================================================
+PARTE B — GRÁFICOS DE CICLAGEM
+================================================================================
+
+--------------------------------------------------------------------------------
+GRÁFICO 9: ENERGIA × POTÊNCIA
+--------------------------------------------------------------------------------
+
+  Gráfico de dispersão com todos os pontos de cada arquivo:
+  Eixo X: Energia (Wh/kg) — por grupo de ciclos
+  Eixo Y: Potência (W/kg) — por grupo de ciclos
+
+  INTERPRETAÇÃO:
+  • Pontos no canto superior direito → desempenho excepcional
+  • Cluster denso → comportamento consistente entre ciclos
+  • Pontos espalhados → variação ciclo a ciclo
+
+--------------------------------------------------------------------------------
+GRÁFICO 10: RAGONE PLOT
+--------------------------------------------------------------------------------
+
+  Diagrama clássico de Ragone (escala log-log):
+  Eixo X: Energia (Wh/kg) — mediana por amostra
+  Eixo Y: Potência (W/kg) — mediana por amostra
+
+  ┌──────────────────────────────────────────────┐
+  │ log P                                        │
+  │   ↑   Supercaps ←  • •                       │
+  │   │                     • ← Pseudocaps       │
+  │   │                          •                │
+  │   │                            • ← Baterias  │
+  │   └──────────────────────────────→ log E      │
+  └──────────────────────────────────────────────┘
+
+  ZONAS DE REFERÊNCIA:
+  • Alta E, baixa P: comportamento de bateria
+  • Baixa E, alta P: comportamento de capacitor eletrolítico
+  • E e P moderados: supercapacitor / pseudocapacitor
+
+  DICA: Compare com dados de referência da literatura para
+  posicionar seu material no contexto dos dispositivos existentes.
+
+--------------------------------------------------------------------------------
+GRÁFICO 11: ENERGIA vs CICLO
+--------------------------------------------------------------------------------
+
+  Overlay de Energia (Wh/kg) ao longo dos ciclos para TODAS as amostras.
+  Cada amostra é uma linha com cor distinta.
+
+  INTERPRETAÇÃO:
+  • Linhas estáveis → boa ciclabilidade
+  • Linhas decrescentes → degradação
+  • Amostras destacadas em negrito → selecionadas pelo usuário
+
+--------------------------------------------------------------------------------
+GRÁFICO 12: RETENÇÃO vs CICLO
+--------------------------------------------------------------------------------
+
+  Similar ao anterior, mas com Retenção relativa ao primeiro ciclo.
+  Mostra a % de capacidade mantida ao longo do uso.
+
+  • 100% em todos os ciclos → perfeito
+  • Queda gradual → degradação normal
+  • Queda brusca → falha do material (ponto crítico)
+
+================================================================================
+PARTE C — GRÁFICOS ANALÍTICOS AVANÇADOS
+================================================================================
+
+--------------------------------------------------------------------------------
+GRÁFICO 13: HEATMAP |Z|
+--------------------------------------------------------------------------------
+
+  Mapa de calor da magnitude da impedância:
+  Eixo X: Frequência (Hz)
+  Eixo Y: Nome da amostra
+  Cor: |Z| (Ω) — magnitude da impedância
+
+  INTERPRETAÇÃO:
+  • Regiões escuras (|Z| alto) → alta impedância nessa faixa de f
+  • Regiões claras (|Z| baixo) → baixa impedância
+  • Padrão similar entre amostras → comportamento parecido
+  • Bandas em certas frequências → processos comuns a todas
+
+  USO: Identificar rapidamente qual amostra é mais resistiva e
+  em qual faixa de frequência.
+
+--------------------------------------------------------------------------------
+GRÁFICO 14: BOX-PLOT
+--------------------------------------------------------------------------------
+
+  Box-plot de métricas selecionadas comparando amostras.
+  Mostra: mediana, quartis, whiskers, outliers.
+
+  INTERPRETAÇÃO:
+  • Caixa compacta → valores consistentes
+  • Caixa larga → alta variabilidade
+  • Outliers (pontos isolados) → valores atípicos
+  • Mediana (linha no meio da caixa) → valor central
+
+  USO: Comparar distribuições de Rs, Rp, etc. entre grupos de amostras.
+
+--------------------------------------------------------------------------------
+GRÁFICO 15: RADAR (SPIDER)
+--------------------------------------------------------------------------------
+
+  Gráfico radar com múltiplas métricas normalizadas em eixos radiais.
+  Cada amostra é um polígono colorido.
+
+  Métricas típicas: Rs, Rp, C_mean, Energy, Tau, Dispersion, Score
+
+  INTERPRETAÇÃO:
+  • Polígono grande → bom desempenho geral
+  • Polígono com "pontas" → excelente em certas métricas, fraco em outras
+  • Polígonos sobrepostos → amostras similares
+  • Comparar formas → identificar trade-offs
+
+  EXEMPLO:
+  • Amostra A: alto Rp, baixo Rs, alta C → supercap ideal
+  • Amostra B: baixo Rp, alto Rs, baixa C → eletrodo resistivo
+
+================================================================================
+PARTE D — GRÁFICOS DRT
+================================================================================
+
+--------------------------------------------------------------------------------
+GRÁFICO 16: DRT
+--------------------------------------------------------------------------------
+
+  Espectro DRT interativo com seleção de amostra.
+  Modos disponíveis:
+  • Espectro: γ(τ) de uma amostra individual
+  • Overlay: sobreposição de múltiplas amostras
+  • Heatmap: todas as amostras em mapa de calor
+
+  (Ver Tutorial 04 para interpretação detalhada do DRT)
+
+--------------------------------------------------------------------------------
+GRÁFICO 17: DRT × EIS
+--------------------------------------------------------------------------------
+
+  Visualização combinada DRT + EIS na mesma janela.
+  Permite comparar diretamente:
+  • O espectro DRT (picos = processos)
+  • Com o Nyquist/Bode correspondente
+
+  CORRELAÇÃO:
+  • Pico DRT em τ₁ ↔ Semicírculo no Nyquist com f = 1/(2πτ₁)
+  • Amplitude do pico ↔ Diâmetro do semicírculo correspondente
+  • Picos próximos no DRT ↔ Semicírculos sobrepostos no Nyquist
+    (difícil ver no Nyquist, mas claros no DRT!)
+
+================================================================================
+DICAS GERAIS PARA GRÁFICOS INTERATIVOS
+================================================================================
+
+  • HOVER: Passe o mouse sobre pontos para ver valores exatos
+  • ZOOM: Use a roda do mouse ou os controles do matplotlib
+  • PAN: Clique e arraste para mover a vista
+  • RESET: Botão "Home" na barra de ferramentas do matplotlib
+  • SALVAR: Botão de disquete na barra do matplotlib
+  • TOOLBAR: barra inferior com ferramentas de navegação
+
+  Os gráficos estáticos são salvos automaticamente em outputs/figures/
+  com resolução 300 DPI, prontos para publicação.
+
+================================================================================
+  Próximo tutorial: 06_tabelas_exportacao.txt — Tabelas e Exportação
+================================================================================
