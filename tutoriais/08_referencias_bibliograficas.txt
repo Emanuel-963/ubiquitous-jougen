@@ -1,0 +1,559 @@
+================================================================================
+    REFERÊNCIAS BIBLIOGRÁFICAS — IONFLOW PIPELINE v0.1.0
+================================================================================
+
+Versão: 0.1.0
+Última atualização: Abril 2026
+
+Este documento lista as referências científicas, livros e documentação
+técnica que fundamentam as análises implementadas no IonFlow Pipeline
+e os tutoriais 01–07.
+
+================================================================================
+PARTE I — ESPECTROSCOPIA DE IMPEDÂNCIA ELETROQUÍMICA (EIS)
+         Tutoriais 01, 02, 05
+================================================================================
+
+[EIS-1] Barsoukov, E.; Macdonald, J.R. (Eds.)
+        "Impedance Spectroscopy: Theory, Experiment, and Applications"
+        3rd ed., Wiley, 2018.
+        ISBN: 978-1-119-07408-3
+        → Base teórica geral de EIS: modelos, circuitos equivalentes,
+          representação Nyquist/Bode, dispersão de frequência.
+
+[EIS-2] Orazem, M.E.; Tribollet, B.
+        "Electrochemical Impedance Spectroscopy"
+        2nd ed., Wiley, 2017.
+        ISBN: 978-1-118-52739-9
+        → Teoria detalhada de impedância, CPE, Warburg, modelos de
+          transferência de carga, interpretação de semicírculos.
+
+[EIS-3] Lvovich, V.F.
+        "Impedance Spectroscopy: Applications to Electrochemical
+         and Dielectric Phenomena"
+        Wiley, 2012.
+        ISBN: 978-0-470-62778-0
+        → Aplicações práticas, análise de dados, diagnósticos de fitting.
+
+[EIS-4] Lasia, A.
+        "Electrochemical Impedance Spectroscopy and its Applications"
+        Springer, 2014.
+        ISBN: 978-1-4614-8932-0
+        → CPE e sua interpretação física, dispersão de frequência,
+          impedância de difusão, técnicas de fitting não-linear.
+
+[EIS-5] Macdonald, J.R.
+        "Fundamentals of Impedance Spectroscopy"
+        In: Impedance Spectroscopy, Wiley, Cap. 1, 2005.
+        DOI: 10.1002/0471716243.ch1
+        → Fundamentos matemáticos, notação complexa, diagramas de Argand.
+
+================================================================================
+PARTE II — ELEMENTO DE FASE CONSTANTE (CPE) E WARBURG
+           Tutoriais 02, 04, 07
+================================================================================
+
+[CPE-1] Hirschorn, B.; Orazem, M.E.; Tribollet, B.; Vivier, V.;
+        Frateur, I.; Musiani, M.
+        "Determination of effective capacitance and film thickness
+         from constant-phase-element parameters"
+        Electrochimica Acta, v. 55, n. 21, p. 6218–6227, 2010.
+        DOI: 10.1016/j.electacta.2009.10.065
+        → Fórmula de capacitância efetiva a partir do CPE:
+          C_eff = Q^(1/n) × (Rs⁻¹ + Rp⁻¹)^((n-1)/n)
+          Usada em src/physics_metrics.py e Tutorial 02.
+
+[CPE-2] Brug, G.J.; van den Eeden, A.L.G.; Sluyters-Rehbach, M.;
+        Sluyters, J.H.
+        "The analysis of electrode impedances complicated by the
+         presence of a constant phase element"
+        J. Electroanal. Chem., v. 176, p. 275–295, 1984.
+        DOI: 10.1016/S0022-0728(84)80324-1
+        → Modelo original de Brug para C_eff do CPE.
+          Alternativa à fórmula de Hirschorn.
+
+[CPE-3] Zoltowski, P.
+        "On the electrical capacitance of interfaces exhibiting
+         constant phase element behaviour"
+        J. Electroanal. Chem., v. 443, p. 149–154, 1998.
+        DOI: 10.1016/S0022-0728(97)00490-7
+        → Discussão sobre significado físico do expoente n do CPE.
+
+[W-1]   Warburg, E.
+        "Ueber das Verhalten sogenannter unpolarisirbarer Elektroden
+         gegen Wechselstrom"
+        Annalen der Physik, v. 303, n. 3, p. 493–499, 1899.
+        DOI: 10.1002/andp.18993030302
+        → Artigo original de Warburg: impedância de difusão semi-infinita.
+
+[W-2]   Ho, C.; Raistrick, I.D.; Huggins, R.A.
+        "Application of A-C Techniques to the Study of Lithium
+         Diffusion in Tungsten Trioxide Thin Films"
+        J. Electrochem. Soc., v. 127, p. 343–350, 1980.
+        DOI: 10.1149/1.2129668
+        → Warburg em eletrodos de filmes finos, difusão finita.
+
+================================================================================
+PARTE III — CIRCUITOS EQUIVALENTES E FITTING
+            Tutoriais 02, 07
+================================================================================
+
+[FIT-1] Boukamp, B.A.
+        "A Linear Kronig-Kramers Transform Test for Immittance
+         Data Validation"
+        J. Electrochem. Soc., v. 142, n. 6, p. 1885–1894, 1995.
+        DOI: 10.1149/1.2044210
+        → Validação de dados de impedância, Kramers-Kronig, critérios
+          de qualidade de dados antes do fitting.
+
+[FIT-2] Boukamp, B.A.
+        "A Nonlinear Least Squares Fit procedure for analysis
+         of immittance data of electrochemical systems"
+        Solid State Ionics, v. 20, p. 31–44, 1986.
+        DOI: 10.1016/0167-2738(86)90031-7
+        → Fitting por mínimos quadrados não-lineares de espectros EIS.
+          Base do método scipy.optimize.least_squares usado no pipeline.
+
+[FIT-3] Schwarz, G.
+        "Estimating the dimension of a model"
+        Annals of Statistics, v. 6, n. 2, p. 461–464, 1978.
+        DOI: 10.1214/aos/1176344136
+        → Critério de Informação Bayesiano (BIC) para seleção de modelos.
+          Usado em src/circuit_fitting.py para escolher entre
+          Randles-CPE-W, Two-Arc-CPE e Inductive-CPE.
+
+[FIT-4] Akaike, H.
+        "A new look at the statistical model identification"
+        IEEE Trans. Automatic Control, v. 19, n. 6, p. 716–723, 1974.
+        DOI: 10.1109/TAC.1974.1100705
+        → Critério de Informação de Akaike (AIC), complementar ao BIC.
+          Calculado em circuit_fitting.py como diagnóstico adicional.
+
+[FIT-5] Randles, J.E.B.
+        "Kinetics of rapid electrode reactions"
+        Discuss. Faraday Soc., v. 1, p. 11–19, 1947.
+        DOI: 10.1039/DF9470100011
+        → Circuito de Randles original: Rs + (Cdl || (Rct + Zw)).
+          Base do modelo Randles-CPE-W implementado.
+
+[FIT-6] Pajkossy, T.
+        "Impedance of rough capacitive electrodes"
+        J. Electroanal. Chem., v. 364, p. 111–125, 1994.
+        DOI: 10.1016/0022-0728(93)02949-I
+        → Substituição de C ideal por CPE em circuitos equivalentes,
+          justificativa para eletrodos rugosos/porosos.
+
+================================================================================
+PARTE IV — DISTRIBUIÇÃO DE TEMPOS DE RELAXAÇÃO (DRT)
+           Tutoriais 04, 05, 07
+================================================================================
+
+[DRT-1] Wan, T.H.; Saccoccio, M.; Chen, C.; Ciucci, F.
+        "Influence of the Discretization Methods on the Distribution
+         of Relaxation Times Deconvolution: Implementing Radial Basis
+         Functions with DRTtools"
+        Electrochimica Acta, v. 184, p. 483–499, 2015.
+        DOI: 10.1016/j.electacta.2015.09.097
+        → DRTtools — software de referência para DRT. Métodos de
+          discretização, funções de base radial, regularização.
+
+[DRT-2] Ciucci, F.; Chen, C.
+        "Analysis of Electrochemical Impedance Spectroscopy Data
+         Using the Distribution of Relaxation Times: A Bayesian
+         and Hierarchical Bayesian Approach"
+        Electrochimica Acta, v. 167, p. 439–454, 2015.
+        DOI: 10.1016/j.electacta.2015.03.123
+        → Abordagem Bayesiana para DRT, seleção automática de λ.
+
+[DRT-3] Ivers-Tiffée, E.; Weber, A.
+        "Evaluation of electrochemical impedance spectra by the
+         distribution of relaxation times"
+        J. Ceram. Soc. Japan, v. 125, n. 4, p. 193–201, 2017.
+        DOI: 10.2109/jcersj2.16267
+        → Revisão de DRT aplicada a células a combustível e baterias,
+          interpretação de picos por faixa de τ.
+
+[DRT-4] Schichlein, H.; Müller, A.C.; Voigts, M.; Krügel, A.;
+        Ivers-Tiffée, E.
+        "Deconvolution of electrochemical impedance spectra for the
+         identification of electrode reaction mechanisms in solid
+         oxide fuel cells"
+        J. Appl. Electrochem., v. 32, p. 875–882, 2002.
+        DOI: 10.1023/A:1020599525160
+        → DRT pioneira para separação de processos eletroquímicos.
+
+[DRT-5] Tikhonov, A.N.; Arsenin, V.Y.
+        "Solutions of Ill-Posed Problems"
+        Winston & Sons, Washington, 1977.
+        ISBN: 978-0-470-99124-4
+        → Regularização de Tikhonov — base matemática do método DRT
+          implementado em src/drt_analysis.py.
+          Funcional: min ||Ax - b||² + λ||Lx||²
+
+[DRT-6] Hansen, P.C.
+        "Discrete Inverse Problems: Insight and Algorithms"
+        SIAM, 2010.
+        ISBN: 978-0-898716-96-2
+        → Problemas inversos discretos, escolha de λ (L-curve, GCV),
+          matrizes de regularização de 1ª e 2ª ordem.
+
+[DRT-7] Effat, M.B.; Ciucci, F.
+        "Bayesian and Hierarchical Bayesian Based Regularization
+         for Deconvolving the Distribution of Relaxation Times
+         from Electrochemical Impedance Spectroscopy Data"
+        Electrochimica Acta, v. 247, p. 1117–1129, 2017.
+        DOI: 10.1016/j.electacta.2017.07.050
+        → Regularização hierárquica para DRT, tratamento de ruído.
+
+================================================================================
+PARTE V — ANÁLISE DE CICLAGEM / GALVANOSTÁTICA
+          Tutoriais 03, 05, 07
+================================================================================
+
+[CYC-1] Laheäär, A.; Przygocki, P.; Abbas, Q.; Béguin, F.
+        "Appropriate methods for evaluating the efficiency and
+         capacitive behavior of different types of supercapacitors"
+        Electrochem. Commun., v. 60, p. 21–25, 2015.
+        DOI: 10.1016/j.elecom.2015.07.022
+        → Métodos corretos de cálculo de energia e potência para
+          supercapacitores: E = ∫V·I·dt / m, P = E/Δt.
+          Base das fórmulas em src/cycling_calculator.py.
+
+[CYC-2] Stoller, M.D.; Ruoff, R.S.
+        "Best practice methods for determining an electrode
+         material's performance for ultracapacitors"
+        Energy Environ. Sci., v. 3, p. 1294–1301, 2010.
+        DOI: 10.1039/C0EE00074D
+        → Boas práticas para medição e cálculo de métricas de
+          supercapacitores, taxas de varredura, normalização por massa.
+
+[CYC-3] Brousse, T.; Bélanger, D.; Long, J.W.
+        "To Be or Not To Be Pseudocapacitive?"
+        J. Electrochem. Soc., v. 162, n. 5, p. A5185–A5189, 2015.
+        DOI: 10.1149/2.0201505jes
+        → Discussão fundamental sobre pseudocapacitância vs faradaico.
+          Importante para interpretação correta dos dados de ciclagem.
+
+[CYC-4] Simon, P.; Gogotsi, Y.
+        "Materials for electrochemical capacitors"
+        Nature Materials, v. 7, p. 845–854, 2008.
+        DOI: 10.1038/nmat2297
+        → Revisão fundamental de supercapacitores: EDLC, pseudo,
+          diagrama de Ragone. Referência para Tutorial 03 e 05.
+
+[CYC-5] Gogotsi, Y.; Simon, P.
+        "True Performance Metrics in Electrochemical Energy Storage"
+        Science, v. 334, p. 917–918, 2011.
+        DOI: 10.1126/science.1213003
+        → Métricas verdadeiras de desempenho, normalização correta,
+          problemas comuns na literatura.
+
+================================================================================
+PARTE VI — DIAGRAMA DE RAGONE
+           Tutoriais 03, 05
+================================================================================
+
+[RAG-1] Ragone, D.V.
+        "Review of Battery Systems for Electrically Powered Vehicles"
+        SAE Technical Paper 680453, 1968.
+        DOI: 10.4271/680453
+        → Artigo original do diagrama de Ragone: energia vs potência
+          em escala log-log para comparação de dispositivos.
+
+[RAG-2] Christen, T.; Carlen, M.W.
+        "Theory of Ragone plots"
+        J. Power Sources, v. 91, p. 210–216, 2000.
+        DOI: 10.1016/S0378-7753(00)00474-2
+        → Teoria matemática dos diagramas de Ragone, linhas de
+          tempo constante, regiões típicas por dispositivo.
+
+================================================================================
+PARTE VII — ANÁLISE DE COMPONENTES PRINCIPAIS (PCA) E CLUSTERING
+            Tutoriais 02, 05, 07
+================================================================================
+
+[PCA-1] Jolliffe, I.T.; Cadima, J.
+        "Principal component analysis: a review and recent
+         developments"
+        Phil. Trans. R. Soc. A, v. 374, 20150202, 2016.
+        DOI: 10.1098/rsta.2015.0202
+        → Revisão moderna de PCA: interpretação de loadings, scores,
+          variância explicada, scree plot.
+
+[PCA-2] Abdi, H.; Williams, L.J.
+        "Principal component analysis"
+        WIREs Computational Statistics, v. 2, p. 433–459, 2010.
+        DOI: 10.1002/wics.101
+        → Tutorial detalhado de PCA, biplots, contribuição de
+          variáveis, interpretação geométrica.
+
+[KM-1]  MacQueen, J.
+        "Some methods for classification and analysis of
+         multivariate observations"
+        Proc. 5th Berkeley Symposium, v. 1, p. 281–297, 1967.
+        → Algoritmo K-Means original. Usado em src/ranking.py
+          com k=2 clusters para classificação de impedância.
+
+[KM-2]  Arthur, D.; Vassilvitskii, S.
+        "k-means++: The Advantages of Careful Seeding"
+        Proc. 18th ACM-SIAM Symposium, p. 1027–1035, 2007.
+        DOI: 10.1145/1283383.1283494
+        → Inicialização k-means++ usada pelo sklearn.cluster.KMeans
+          no pipeline de classificação.
+
+================================================================================
+PARTE VIII — CORRELAÇÃO E ESTATÍSTICA
+             Tutoriais 02, 05, 06, 07
+================================================================================
+
+[STAT-1] Spearman, C.
+         "The proof and measurement of association between two things"
+         Am. J. Psychology, v. 15, n. 1, p. 72–101, 1904.
+         DOI: 10.2307/1412159
+         → Correlação de rank de Spearman — usada no heatmap de
+           correlação (src/visualization.py). Mais robusta que Pearson
+           para relações não-lineares e outliers.
+
+[STAT-2] Virtanen, P. et al.
+         "SciPy 1.0: Fundamental Algorithms for Scientific Computing
+          in Python"
+         Nature Methods, v. 17, p. 261–272, 2020.
+         DOI: 10.1038/s41592-019-0686-2
+         → SciPy — biblioteca usada para: least_squares (fitting),
+           spearmanr (correlação), find_peaks (DRT), StandardScaler.
+
+[STAT-3] Pedregosa, F. et al.
+         "Scikit-learn: Machine Learning in Python"
+         J. Machine Learning Research, v. 12, p. 2825–2830, 2011.
+         → Scikit-learn — biblioteca usada para: KMeans, PCA,
+           StandardScaler, pipeline de classificação.
+
+================================================================================
+PARTE IX — ESTABILIDADE E COEFICIENTE DE VARIAÇÃO
+           Tutoriais 02, 07
+================================================================================
+
+[STAB-1] Reed, G.F.; Lynn, F.; Meade, B.D.
+         "Use of Coefficient of Variation in Assessing Variability
+          of Quantitative Assays"
+         Clin. Diagn. Lab. Immunol., v. 9, n. 6, p. 1235–1239, 2002.
+         DOI: 10.1128/CDLI.9.6.1235-1239.2002
+         → Fundamentação do CV (Coeficiente de Variação) como métrica
+           de reprodutibilidade. Usado em src/stability.py:
+           CV < 5% = excelente, 5-15% = aceitável, >15% = instável.
+
+[STAB-2] ASTM E691-20
+         "Standard Practice for Conducting an Interlaboratory Study
+          to Determine the Precision of a Test Method"
+         ASTM International, 2020.
+         → Norma para avaliação de reprodutibilidade entre réplicas.
+
+================================================================================
+PARTE X — SCORE COMPOSTO E RANKING
+          Tutoriais 02, 07
+================================================================================
+
+[RANK-1] Hwang, C.-L.; Yoon, K.
+         "Multiple Attribute Decision Making: Methods and Applications"
+         Springer-Verlag, 1981.
+         ISBN: 978-3-540-10558-9
+         → Teoria de decisão multicritério (MCDM). Base conceitual
+           do score composto ponderado usado em src/ranking.py:
+           Score = 0.35×Rp_n - 0.25×Rs_n + 0.25×C_n + 0.15×E_n
+
+[RANK-2] Saaty, T.L.
+         "The Analytic Hierarchy Process"
+         McGraw-Hill, New York, 1980.
+         ISBN: 978-0-07-054371-3
+         → AHP para definição de pesos em decisão multicritério.
+           Os pesos (0.35, 0.25, 0.25, 0.15) podem ser ajustados
+           pelo usuário conforme a aplicação.
+
+================================================================================
+PARTE XI — VISUALIZAÇÃO CIENTÍFICA
+           Tutoriais 05, 06
+================================================================================
+
+[VIS-1] Hunter, J.D.
+        "Matplotlib: A 2D Graphics Environment"
+        Computing in Science & Engineering, v. 9, n. 3, p. 90–95, 2007.
+        DOI: 10.1109/MCSE.2007.55
+        → Matplotlib — biblioteca base de todas as visualizações.
+
+[VIS-2] Tufte, E.R.
+        "The Visual Display of Quantitative Information"
+        2nd ed., Graphics Press, 2001.
+        ISBN: 978-0-9613921-4-7
+        → Princípios de visualização científica: data-ink ratio,
+          chartjunk, small multiples. Influência no design dos gráficos.
+
+[VIS-3] Crameri, F.; Shephard, G.E.; Heron, P.J.
+        "The misuse of colour in science communication"
+        Nature Communications, v. 11, 5444, 2020.
+        DOI: 10.1038/s41467-020-19160-7
+        → Uso correto de colormaps. O pipeline usa 'viridis' (Nyquist
+          por frequência) e 'coolwarm' (heatmaps), ambos perceptualmente
+          uniformes e acessíveis para daltonismo.
+
+================================================================================
+PARTE XII — INTERPRETAÇÃO ELETROQUÍMICA POR FAIXA DE τ (DRT)
+            Tutorial 04
+================================================================================
+
+As faixas de τ e processos associados no Tutorial 04 baseiam-se em:
+
+[TAU-1] Leonide, A.; Sonn, V.; Weber, A.; Ivers-Tiffée, E.
+        "Evaluation and Modeling of the Cell Resistance in
+         Anode-Supported Solid Oxide Fuel Cells"
+        J. Electrochem. Soc., v. 155, n. 1, p. B36–B41, 2008.
+        DOI: 10.1149/1.2801372
+        → Atribuição de processos eletroquímicos por faixa de τ em
+          células a combustível. Adaptado para supercapacitores.
+
+[TAU-2] Illig, J.; Ender, M.; Chrobak, T.; Schmidt, J.P.;
+        Klotz, D.; Ivers-Tiffée, E.
+        "Separation of Charge Transfer and Contact Resistance
+         in LiFePO4-Cathodes by Impedance Modeling"
+        J. Electrochem. Soc., v. 159, n. 7, p. A952–A960, 2012.
+        DOI: 10.1149/2.030207jes
+        → Separação de processos por DRT em baterias de Li-íon:
+          transferência de carga vs contato vs difusão.
+
+[TAU-3] Hahn, M.; Barbieri, O.; Gallay, R.; Kötz, R.
+        "A dielectric study of micropore charging in carbon
+         electrodes in different electrolytes"
+        Carbon, v. 44, p. 2523–2533, 2006.
+        DOI: 10.1016/j.carbon.2006.05.001
+        → Constantes de tempo de processos em eletrodos de carbono
+          para supercapacitores: dupla camada vs microporos.
+
+================================================================================
+PARTE XIII — FERRAMENTAS E BIBLIOTECAS DE SOFTWARE
+             Tutorial 01
+================================================================================
+
+[SW-1]  Python Software Foundation
+        "Python 3.11 Documentation"
+        https://docs.python.org/3.11/
+        → Linguagem base do IonFlow Pipeline.
+
+[SW-2]  NumPy Developers
+        "NumPy Reference"
+        https://numpy.org/doc/stable/reference/
+        → Operações matriciais, álgebra linear.
+
+[SW-3]  pandas Development Team
+        "pandas Documentation"
+        https://pandas.pydata.org/docs/
+        → Manipulação de DataFrames, leitura de CSV/Excel.
+
+[SW-4]  Harris, C.R. et al.
+        "Array programming with NumPy"
+        Nature, v. 585, p. 357–362, 2020.
+        DOI: 10.1038/s41586-020-2649-2
+
+[SW-5]  Tom's Toolbox / CustomTkinter
+        "CustomTkinter Documentation"
+        https://customtkinter.tomschimansky.com/
+        → Framework GUI usado na interface do IonFlow Pipeline.
+
+[SW-6]  openpyxl Contributors
+        "openpyxl Documentation"
+        https://openpyxl.readthedocs.io/
+        → Exportação de tabelas para Excel (.xlsx).
+
+================================================================================
+PARTE XIV — NORMAS E BOAS PRÁTICAS
+            Tutorial 07
+================================================================================
+
+[NRM-1] Stoller, M.D.; Ruoff, R.S.
+        "Best practice methods for determining an electrode
+         material's performance for ultracapacitors"
+        Energy Environ. Sci., v. 3, p. 1294–1301, 2010.
+        DOI: 10.1039/C0EE00074D
+        → Boas práticas para testes de supercapacitores.
+          (Também listado como [CYC-2])
+
+[NRM-2] Mathis, T.S. et al.
+        "Energy Storage Data Reporting in Perspective—Guidelines
+         for Interpreting the Performance of Electrochemical
+         Energy Storage Systems"
+        Adv. Energy Mater., v. 9, 1902007, 2019.
+        DOI: 10.1002/aenm.201902007
+        → Guidelines para reportar dados de armazenamento de energia
+          de forma padronizada e reprodutível.
+
+[NRM-3] Ge, Y. et al.
+        "Capacitive deionization: A complementary technology to
+         existing processes — a comprehensive review"
+        Desalination, v. 558, 116629, 2023.
+        → Revisão incluindo boas práticas de medição EIS e ciclagem
+          para dispositivos eletroquímicos.
+
+================================================================================
+MAPA DE REFERÊNCIAS POR TUTORIAL
+================================================================================
+
+┌────────────────────────────────┬──────────────────────────────────────────┐
+│ Tutorial                       │ Referências principais                   │
+├────────────────────────────────┼──────────────────────────────────────────┤
+│ 01 — Início Rápido             │ [SW-1..6], [EIS-1]                       │
+│ 02 — Pipeline EIS              │ [EIS-1..5], [CPE-1..3], [FIT-1..6],     │
+│                                │ [PCA-1..2], [KM-1..2], [STAB-1..2],     │
+│                                │ [RANK-1..2], [STAT-1..3]                │
+│ 03 — Pipeline Ciclagem         │ [CYC-1..5], [RAG-1..2], [NRM-1..2]     │
+│ 04 — Pipeline DRT              │ [DRT-1..7], [TAU-1..3]                  │
+│ 05 — Gráficos Interativos      │ [VIS-1..3], [EIS-1], [PCA-2],          │
+│                                │ [RAG-1], [STAT-1]                       │
+│ 06 — Tabelas e Exportação      │ [SW-3], [SW-6], [STAT-2..3]            │
+│ 07 — Interpretação Científica  │ [CPE-1], [DRT-3], [CYC-4..5],          │
+│                                │ [STAT-1], [NRM-2], [RANK-1]            │
+└────────────────────────────────┴──────────────────────────────────────────┘
+
+================================================================================
+MAPA DE REFERÊNCIAS POR MÓDULO DO CÓDIGO
+================================================================================
+
+┌───────────────────────────┬──────────────────────────────────────────────┐
+│ Módulo (src/)             │ Referências                                  │
+├───────────────────────────┼──────────────────────────────────────────────┤
+│ physics_metrics.py        │ [CPE-1], [CPE-2], [EIS-2]                   │
+│ circuit_fitting.py        │ [FIT-1..6], [CPE-3], [W-1..2]              │
+│ cpe_fit.py                │ [CPE-1..3], [EIS-4]                         │
+│ ranking.py                │ [KM-1..2], [RANK-1..2]                      │
+│ stability.py              │ [STAB-1..2]                                  │
+│ pca_analysis.py           │ [PCA-1..2], [STAT-3]                        │
+│ drt_analysis.py           │ [DRT-1..7], [DRT-5..6]                      │
+│ drt_visualization.py      │ [VIS-1], [DRT-3]                            │
+│ cycling_calculator.py     │ [CYC-1..3]                                   │
+│ cycling_loader.py         │ [SW-3]                                       │
+│ cycling_plotter.py        │ [VIS-1], [RAG-1..2]                         │
+│ visualization.py          │ [VIS-1..3], [PCA-2], [STAT-1]              │
+│ eis_plots.py              │ [VIS-1..3], [EIS-1]                         │
+│ loader.py                 │ [SW-3]                                       │
+│ preprocessing.py          │ [EIS-2], [STAT-2]                            │
+│ i18n.py                   │ [SW-1]                                       │
+│ metadata.py               │ [SW-1]                                       │
+│ updater.py                │ [SW-1]                                       │
+└───────────────────────────┴──────────────────────────────────────────────┘
+
+================================================================================
+NOTA SOBRE ACESSO ÀS REFERÊNCIAS
+================================================================================
+
+• A maioria dos artigos pode ser acessada via DOI:
+  https://doi.org/<DOI>
+
+• Para acesso gratuito, consulte:
+  - Repositórios institucionais das universidades dos autores
+  - Sci-Hub (https://sci-hub.se) — verificar legalidade local
+  - Preprints em arXiv (https://arxiv.org) quando disponíveis
+  - Google Scholar (https://scholar.google.com) para versões abertas
+
+• Livros-texto podem ser encontrados em bibliotecas universitárias
+  ou adquiridos via editoras (Wiley, Springer, Elsevier).
+
+================================================================================
+               FIM DAS REFERÊNCIAS — IONFLOW PIPELINE v0.1.0
+================================================================================
