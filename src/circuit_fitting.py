@@ -46,6 +46,9 @@ class CircuitTemplate:
     model_fn: Callable[[np.ndarray, np.ndarray], np.ndarray]
     init_fn: Callable[[np.ndarray, np.ndarray], np.ndarray]
     diagram: str
+    description: str = ""
+    physical_meaning: Optional[Dict[str, str]] = None
+    typical_systems: Optional[List[str]] = None
 
 
 def _randles_cpe_warburg() -> CircuitTemplate:
@@ -124,11 +127,16 @@ def _inductive_loop() -> CircuitTemplate:
 
 
 def circuit_catalog() -> List[CircuitTemplate]:
-    return [
-        _randles_cpe_warburg(),
-        _double_arc_cpe(),
-        _inductive_loop(),
-    ]
+    """Return all registered circuits (delegates to CircuitRegistry)."""
+    try:
+        from src.circuit_registry import CircuitRegistry
+        return CircuitRegistry.all()
+    except Exception:  # pragma: no cover — fallback if registry not available
+        return [
+            _randles_cpe_warburg(),
+            _double_arc_cpe(),
+            _inductive_loop(),
+        ]
 
 
 # ---------------------------------------------------------------------------
@@ -187,6 +195,7 @@ def shortlist_circuits(features: Dict[str, float], catalog: List[CircuitTemplate
     """
 
     picks: List[CircuitTemplate] = []
+    names_available = {c.name for c in catalog}
 
     def add_by_name(name: str):
         for c in catalog:
@@ -198,20 +207,35 @@ def shortlist_circuits(features: Dict[str, float], catalog: List[CircuitTemplate
     add_by_name("Randles-CPE-W")
 
     phase_min = features.get("phase_min", np.nan)
+    phase_max = features.get("phase_max", np.nan)
     slope_low = features.get("logf_slope_low", np.nan)
+    mag_range = features.get("mag_range", np.nan)
 
-    # Strong capacitive arc: more likely two arcs
+    # Strong capacitive arc → more likely two arcs or coating
     if np.isfinite(phase_min) and phase_min < -70:
         add_by_name("Two-Arc-CPE")
+        if "Coating-CPE" in names_available:
+            add_by_name("Coating-CPE")
 
     # Diffusion tail: slope ~ -0.5 in low freq magnitude
     if np.isfinite(slope_low) and -0.8 < slope_low < -0.2:
         add_by_name("Randles-CPE-W")  # already present, safe
+        if "Warburg-Finite" in names_available:
+            add_by_name("Warburg-Finite")
+
+    # Very wide mag_range + two arcs → ZARC-ZARC-W
+    if (np.isfinite(mag_range) and mag_range > 100
+            and np.isfinite(phase_min) and phase_min < -50):
+        if "ZARC-ZARC-W" in names_available:
+            add_by_name("ZARC-ZARC-W")
 
     # Inductive loop if phase crosses positive or mag rises at high freq
-    phase_max = features.get("phase_max", np.nan)
     if np.isfinite(phase_max) and phase_max > 10:
         add_by_name("Inductive-CPE")
+
+    # Always include Simple-RC as BIC baseline if few picks so far
+    if len(picks) < top_n and "Simple-RC" in names_available:
+        add_by_name("Simple-RC")
 
     if not picks and catalog:
         picks.append(catalog[0])
