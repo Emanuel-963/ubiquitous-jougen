@@ -112,7 +112,7 @@ info "Atualizando pip..."
 
 # ── 4. Instalar dependências ────────────────────────────────
 info "Instalando dependências..."
-"$VENV_PYTHON" -m pip install -r requirements.txt --quiet
+"$VENV_PYTHON" -m pip install . --quiet
 
 if [ -f "requirements-dev.txt" ]; then
     echo -n "  Deseja instalar dependências de desenvolvimento (testes, lint)? [s/N] "

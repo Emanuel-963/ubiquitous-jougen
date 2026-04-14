@@ -59,9 +59,9 @@ create_venv() {
 
 install_requirements() {
   local venv_python="./venv/bin/python"
-  echo "Instalando dependências do requirements.txt..."
+  echo "Instalando dependências via pyproject.toml..."
   "$venv_python" -m pip install --upgrade pip
-  "$venv_python" -m pip install -r requirements.txt
+  "$venv_python" -m pip install .
   if [ -f "requirements-dev.txt" ]; then
     "$venv_python" -m pip install -r requirements-dev.txt
   fi

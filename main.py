@@ -1,10 +1,12 @@
 import json
 import logging
 import os
+from typing import Optional
 
 import numpy as np
 import pandas as pd
 
+from src.config import PipelineConfig
 from src.cpe_fit import fit_cpe_warburg
 from src.circuit_fitting import run_shortlist_fit
 from src.loader import load_eis_file
@@ -31,13 +33,15 @@ logging.basicConfig(
 )
 
 
-def run_eis_pipeline() -> dict:
+def run_eis_pipeline(config: Optional[PipelineConfig] = None) -> dict:
+    cfg = config or PipelineConfig.default()
+
     # ===============================
     # CONFIG
     # ===============================
 
-    data_dir = "data/raw"
-    out_dir = "outputs/tables"
+    data_dir = cfg.data_dir
+    out_dir = cfg.tables_dir
     os.makedirs(out_dir, exist_ok=True)
 
     # ===============================
@@ -47,7 +51,7 @@ def run_eis_pipeline() -> dict:
     records = {}
     raw_eis: dict[str, pd.DataFrame] = {}
     circuit_rows = []
-    reports_dir = "outputs/circuit_reports"
+    reports_dir = cfg.reports_dir
     os.makedirs(reports_dir, exist_ok=True)
 
     for file in os.listdir(data_dir):
@@ -81,7 +85,7 @@ def run_eis_pipeline() -> dict:
                     df,
                     sample_name=file,
                     save_plots=True,
-                    plots_dir="outputs/figures/circuits",
+                    plots_dir=cfg.circuits_fig_dir,
                 )
 
                 # Salvar relatório JSON da amostra
@@ -189,7 +193,7 @@ def run_eis_pipeline() -> dict:
     # ESTABILIDADE (CAMINHO B)
     # ===============================
 
-    for col in ["Rs_fit", "Rp_fit", "Q", "n"]:
+    for col in cfg.stability_columns:
         if col in df.columns:
             stab = stability_metrics(df, col)
             stab.to_csv(f"{out_dir}/stability_{col}.csv")
@@ -198,7 +202,7 @@ def run_eis_pipeline() -> dict:
     # PCA (CONDICIONAL)
     # ===============================
 
-    pca_cols = ["Rs_fit", "Rp_fit", "Q", "n", "Sigma"]
+    pca_cols = cfg.pca_columns
     valid_cols = [c for c in pca_cols if c in df.columns]
 
     df_pca = None
@@ -354,12 +358,12 @@ def run_eis_pipeline() -> dict:
         "Score",
         "Rank",
     ]
-    corr_path = correlation_heatmap(df_ranked, corr_cols, out_dir="outputs/figures/analytics")
+    corr_path = correlation_heatmap(df_ranked, corr_cols, out_dir=cfg.analytics_fig_dir)
     if corr_path:
         extra_plots.append(corr_path)
 
     # Rank vs Retenção
-    rr_path = scatter_rank_retention(df_ranked, out_dir="outputs/figures/analytics")
+    rr_path = scatter_rank_retention(df_ranked, out_dir=cfg.analytics_fig_dir)
     if rr_path:
         extra_plots.append(rr_path)
 
@@ -367,15 +371,15 @@ def run_eis_pipeline() -> dict:
     if df_pca is not None:
         retention_series = cap_energy_data.get("Retenção (%)")
         if retention_series is not None:
-            pca_metric_path = pca_2d_metric(df_pca, retention_series.reindex(df_pca.index), title="PCA 2D - colorido por Retenção", out_dir="outputs/figures/analytics")
+            pca_metric_path = pca_2d_metric(df_pca, retention_series.reindex(df_pca.index), title="PCA 2D - colorido por Retenção", out_dir=cfg.analytics_fig_dir)
             if pca_metric_path:
                 extra_plots.append(pca_metric_path)
 
     # Séries por prefixo numérico (energia e C_espec)
-    series_energy = series_by_prefix(cap_energy_data, "Energia média (J)", out_dir="outputs/figures/analytics")
+    series_energy = series_by_prefix(cap_energy_data, "Energia média (J)", out_dir=cfg.analytics_fig_dir)
     if series_energy:
         extra_plots.extend(series_energy)
-    series_cspec = series_by_prefix(cap_energy_data, "C_espec (F/g)", out_dir="outputs/figures/analytics")
+    series_cspec = series_by_prefix(cap_energy_data, "C_espec (F/g)", out_dir=cfg.analytics_fig_dir)
     if series_cspec:
         extra_plots.extend(series_cspec)
 

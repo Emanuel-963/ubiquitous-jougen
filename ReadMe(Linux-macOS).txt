@@ -164,7 +164,7 @@ Este guia explica como instalar e usar o programa no Linux ou macOS.
   cd ubiquitous-jougen
   git pull
   source venv/bin/activate
-  pip install -r requirements.txt
+  pip install .
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

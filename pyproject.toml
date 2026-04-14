@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 # ── Project metadata ─────────────────────────────────────────────────
 [project]
 name = "ionflow-pipeline"
-version = "0.1.0"
+dynamic = ["version"]
 description = "IonFlow Pipeline — EIS analytics toolkit with interactive GUI"
 readme = "README.md"
 license = {text = "MIT"}
@@ -45,6 +45,9 @@ build = [
 ionflow = "gui_app:main"
 
 # ── Packaging ────────────────────────────────────────────────────────
+[tool.setuptools.dynamic]
+version = {attr = "src.__version__"}
+
 [tool.setuptools]
 py-modules = ["gui_app", "main", "main_cycling", "main_drt"]
 

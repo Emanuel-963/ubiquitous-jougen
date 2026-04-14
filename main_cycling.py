@@ -6,9 +6,11 @@ displays table, and plots Time vs Potential with integral.
 
 import sys
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import pandas as pd
+from src.config import PipelineConfig
 from src.cycling_loader import load_cycling_files
 from src.cycling_calculator import process_all_files
 from src.cycling_plotter import (
@@ -17,9 +19,11 @@ from src.cycling_plotter import (
 )
 
 
-def run_ciclagem_pipeline(scan_rate: float, show_plots: bool = True) -> dict:
+def run_ciclagem_pipeline(scan_rate: float, show_plots: bool = True, config: Optional[PipelineConfig] = None) -> dict:
+    cfg = config or PipelineConfig.default()
+
     # Directory
-    data_dir = Path("data/processed")
+    data_dir = Path(cfg.processed_dir)
     if not data_dir.exists():
         data_dir.mkdir(parents=True, exist_ok=True)
         raise FileNotFoundError(
@@ -39,7 +43,7 @@ def run_ciclagem_pipeline(scan_rate: float, show_plots: bool = True) -> dict:
     results = process_all_files(data, scan_rate)
 
     # Prepare Excel output directory
-    excel_dir = Path("outputs/excel")
+    excel_dir = Path(cfg.excel_dir)
     excel_dir.mkdir(parents=True, exist_ok=True)
 
     export_tables = {}

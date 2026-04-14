@@ -5,7 +5,7 @@
 .DESCRIPTION
     - Cria ambiente virtual isolado
     - Baixa e instala Python 3.11 se necessário
-    - Instala todas as dependências do requirements.txt
+    - Instala todas as dependências via pyproject.toml
     - Permite escolher pipeline de Ciclagem, EIS ou ambos
     - Cria as pastas necessárias para cada pipeline
     - Configura variáveis de ambiente/PATH se necessário
@@ -60,9 +60,9 @@ function Create-Venv {
 # Função para instalar dependências
 function Install-Requirements {
     $venvPython = ".\venv\Scripts\python.exe"
-    Write-Host "Instalando dependências do requirements.txt..."
+    Write-Host "Instalando dependências via pyproject.toml..."
     & $venvPython -m pip install --upgrade pip
-    & $venvPython -m pip install -r requirements.txt
+    & $venvPython -m pip install .
     if (Test-Path "requirements-dev.txt") {
         & $venvPython -m pip install -r requirements-dev.txt
     }

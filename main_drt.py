@@ -57,11 +57,12 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
 
+from src.config import PipelineConfig
 from src.drt_analysis import DRTResult, compute_drt
 from src.drt_visualization import plot_drt_spectrum
 from src.loader import load_eis_file
@@ -95,10 +96,11 @@ _DRT_TABLE_COLUMNS = [
 # ---------------------------------------------------------------------------
 
 def run_drt_pipeline(
-    lambda_reg: float = 1e-3,
-    n_taus: int = 50,
-    data_dir: str = "data/raw",
+    lambda_reg: float | None = None,
+    n_taus: int | None = None,
+    data_dir: str | None = None,
     show_plots: bool = False,
+    config: Optional[PipelineConfig] = None,
 ) -> dict[str, Any]:
     """Run the DRT pipeline on all ``.txt`` files in *data_dir*.
 
@@ -106,14 +108,16 @@ def run_drt_pipeline(
     ----------
     lambda_reg : float, optional
         Tikhonov regularisation parameter λ.  Larger → smoother γ(τ).
-        Default ``1e-3``.  Typical range: 1e-5 … 1e-1.
+        Default from config (``1e-3``).  Typical range: 1e-5 … 1e-1.
     n_taus : int, optional
-        Number of log-uniform τ discretisation points.  Default ``50``.
+        Number of log-uniform τ discretisation points.  Default from config.
     data_dir : str, optional
-        Directory containing raw EIS ``.txt`` files.  Default ``"data/raw"``.
+        Directory containing raw EIS ``.txt`` files.  Default from config.
     show_plots : bool, optional
         Call ``plt.show()`` interactively.  Set ``False`` when running from
         the GUI thread.  Default ``False``.
+    config : PipelineConfig, optional
+        Centralised config; uses defaults when ``None``.
 
     Returns
     -------
@@ -127,14 +131,18 @@ def run_drt_pipeline(
     FileNotFoundError
         If *data_dir* does not exist.
     """
+    cfg = config or PipelineConfig.default()
+    lambda_reg = lambda_reg if lambda_reg is not None else cfg.drt_lambda
+    n_taus = n_taus if n_taus is not None else cfg.drt_n_taus
+    data_dir = data_dir if data_dir is not None else cfg.data_dir
     data_path = Path(data_dir)
     if not data_path.exists():
         raise FileNotFoundError(f"data_dir not found: {data_dir}")
 
-    figures_dir = Path("outputs/figures/drt")
+    figures_dir = Path(cfg.drt_fig_dir)
     figures_dir.mkdir(parents=True, exist_ok=True)
 
-    tables_dir = Path("outputs/tables")
+    tables_dir = Path(cfg.tables_dir)
     tables_dir.mkdir(parents=True, exist_ok=True)
 
     per_file_results: dict[str, DRTResult] = {}
@@ -182,7 +190,7 @@ def run_drt_pipeline(
                 "R_inf": round(result["r_inf"], 6),
                 "n_peaks": len(peaks),
             }
-            for k in range(1, _MAX_PEAKS_EXPORTED + 1):
+            for k in range(1, cfg.drt_max_peaks_exported + 1):
                 if k <= len(peaks):
                     pk = peaks[k - 1]
                     row[f"tau_peak_{k}"] = pk["tau_peak"]
