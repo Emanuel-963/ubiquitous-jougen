@@ -13,6 +13,7 @@ import pandas as pd
 from src.config import PipelineConfig
 from src.cycling_loader import load_cycling_files
 from src.cycling_calculator import process_all_files
+from src.models import CyclingResult
 from src.cycling_plotter import (
     plot_energy_power_vs_cycle,
     plot_time_potential_with_integral,
@@ -126,13 +127,14 @@ def run_ciclagem_pipeline(scan_rate: float, show_plots: bool = True, config: Opt
         cols = ["Arquivo"] + [c for c in merged_table.columns if c != "Arquivo"]
         merged_table = merged_table[cols]
 
-    return {
-        "results": results,
-        "export_tables": export_tables,
-        "merged_table": merged_table,
-        "plot_paths": plot_paths,
-        "energy_power_paths": energy_power_paths,
-    }
+    return CyclingResult(
+        results=results,
+        export_tables=export_tables,
+        merged_table=merged_table,
+        plot_paths=plot_paths,
+        energy_power_paths=energy_power_paths,
+        config_used=cfg,
+    )
 
 
 def main():

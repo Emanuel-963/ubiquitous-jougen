@@ -66,6 +66,7 @@ from src.config import PipelineConfig
 from src.drt_analysis import DRTResult, compute_drt
 from src.drt_visualization import plot_drt_spectrum
 from src.loader import load_eis_file
+from src.models import DRTPipelineResult
 from src.preprocessing import preprocess
 
 logging.basicConfig(
@@ -311,15 +312,16 @@ def run_drt_pipeline(
         "generated_at": datetime.now().isoformat(timespec="seconds"),
     }
 
-    return {
-        "drt_table": drt_table,
-        "drt_peaks_table": drt_peaks_table,
-        "drt_summary_table": drt_summary_table,
-        "per_file_results": per_file_results,
-        "plot_paths": plot_paths,
-        "errors": errors,
-        "run_meta": run_meta,
-    }
+    return DRTPipelineResult(
+        drt_table=drt_table,
+        drt_peaks_table=drt_peaks_table,
+        drt_summary_table=drt_summary_table,
+        per_file_results=per_file_results,
+        plot_paths=plot_paths,
+        errors=errors,
+        run_meta=run_meta,
+        config_used=cfg,
+    )
 
 
 # ---------------------------------------------------------------------------
