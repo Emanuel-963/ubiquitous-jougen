@@ -3,10 +3,14 @@
 Calculates energy (Wh/kg) and power (W/kg) for each cycle.
 """
 
+import logging
+
 import pandas as pd
 import numpy as np
 from typing import Dict
 from scipy.signal import find_peaks
+
+logger = logging.getLogger(__name__)
 
 
 def calculate_mass(current: float, scan_rate: float) -> float:
@@ -133,6 +137,6 @@ def process_all_files(data: Dict[str, pd.DataFrame], scan_rate: float) -> Dict[s
         # Save to Excel
         excel_path = os.path.join(excel_dir, f"{name}.xlsx")
         df_result.to_excel(excel_path, index=False)
-        print(f"Exported to {excel_path}")
+        logger.info("Exported to %s", excel_path)
 
     return results

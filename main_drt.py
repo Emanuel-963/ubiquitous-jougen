@@ -68,11 +68,8 @@ from src.drt_visualization import plot_drt_spectrum
 from src.loader import load_eis_file
 from src.models import DRTPipelineResult
 from src.preprocessing import preprocess
+from src.validation import validate_eis_full
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-)
 logger = logging.getLogger(__name__)
 
 # Maximum number of peak columns exported to drt_table
@@ -166,6 +163,11 @@ def run_drt_pipeline(
 
         try:
             df = preprocess(load_eis_file(filepath))
+
+            # Validate loaded EIS data
+            vr = validate_eis_full(df)
+            vr.log_all()
+
             freq = df["frequency"].values
             z_real = df["zreal"].values
             # zimag is stored as -|Z''| by loader → passed as-is; compute_drt

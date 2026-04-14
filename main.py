@@ -21,6 +21,7 @@ from src.config import PipelineConfig
 from src.cpe_fit import fit_cpe_warburg
 from src.circuit_fitting import run_shortlist_fit
 from src.loader import load_eis_file
+from src.logger import setup_logging
 from src.metadata import extract_metadata
 from src.models import EISResult, PCAResult
 from src.pca_analysis import run_pca
@@ -28,6 +29,7 @@ from src.physics_metrics import extract_features
 from src.preprocessing import preprocess
 from src.ranking import apply_classification, rank_within_subclass
 from src.stability import extract_sample_id, stability_metrics
+from src.validation import validate_eis_full
 from src.visualization import (
     pca_2d,
     pca_3d,
@@ -39,9 +41,6 @@ from src.visualization import (
     series_by_prefix,
 )
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
-)
 logger = logging.getLogger(__name__)
 
 
@@ -76,6 +75,10 @@ def load_and_extract(
         try:
             df = preprocess(load_eis_file(path))
             raw_eis[file] = df.copy()
+
+            # Validate loaded EIS data
+            vr = validate_eis_full(df)
+            vr.log_all()
 
             feat = extract_features(df)
 
@@ -470,4 +473,5 @@ def run_eis_pipeline(config: Optional[PipelineConfig] = None) -> EISResult:
 
 
 if __name__ == "__main__":
+    setup_logging()
     run_eis_pipeline()

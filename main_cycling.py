@@ -4,6 +4,7 @@ Loads cycling .txt files from data/processed, calculates energy and power per 5-
 displays table, and plots Time vs Potential with integral.
 """
 
+import logging
 import sys
 from pathlib import Path
 from typing import Optional
@@ -14,10 +15,13 @@ from src.config import PipelineConfig
 from src.cycling_loader import load_cycling_files
 from src.cycling_calculator import process_all_files
 from src.models import CyclingResult
+from src.validation import validate_cycling_dataframe
 from src.cycling_plotter import (
     plot_energy_power_vs_cycle,
     plot_time_potential_with_integral,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def run_ciclagem_pipeline(scan_rate: float, show_plots: bool = True, config: Optional[PipelineConfig] = None) -> dict:
@@ -39,6 +43,13 @@ def run_ciclagem_pipeline(scan_rate: float, show_plots: bool = True, config: Opt
             "Nenhum arquivo .txt encontrado em data/processed/.\n"
             "Use 'Importar Ciclagem para processed' para adicionar arquivos."
         )
+
+    # Validate all loaded cycling files
+    for fname, df_cyc in data.items():
+        vr = validate_cycling_dataframe(df_cyc)
+        vr.log_all()
+        if not vr.ok:
+            logger.warning("Cycling file %s has validation errors — skipping.", fname)
 
     # Process
     results = process_all_files(data, scan_rate)
@@ -142,18 +153,17 @@ def main():
     try:
         scan_rate = float(input("Enter scan rate (A/g, e.g., 0.1, 1, 10): "))
     except ValueError:
-        print("Invalid scan rate. Exiting.")
+        logger.error("Invalid scan rate. Exiting.")
         sys.exit(1)
 
     try:
         run_result = run_ciclagem_pipeline(scan_rate, show_plots=True)
     except FileNotFoundError as exc:
-        print(str(exc))
+        logger.error("%s", exc)
         sys.exit(1)
 
     for filename, df in run_result["results"].items():
-        print(f"\nResults for {filename}:")
-        print(df.to_string(index=False))
+        logger.info("Results for %s:\n%s", filename, df.to_string(index=False))
 
 
 if __name__ == "__main__":
