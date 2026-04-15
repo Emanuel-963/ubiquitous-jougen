@@ -14,3 +14,11 @@ from src.ai.knowledge_base import (  # noqa: F401
     RuleMatch,
     Severity,
 )
+from src.ai.inference_engine import (  # noqa: F401
+    AnalysisReport,
+    Anomaly,
+    Finding,
+    InferenceEngine,
+    Priority,
+    Recommendation,
+)
