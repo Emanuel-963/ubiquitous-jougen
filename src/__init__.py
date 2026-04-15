@@ -16,6 +16,7 @@ from src.logger import setup_logging, GUIQueueHandler, get_logger  # noqa: F401
 from src.models import CyclingResult, DRTPipelineResult, EISResult, PCAResult  # noqa: F401
 from src.uncertainty import UncertaintyAnalyzer, MonteCarloResult, BootstrapResult  # noqa: F401
 from src.updater import check_for_updates  # noqa: F401
+from src.ai import ElectrochemicalRule, KnowledgeBase, RuleMatch, Severity  # noqa: F401
 from src.validation import (  # noqa: F401
     ValidationResult,
     validate_eis_dataframe,
