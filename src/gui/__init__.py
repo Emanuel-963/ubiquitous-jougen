@@ -28,7 +28,10 @@ from src.gui.widgets import (  # noqa: F401
 
 # ── Day 14: tab-level figure builders ────────────────────────────────
 from src.gui.tabs import (  # noqa: F401
+    AIPanelConfig,
+    AIPanelResult,
     TableColumnConfig,
+    build_executive_summary,
     build_fig_bode,
     build_fig_corr,
     build_fig_drt_eis,
@@ -45,5 +48,6 @@ from src.gui.tabs import (  # noqa: F401
     build_fig_rank,
     build_fig_retention_cycle,
     build_fig_series,
+    run_ai_analysis,
     table_column_configs,
 )

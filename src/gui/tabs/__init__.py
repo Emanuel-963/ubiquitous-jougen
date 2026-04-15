@@ -30,3 +30,14 @@ from src.gui.tabs.advanced_charts import (  # noqa: F401
     build_fig_series,
 )
 from src.gui.tabs.tables import TableColumnConfig, table_column_configs  # noqa: F401
+from src.gui.tabs.ai_panel import (  # noqa: F401
+    AIPanelConfig,
+    AIPanelResult,
+    build_executive_summary,
+    format_anomalies_text,
+    format_findings_text,
+    format_predictions_text,
+    format_process_text,
+    format_recommendations_text,
+    run_ai_analysis,
+)
