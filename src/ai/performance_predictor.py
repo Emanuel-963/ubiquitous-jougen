@@ -625,7 +625,8 @@ class _MLPredictor:
 
         try:
             X = self._scaler.transform(vec.reshape(1, -1))
-        except Exception:
+        except Exception as exc:
+            logger.debug("Scaler transform failed, falling back to heuristic: %s", exc)
             return _heuristic_cycling_prediction(params)
 
         pred = CyclingPrediction(method="ml", feature_importances=self._feature_importances)
@@ -645,7 +646,8 @@ class _MLPredictor:
                 elif target_name == "retention":
                     pred.retention = round(max(0, min(100, val)), 1)
                     parts.append(f"Retenção estimada: {pred.retention:.1f}%")
-            except Exception:
+            except Exception as exc:
+                logger.debug("ML prediction failed for target '%s': %s", target_name, exc)
                 continue
 
         # Confidence based on number of training samples and successful targets

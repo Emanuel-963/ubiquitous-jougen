@@ -468,7 +468,8 @@ class OllamaAdapter(LLMAdapter):
             req = urllib.request.Request(f"{base}/api/tags", method="GET")
             with urllib.request.urlopen(req, timeout=3):
                 return True
-        except Exception:
+        except Exception as exc:
+            logger.debug("Ollama server not reachable: %s", exc)
             return False
 
 
