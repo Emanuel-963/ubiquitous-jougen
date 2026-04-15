@@ -44,6 +44,10 @@ build = [
 [project.gui-scripts]
 ionflow = "gui_app:main"
 
+# Entry-point: `ionflow-cli` for the professional CLI
+[project.scripts]
+ionflow-cli = "src.cli:main"
+
 # ── Packaging ────────────────────────────────────────────────────────
 [tool.setuptools.dynamic]
 version = {attr = "src.__version__"}
