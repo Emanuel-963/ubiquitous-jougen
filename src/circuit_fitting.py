@@ -7,6 +7,7 @@ shortlist plus statistical criteria (BIC/AIC).
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple
@@ -15,6 +16,8 @@ import numpy as np
 from numpy.linalg import LinAlgError
 from scipy.optimize import least_squares
 import matplotlib.pyplot as plt
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Element primitives
@@ -187,13 +190,29 @@ def extract_eis_features_for_ml(df) -> Dict[str, float]:
 # ---------------------------------------------------------------------------
 
 
-def shortlist_circuits(features: Dict[str, float], catalog: List[CircuitTemplate], top_n: int = 3) -> List[CircuitTemplate]:
-    """Pick a small set of circuits based on simple rules.
+def shortlist_circuits(
+    features: Dict[str, float],
+    catalog: List[CircuitTemplate],
+    top_n: int = 3,
+    ml_ranked: Optional[List[str]] = None,
+) -> List[CircuitTemplate]:
+    """Pick a small set of circuits based on rules or ML predictions.
 
-    This is a deterministic placeholder; swap with a trained classifier when
-    labeled data is available.
+    When *ml_ranked* is a non-empty list of circuit names (from
+    :class:`~src.ml_circuit_selector.CircuitMLSelector`) those are used
+    directly instead of the rule-based heuristic.
     """
+    catalog_map = {c.name: c for c in catalog}
 
+    # ── ML path ──────────────────────────────────────────────────
+    if ml_ranked:
+        picks = [catalog_map[n] for n in ml_ranked if n in catalog_map]
+        if picks:
+            logger.info("shortlist_circuits: using ML-ranked %s", [c.name for c in picks[:top_n]])
+            return picks[:top_n]
+        logger.debug("shortlist_circuits: ML names not in catalog, falling back to heuristic.")
+
+    # ── Heuristic path (unchanged) ───────────────────────────────
     picks: List[CircuitTemplate] = []
     names_available = {c.name for c in catalog}
 
@@ -394,11 +413,21 @@ def run_shortlist_fit(
     sample_name: Optional[str] = None,
     save_plots: bool = False,
     plots_dir: str = "outputs/figures/circuits",
+    ml_ranked: Optional[List[str]] = None,
 ) -> Dict:
     """End-to-end: extract features, shortlist circuits, fit each, rank by BIC.
 
-    sample_name: usado para nomear arquivos de diagnóstico.
-    save_plots: salva Nyquist/Bode do melhor circuito se True.
+    Parameters
+    ----------
+    sample_name : str | None
+        Used to name diagnostic plots.
+    save_plots : bool
+        Save Nyquist/Bode of the best circuit.
+    plots_dir : str
+        Directory for diagnostic plots.
+    ml_ranked : list[str] | None
+        ML-predicted circuit names (best first).  When provided, the
+        shortlist heuristic is bypassed.
     """
     if len(df) < 3:
         raise ValueError("Poucos pontos para fitting")
@@ -406,7 +435,7 @@ def run_shortlist_fit(
     feats = extract_eis_features_for_ml(df)
     catalog = circuit_catalog()
     catalog_map = {c.name: c for c in catalog}
-    short = shortlist_circuits(feats, catalog, top_n=3)
+    short = shortlist_circuits(feats, catalog, top_n=3, ml_ranked=ml_ranked)
 
     freq = df["frequency"].to_numpy()
     z = df["zreal"].to_numpy() + 1j * df["zimag"].to_numpy()

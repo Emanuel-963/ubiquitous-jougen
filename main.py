@@ -22,6 +22,7 @@ from src.cpe_fit import fit_cpe_warburg
 from src.circuit_fitting import run_shortlist_fit
 from src.feature_store import FeatureStore, FittingHistory, record_from_shortlist_result
 from src.loader import load_eis_file
+from src.ml_circuit_selector import CircuitMLSelector
 from src.logger import setup_logging
 from src.metadata import extract_metadata
 from src.models import EISResult, PCAResult
@@ -71,6 +72,10 @@ def load_and_extract(
     store = FeatureStore(cfg.feature_store_path)
     history = FittingHistory(store)
 
+    # ML circuit selector — train on existing history
+    ml_selector = CircuitMLSelector()
+    ml_selector.train(store)
+
     records: Dict[str, dict] = {}
     raw_eis: Dict[str, pd.DataFrame] = {}
     circuit_rows: List[dict] = []
@@ -101,7 +106,8 @@ def load_and_extract(
 
             # Circuit shortlist + BIC-best selection
             _fit_circuit_for_file(df, file, cfg, reports_dir,
-                                  circuit_rows, store, history)
+                                  circuit_rows, store, history,
+                                  ml_selector)
 
         except Exception as exc:
             logger.error("Failed to process %s: %s", file, exc)
@@ -117,6 +123,7 @@ def _fit_circuit_for_file(
     circuit_rows: List[dict],
     store: FeatureStore,
     history: FittingHistory,
+    ml_selector: Optional["CircuitMLSelector"] = None,
 ) -> None:
     """Fit circuit models to a single file and append to *circuit_rows*.
 
@@ -125,12 +132,28 @@ def _fit_circuit_for_file(
     for ML-driven circuit selection.
     """
     try:
-        # Log historical recommendation (if store has data)
+        # ML-ranked shortlist (empty if not trained → heuristic fallback)
+        from src.circuit_fitting import extract_eis_features_for_ml
+        ml_ranked: Optional[List[str]] = None
+        if ml_selector is not None and ml_selector.is_trained:
+            try:
+                spec_feats = extract_eis_features_for_ml(df)
+                ml_ranked = ml_selector.predict(spec_feats, top_n=3)
+                if ml_ranked:
+                    logger.info(
+                        "ML selector for %s: %s (%s)",
+                        file, ml_ranked,
+                        ml_selector.explain(spec_feats),
+                    )
+            except Exception as exc:
+                logger.debug("ML predict failed for %s: %s", file, exc)
+
         circ_res = run_shortlist_fit(
             df,
             sample_name=file,
             save_plots=True,
             plots_dir=cfg.circuits_fig_dir,
+            ml_ranked=ml_ranked,
         )
 
         # Persist fitting record in the feature store
