@@ -6,6 +6,7 @@ __version__ = "0.1.0"
 from src.circuit_composer import CircuitBlock, CircuitComposer  # noqa: F401
 from src.config import PipelineConfig  # noqa: F401
 from src.fitting_diagnostics import FittingDiagnostics, QualityIndicator, assess_quality  # noqa: F401
+from src.fitting_report import FittingReport, FittingReportGenerator  # noqa: F401
 from src.feature_store import FeatureStore, FittingHistory  # noqa: F401
 from src.i18n import get_language, set_language, tr  # noqa: F401
 from src.ml_circuit_selector import CircuitMLSelector  # noqa: F401
