@@ -6,6 +6,7 @@ performance predictor and process advisor.
 Re-exports
 ----------
 >>> from src.ai import ElectrochemicalRule, KnowledgeBase
+>>> from src.ai import ProcessAdvisor, ProcessReport
 """
 
 from src.ai.knowledge_base import (  # noqa: F401
@@ -29,4 +30,10 @@ from src.ai.performance_predictor import (  # noqa: F401
     Improvement,
     ImprovementArea,
     PerformancePredictor,
+)
+from src.ai.process_advisor import (  # noqa: F401
+    ProcessAdvisor,
+    ProcessReport,
+    ProductionRec,
+    RecommendationArea,
 )
