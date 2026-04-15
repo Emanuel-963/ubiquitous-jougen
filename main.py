@@ -20,6 +20,7 @@ import pandas as pd
 from src.config import PipelineConfig
 from src.cpe_fit import fit_cpe_warburg
 from src.circuit_fitting import run_shortlist_fit
+from src.feature_store import FeatureStore, FittingHistory, record_from_shortlist_result
 from src.loader import load_eis_file
 from src.logger import setup_logging
 from src.metadata import extract_metadata
@@ -66,6 +67,10 @@ def load_and_extract(
     reports_dir = cfg.reports_dir
     os.makedirs(reports_dir, exist_ok=True)
 
+    # Feature store for ML history
+    store = FeatureStore(cfg.feature_store_path)
+    history = FittingHistory(store)
+
     records: Dict[str, dict] = {}
     raw_eis: Dict[str, pd.DataFrame] = {}
     circuit_rows: List[dict] = []
@@ -95,7 +100,8 @@ def load_and_extract(
             records[file] = feat
 
             # Circuit shortlist + BIC-best selection
-            _fit_circuit_for_file(df, file, cfg, reports_dir, circuit_rows)
+            _fit_circuit_for_file(df, file, cfg, reports_dir,
+                                  circuit_rows, store, history)
 
         except Exception as exc:
             logger.error("Failed to process %s: %s", file, exc)
@@ -109,15 +115,35 @@ def _fit_circuit_for_file(
     cfg: PipelineConfig,
     reports_dir: str,
     circuit_rows: List[dict],
+    store: FeatureStore,
+    history: FittingHistory,
 ) -> None:
-    """Fit circuit models to a single file and append to *circuit_rows*."""
+    """Fit circuit models to a single file and append to *circuit_rows*.
+
+    After a successful fit the result is also persisted in the
+    :class:`FeatureStore` so that future runs can leverage the history
+    for ML-driven circuit selection.
+    """
     try:
+        # Log historical recommendation (if store has data)
         circ_res = run_shortlist_fit(
             df,
             sample_name=file,
             save_plots=True,
             plots_dir=cfg.circuits_fig_dir,
         )
+
+        # Persist fitting record in the feature store
+        try:
+            rec = record_from_shortlist_result(file, circ_res)
+            if rec is not None:
+                summary = history.summary_text(
+                    rec.get("spectral_features", {}), n=10,
+                )
+                logger.info("Feature history for %s: %s", file, summary)
+                store.add_record(rec)
+        except Exception as exc:
+            logger.warning("Feature store record failed for %s: %s", file, exc)
         # Save JSON report
         try:
             rpt_path = os.path.join(reports_dir, f"{file}.json")

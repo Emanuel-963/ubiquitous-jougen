@@ -175,6 +175,10 @@ class PipelineConfig:
     dpi_diagnostics: int = 300
     """DPI for circuit diagnostic plots."""
 
+    # ── Feature Store / ML ───────────────────────────────────────────
+    feature_store_path: str = "data/ml/fitting_history.json"
+    """JSON file for the ML feature store (circuit-fitting history)."""
+
     # ── Misc ─────────────────────────────────────────────────────────
     settings_filename: str = "ionflow_settings.json"
     """Filename for GUI settings persistence."""
