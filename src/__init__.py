@@ -21,6 +21,8 @@ from src.ai import ElectrochemicalRule, KnowledgeBase, RuleMatch, Severity  # no
 from src.ai import AnalysisReport, Anomaly, Finding, InferenceEngine, Priority, Recommendation  # noqa: F401
 from src.ai import CyclingPrediction, DegradationMechanism, DegradationPrediction, Improvement, ImprovementArea, PerformancePredictor  # noqa: F401
 from src.ai import ProcessAdvisor, ProcessReport, ProductionRec, RecommendationArea  # noqa: F401
+from src.ai import LLMAdapter, LLMConfig, LLMProvider, NullAdapter, OpenAIAdapter, OllamaAdapter  # noqa: F401
+from src.ai import create_adapter, create_adapter_from_config, enrich_report, enrich_summary  # noqa: F401
 from src.validation import (  # noqa: F401
     ValidationResult,
     validate_eis_dataframe,

@@ -37,3 +37,15 @@ from src.ai.process_advisor import (  # noqa: F401
     ProductionRec,
     RecommendationArea,
 )
+from src.ai.llm_adapter import (  # noqa: F401
+    LLMAdapter,
+    LLMConfig,
+    LLMProvider,
+    NullAdapter,
+    OllamaAdapter,
+    OpenAIAdapter,
+    create_adapter,
+    create_adapter_from_config,
+    enrich_report,
+    enrich_summary,
+)

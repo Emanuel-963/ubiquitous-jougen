@@ -179,6 +179,25 @@ class PipelineConfig:
     feature_store_path: str = "data/ml/fitting_history.json"
     """JSON file for the ML feature store (circuit-fitting history)."""
 
+    # ── LLM integration (optional) ───────────────────────────────────
+    llm_provider: str = "none"
+    """LLM provider: 'none' (offline), 'openai', or 'ollama'."""
+
+    llm_model: str = "gpt-4o-mini"
+    """Model identifier (e.g. 'gpt-4o-mini', 'llama3')."""
+
+    llm_api_key: str = ""
+    """API key for cloud LLM providers.  Unused for 'ollama' / 'none'."""
+
+    llm_base_url: str = ""
+    """Base URL override for the LLM API endpoint."""
+
+    llm_temperature: float = 0.3
+    """LLM sampling temperature (0 = deterministic)."""
+
+    llm_max_tokens: int = 1024
+    """Maximum response tokens for LLM calls."""
+
     # ── Misc ─────────────────────────────────────────────────────────
     settings_filename: str = "ionflow_settings.json"
     """Filename for GUI settings persistence."""
