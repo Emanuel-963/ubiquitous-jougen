@@ -22,3 +22,11 @@ from src.ai.inference_engine import (  # noqa: F401
     Priority,
     Recommendation,
 )
+from src.ai.performance_predictor import (  # noqa: F401
+    CyclingPrediction,
+    DegradationMechanism,
+    DegradationPrediction,
+    Improvement,
+    ImprovementArea,
+    PerformancePredictor,
+)
