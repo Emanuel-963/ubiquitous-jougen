@@ -41,6 +41,23 @@ from src.i18n import get_language, set_language, tr
 from src.updater import check_for_updates
 from src.gui import MainWindow as _MVCWindow
 
+# ── Day 14 tab-module and widget imports ─────────────────────────────
+from src.gui.widgets import (  # noqa: F401
+    ChartExporter as _ChartExporter,
+    FilterableTableManager as _FilterableTableManager,
+    LogRedirector as _LogRedirector,
+    StyledOptionMenuHelper as _StyledOptionMenuHelper,
+)
+from src.gui.tabs import (  # noqa: F401
+    build_fig_rank as _build_fig_rank_mod,
+    build_fig_pca as _build_fig_pca_mod,
+    build_fig_pca_metric as _build_fig_pca_metric_mod,
+    build_fig_corr as _build_fig_corr_mod,
+    build_fig_drt_eis as _build_fig_drt_eis_mod,
+    build_fig_series as _build_fig_series_mod,
+    table_column_configs as _table_column_configs,
+)
+
 
 @dataclass
 class PlotItem:
