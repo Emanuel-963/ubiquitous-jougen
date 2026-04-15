@@ -2,6 +2,7 @@
 
 Toolkit completo para análise de **Espectroscopia de Impedância Eletroquímica (EIS)**, com GUI interativa, DRT, ciclagem galvanostática e 17 abas de visualização.
 
+[![CI](https://github.com/Emanuel-963/ubiquitous-jougen/actions/workflows/ci.yml/badge.svg)](https://github.com/Emanuel-963/ubiquitous-jougen/actions/workflows/ci.yml)
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License MIT](https://img.shields.io/badge/license-MIT-green)
 
