@@ -9,6 +9,7 @@ from src.fitting_diagnostics import FittingDiagnostics, QualityIndicator, assess
 from src.fitting_report import FittingReport, FittingReportGenerator  # noqa: F401
 from src.feature_store import FeatureStore, FittingHistory  # noqa: F401
 from src.i18n import get_language, set_language, tr  # noqa: F401
+from src.kramers_kronig import KKResult, KramersKronigValidator  # noqa: F401
 from src.ml_circuit_selector import CircuitMLSelector  # noqa: F401
 from src.logger import setup_logging, GUIQueueHandler, get_logger  # noqa: F401
 from src.models import CyclingResult, DRTPipelineResult, EISResult, PCAResult  # noqa: F401
