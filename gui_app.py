@@ -39,6 +39,7 @@ from src.eis_plots import (
 )
 from src.i18n import get_language, set_language, tr
 from src.updater import check_for_updates
+from src.gui import MainWindow as _MVCWindow
 
 
 @dataclass
@@ -129,6 +130,10 @@ class PipelineApp(ctk.CTk):
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.after(100, self._process_queue)
         self.after(2000, self._check_for_updates_async)
+
+        # MVC layer (Day 13) — will progressively absorb PipelineApp logic
+        self._mvc = _MVCWindow(settings_path=self.settings_path)
+        self._controller = self._mvc.controller
 
     def _load_theme_with_fallback(self, theme_path: str):
         """Carrega tema customizado; se inválido/incompleto, cai para tema padrão."""

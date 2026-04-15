@@ -5,6 +5,7 @@ __version__ = "0.1.0"
 # Convenience re-exports so users can do ``from src import tr, check_for_updates``
 from src.circuit_composer import CircuitBlock, CircuitComposer  # noqa: F401
 from src.config import PipelineConfig  # noqa: F401
+from src.gui import AppState, MainWindow, PipelineController, PlotItem  # noqa: F401
 from src.fitting_diagnostics import FittingDiagnostics, QualityIndicator, assess_quality  # noqa: F401
 from src.fitting_report import FittingReport, FittingReportGenerator  # noqa: F401
 from src.feature_store import FeatureStore, FittingHistory  # noqa: F401
