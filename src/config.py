@@ -208,13 +208,28 @@ class PipelineConfig:
 
     @classmethod
     def default(cls) -> "PipelineConfig":
-        """Return a config with all default values."""
+        """Return a config with all default values.
+
+        Returns
+        -------
+        PipelineConfig
+            A new instance with every field set to its default.
+        """
         return cls()
 
     # ── JSON persistence ─────────────────────────────────────────────
 
     def to_dict(self) -> Dict[str, Any]:
-        """Serialise to a plain dict (JSON-safe types)."""
+        """Serialise to a plain dict with JSON-safe types.
+
+        Tuple-valued fields are converted to lists so the result can be
+        passed directly to ``json.dump``.
+
+        Returns
+        -------
+        Dict[str, Any]
+            Shallow dictionary of all config fields.
+        """
         d = asdict(self)
         # Convert tuples to lists for JSON round-trip
         for key, value in d.items():
@@ -223,7 +238,19 @@ class PipelineConfig:
         return d
 
     def to_json(self, path: str | Path) -> None:
-        """Write config to a JSON file."""
+        """Write the current configuration to a JSON file.
+
+        Parent directories are created automatically if they do not exist.
+
+        Parameters
+        ----------
+        path : str | Path
+            Destination file path.
+
+        Returns
+        -------
+        None
+        """
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w", encoding="utf-8") as fh:
@@ -258,7 +285,18 @@ class PipelineConfig:
 
     @classmethod
     def from_json_safe(cls, path: str | Path) -> "PipelineConfig":
-        """Load config from JSON, falling back to defaults on any error."""
+        """Load config from JSON, falling back to defaults on any error.
+
+        Parameters
+        ----------
+        path : str | Path
+            Path to the JSON configuration file.
+
+        Returns
+        -------
+        PipelineConfig
+            Loaded configuration, or ``default()`` if loading fails.
+        """
         try:
             return cls.from_json(path)
         except Exception as exc:
@@ -268,7 +306,15 @@ class PipelineConfig:
     # ── Helpers ───────────────────────────────────────────────────────
 
     def ensure_dirs(self) -> None:
-        """Create all output directories defined in this config."""
+        """Create all output directories defined in this config.
+
+        Calls ``mkdir(parents=True, exist_ok=True)`` for every directory
+        attribute (tables, figures, reports, excel, logs, etc.).
+
+        Returns
+        -------
+        None
+        """
         for attr in (
             "tables_dir",
             "figures_dir",
@@ -283,5 +329,11 @@ class PipelineConfig:
 
     @property
     def capacitance_filter_range(self) -> Tuple[float, float]:
-        """Convenience accessor for the capacitance filter bounds."""
+        """Convenience accessor for the capacitance filter bounds.
+
+        Returns
+        -------
+        Tuple[float, float]
+            ``(capacitance_filter_min, capacitance_filter_max)`` in Farads.
+        """
         return (self.capacitance_filter_min, self.capacitance_filter_max)

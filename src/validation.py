@@ -48,21 +48,47 @@ class ValidationResult:
 
     # Convenience helpers
     def add_warning(self, msg: str) -> None:
+        """Append a non-fatal warning message.
+
+        Parameters
+        ----------
+        msg : str
+            Human-readable warning description.
+        """
         self.warnings.append(msg)
 
     def add_error(self, msg: str) -> None:
+        """Append a hard-stop error and mark the result as failed.
+
+        Parameters
+        ----------
+        msg : str
+            Human-readable error description.
+        """
         self.errors.append(msg)
         self.ok = False
 
     def merge(self, other: "ValidationResult") -> None:
-        """Absorb all messages from *other* into this result."""
+        """Absorb all messages from *other* into this result.
+
+        Parameters
+        ----------
+        other : ValidationResult
+            Another validation result whose warnings and errors
+            will be appended to this instance.  If *other* is not
+            ``ok``, this result is also marked as failed.
+        """
         self.warnings.extend(other.warnings)
         self.errors.extend(other.errors)
         if not other.ok:
             self.ok = False
 
     def log_all(self) -> None:
-        """Emit every message to the module logger."""
+        """Emit every message to the module logger.
+
+        Warnings are logged at ``WARNING`` level and errors at
+        ``ERROR`` level via the module-level :data:`logger`.
+        """
         for w in self.warnings:
             logger.warning("Validation: %s", w)
         for e in self.errors:

@@ -2,6 +2,20 @@ import re
 
 
 def extract_metadata(filename):
+    """Extract electrolyte, current and treatment metadata from a filename.
+
+    Parameters
+    ----------
+    filename : str
+        Raw filename (or path) of the EIS data file.
+
+    Returns
+    -------
+    tuple of str
+        A 3-tuple ``(electrolyte, current, treatment)`` parsed from the
+        filename. Unknown fields are returned as ``"Unknown"`` (or
+        ``"None"`` for treatment).
+    """
     name = filename.lower()
 
     if "li2so4" in name:

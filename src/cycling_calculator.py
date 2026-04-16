@@ -14,7 +14,22 @@ logger = logging.getLogger(__name__)
 
 
 def calculate_mass(current: float, scan_rate: float) -> float:
-    """Calculate mass in grams: mass = |current| / scan_rate (A/g)."""
+    """Calculate electrode active mass from current and scan rate.
+
+    Uses the relation ``mass = |current| / scan_rate``.
+
+    Parameters
+    ----------
+    current : float
+        Measured current in amperes (A).
+    scan_rate : float
+        Gravimetric scan rate in A/g.
+
+    Returns
+    -------
+    float
+        Estimated active mass in grams (g).
+    """
     return abs(current) / scan_rate
 
 
@@ -114,7 +129,27 @@ def calculate_energy_power(df: pd.DataFrame, scan_rate: float) -> pd.DataFrame:
 
 
 def process_all_files(data: Dict[str, pd.DataFrame], scan_rate: float) -> Dict[str, pd.DataFrame]:
-    """Process all files and return results."""
+    """Process all cycling data files and export per-sample energy/power tables.
+
+    For each sample the function computes cycle-resolved energy and power
+    via :func:`calculate_energy_power`, renames columns to Portuguese labels,
+    and saves the result as an Excel file under ``outputs/excel/``.
+
+    Parameters
+    ----------
+    data : dict[str, pd.DataFrame]
+        Mapping of sample name → DataFrame with *tempo*, *corrente*,
+        *potencial*, and *ciclo* columns.
+    scan_rate : float
+        Gravimetric scan rate in A/g, forwarded to the energy calculation.
+
+    Returns
+    -------
+    dict[str, pd.DataFrame]
+        Mapping of sample name → results DataFrame with columns
+        *Ciclos*, *Duração dos Ciclos (s)*, *Valor da Integral (V/s)*,
+        *Energia (Wh/kg)*, and *Potência (W/kg)*.
+    """
     import os
     excel_dir = "outputs/excel"
     os.makedirs(excel_dir, exist_ok=True)

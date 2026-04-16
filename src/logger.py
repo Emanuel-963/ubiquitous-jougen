@@ -76,6 +76,14 @@ class GUIQueueHandler(logging.Handler):
         self.log_queue: queue.Queue = log_queue
 
     def emit(self, record: logging.LogRecord) -> None:
+        """Format and enqueue a log record for the GUI.
+
+        Parameters
+        ----------
+        record : logging.LogRecord
+            The log record to be formatted and placed onto the
+            queue for consumption by the GUI thread.
+        """
         try:
             msg = self.format(record)
             self.log_queue.put_nowait(msg)

@@ -327,6 +327,21 @@ class OpenAIAdapter(LLMAdapter):
     # ── Abstract method implementations ──────────────────────────
 
     def interpret(self, context: str, question: str) -> str:
+        """Answer a free-form question about electrochemical data via OpenAI.
+
+        Parameters
+        ----------
+        context : str
+            Textual representation of the analysis results.
+        question : str
+            The user's question.
+
+        Returns
+        -------
+        str
+            The model's answer, or an error string prefixed with
+            ``[OpenAI error: …]`` on failure.
+        """
         prompt = (
             f"Based on the following electrochemical analysis:\n\n"
             f"{context}\n\n"
@@ -335,6 +350,20 @@ class OpenAIAdapter(LLMAdapter):
         return self._chat(prompt)
 
     def enrich_summary(self, summary: str, context: str) -> str:
+        """Rewrite a rule-based summary into richer prose via OpenAI.
+
+        Parameters
+        ----------
+        summary : str
+            The rule-based executive summary.
+        context : str
+            Full analysis report used as additional reference.
+
+        Returns
+        -------
+        str
+            A more natural, mechanism-aware rewrite of *summary*.
+        """
         prompt = (
             f"Here is a rule-based executive summary of an electrochemical "
             f"analysis:\n\n{summary}\n\nFull analysis context:\n{context}\n\n"
@@ -344,6 +373,18 @@ class OpenAIAdapter(LLMAdapter):
         return self._chat(prompt)
 
     def suggest_experiments(self, context: str) -> str:
+        """Propose 3–5 follow-up experiments via OpenAI.
+
+        Parameters
+        ----------
+        context : str
+            Textual analysis results to base suggestions on.
+
+        Returns
+        -------
+        str
+            Bullet-list of suggested experiments with specific conditions.
+        """
         prompt = (
             f"Based on this electrochemical analysis:\n\n{context}\n\n"
             f"Suggest 3-5 follow-up experiments that would help improve "
@@ -354,6 +395,19 @@ class OpenAIAdapter(LLMAdapter):
         return self._chat(prompt)
 
     def compare_with_literature(self, context: str) -> str:
+        """Compare results with published literature via OpenAI.
+
+        Parameters
+        ----------
+        context : str
+            Textual analysis results to contextualise.
+
+        Returns
+        -------
+        str
+            A comparison paragraph referencing typical reported values
+            for Rs, Rp, capacitance, and cycling retention.
+        """
         prompt = (
             f"Based on this electrochemical analysis:\n\n{context}\n\n"
             f"Compare these results with published literature on similar "
@@ -424,6 +478,21 @@ class OllamaAdapter(LLMAdapter):
     # ── Abstract method implementations ──────────────────────────
 
     def interpret(self, context: str, question: str) -> str:
+        """Answer a free-form question about electrochemical data via Ollama.
+
+        Parameters
+        ----------
+        context : str
+            Textual representation of the analysis results.
+        question : str
+            The user's question.
+
+        Returns
+        -------
+        str
+            The model's answer, or an error string prefixed with
+            ``[Ollama error: …]`` on failure.
+        """
         prompt = (
             f"Based on the following electrochemical analysis:\n\n"
             f"{context}\n\n"
@@ -432,6 +501,20 @@ class OllamaAdapter(LLMAdapter):
         return self._chat(prompt)
 
     def enrich_summary(self, summary: str, context: str) -> str:
+        """Rewrite a rule-based summary into richer prose via Ollama.
+
+        Parameters
+        ----------
+        summary : str
+            The rule-based executive summary.
+        context : str
+            Full analysis report used as additional reference.
+
+        Returns
+        -------
+        str
+            A more natural, mechanism-aware rewrite of *summary*.
+        """
         prompt = (
             f"Here is a rule-based executive summary of an electrochemical "
             f"analysis:\n\n{summary}\n\nFull analysis context:\n{context}\n\n"
@@ -441,6 +524,18 @@ class OllamaAdapter(LLMAdapter):
         return self._chat(prompt)
 
     def suggest_experiments(self, context: str) -> str:
+        """Propose follow-up experiments via the local Ollama model.
+
+        Parameters
+        ----------
+        context : str
+            Textual analysis results to base suggestions on.
+
+        Returns
+        -------
+        str
+            Bullet-list of suggested experiments.
+        """
         prompt = (
             f"Based on this electrochemical analysis:\n\n{context}\n\n"
             f"Suggest 3-5 follow-up experiments that would help improve "
@@ -450,6 +545,19 @@ class OllamaAdapter(LLMAdapter):
         return self._chat(prompt)
 
     def compare_with_literature(self, context: str) -> str:
+        """Compare results with published literature via Ollama.
+
+        Parameters
+        ----------
+        context : str
+            Textual analysis results to contextualise.
+
+        Returns
+        -------
+        str
+            A comparison paragraph referencing similar electrode materials
+            and electrolyte systems.
+        """
         prompt = (
             f"Based on this electrochemical analysis:\n\n{context}\n\n"
             f"Compare these results with published literature on similar "

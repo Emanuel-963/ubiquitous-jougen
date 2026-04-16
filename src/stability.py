@@ -21,6 +21,22 @@ def extract_sample_id(filename: str) -> str:
 
 
 def stability_metrics(df: pd.DataFrame, param: str) -> pd.DataFrame:
+    """Compute mean, standard deviation and coefficient of variation per sample.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing at least a ``Sample`` column and the target
+        parameter column.
+    param : str
+        Name of the numeric column for which stability metrics are calculated.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame indexed by ``Sample`` with columns ``Mean``, ``Std`` and
+        ``CV`` (coefficient of variation).
+    """
     grouped = df.groupby("Sample")[param]
 
     mean = grouped.mean()

@@ -14,7 +14,29 @@ def _ensure_out_dir(out_dir: Optional[str | Path]) -> Path:
 
 
 def plot_drt_spectrum(result, stem, out_dir=None, *, ax=None, show=False, save=True):
-    """Plot γ(τ) for one sample and optionally save as PNG."""
+    """Plot the DRT spectrum γ(τ) for a single sample.
+
+    Parameters
+    ----------
+    result : dict
+        DRT result containing keys ``'tau'``, ``'gamma'``, optionally
+        ``'peaks'``, ``'r_inf'``, and ``'lambda_reg'``.
+    stem : str
+        Sample identifier used in the plot title and output filename.
+    out_dir : str or Path, optional
+        Directory for saving the PNG. Defaults to ``outputs/figures``.
+    ax : matplotlib.axes.Axes, optional
+        Existing axes for embedded mode. If *None* a new figure is created.
+    show : bool, default False
+        Whether to call ``plt.show()``.
+    save : bool, default True
+        Whether to persist the figure as PNG.
+
+    Returns
+    -------
+    str
+        Absolute path to the saved PNG, or an empty string if not saved.
+    """
     owns_fig = ax is None
     if owns_fig:
         fig, ax = plt.subplots(figsize=(7, 4))
@@ -97,7 +119,26 @@ def plot_drt_overlay(
     ax=None,
     show=False,
 ):
-    """Plot multiple γ(τ) spectra in one axis."""
+    """Plot multiple DRT spectra γ(τ) overlaid on a single axis.
+
+    Parameters
+    ----------
+    results_dict : dict[str, dict]
+        Mapping of sample name → DRT result dict (with ``'tau'``/``'gamma'``).
+    selected : list[str], optional
+        Subset of keys to plot. If *None*, all samples are plotted.
+    out_path : str or Path, optional
+        Full file path for saving the PNG. If *None* the figure is not saved.
+    ax : matplotlib.axes.Axes, optional
+        Existing axes for embedded mode. If *None* a new figure is created.
+    show : bool, default False
+        Whether to call ``plt.show()``.
+
+    Returns
+    -------
+    str
+        Absolute path to the saved PNG, or an empty string if not saved.
+    """
     owns_fig = ax is None
     if owns_fig:
         fig, ax = plt.subplots(figsize=(7, 4.4))
@@ -155,7 +196,28 @@ def plot_drt_heatmap(
     ax=None,
     show=False,
 ):
-    """Plot DRT heatmap (samples × log10(τ))."""
+    """Plot a DRT heatmap with samples on the y-axis and log₁₀(τ) on the x-axis.
+
+    Parameters
+    ----------
+    results_dict : dict[str, dict]
+        Mapping of sample name → DRT result dict (with ``'tau'``/``'gamma'``).
+    stems : list[str], optional
+        Ordered list of sample names. If *None*, keys are sorted alphabetically.
+    out_path : str or Path, optional
+        Full file path for saving the PNG. If *None* the figure is not saved.
+    n_taus : int, default 80
+        Number of τ grid points used for interpolation.
+    ax : matplotlib.axes.Axes, optional
+        Existing axes for embedded mode. If *None* a new figure is created.
+    show : bool, default False
+        Whether to call ``plt.show()``.
+
+    Returns
+    -------
+    str
+        Absolute path to the saved PNG, or an empty string if not saved.
+    """
     owns_fig = ax is None
     if owns_fig:
         fig, ax = plt.subplots(figsize=(7, 4.8))

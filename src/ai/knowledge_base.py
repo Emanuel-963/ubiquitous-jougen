@@ -103,14 +103,35 @@ class ElectrochemicalRule:
     # ── serialisation helpers ─────────────────────────────────────────
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to a JSON-safe dict."""
+        """Convert this rule to a JSON-safe dictionary.
+
+        Returns
+        -------
+        dict[str, Any]
+            All dataclass fields with ``severity`` stored as its
+            string value (e.g. ``"warning"``).
+        """
         d = asdict(self)
         d["severity"] = str(self.severity)
         return d
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ElectrochemicalRule":
-        """Restore from a dict (as read from JSON)."""
+        """Restore an :class:`ElectrochemicalRule` from a dictionary.
+
+        Parameters
+        ----------
+        data : dict[str, Any]
+            Dictionary as produced by :meth:`to_dict` or read from a
+            JSON file.  The ``severity`` key is converted back to a
+            :class:`Severity` enum; unknown values default to
+            ``Severity.INFO``.
+
+        Returns
+        -------
+        ElectrochemicalRule
+            Reconstructed rule instance.
+        """
         data = dict(data)  # shallow copy
         sev = data.pop("severity", "info")
         try:
@@ -235,7 +256,13 @@ class KnowledgeBase:
 
     @property
     def rules(self) -> List[ElectrochemicalRule]:
-        """Return all rules (order: insertion)."""
+        """Return all registered rules in insertion order.
+
+        Returns
+        -------
+        list[ElectrochemicalRule]
+            Shallow copy of the internal rule list.
+        """
         return list(self._rules.values())
 
     def __len__(self) -> int:
@@ -245,20 +272,67 @@ class KnowledgeBase:
         return rule_id in self._rules
 
     def get(self, rule_id: str) -> Optional[ElectrochemicalRule]:
-        """Return a rule by ID, or ``None``."""
+        """Look up a single rule by its unique identifier.
+
+        Parameters
+        ----------
+        rule_id : str
+            The unique rule identifier (e.g. ``"RS_HIGH"``).
+
+        Returns
+        -------
+        ElectrochemicalRule or None
+            The matching rule, or ``None`` if *rule_id* is not registered.
+        """
         return self._rules.get(rule_id)
 
     def by_category(self, category: str) -> List[ElectrochemicalRule]:
-        """Return rules whose category matches *category* (case-insensitive)."""
+        """Return rules whose category matches *category*.
+
+        Parameters
+        ----------
+        category : str
+            Category tag to filter by (case-insensitive), e.g.
+            ``"impedance"``, ``"cycling"``, ``"drt"``.
+
+        Returns
+        -------
+        list[ElectrochemicalRule]
+            All rules belonging to the requested category.
+        """
         cat = category.lower()
         return [r for r in self._rules.values() if r.category.lower() == cat]
 
     def by_severity(self, severity: Severity) -> List[ElectrochemicalRule]:
-        """Return rules matching *severity*."""
+        """Return rules that have the given severity level.
+
+        Parameters
+        ----------
+        severity : Severity
+            The severity enum value to filter by (e.g.
+            ``Severity.CRITICAL``).
+
+        Returns
+        -------
+        list[ElectrochemicalRule]
+            All rules with the matching severity.
+        """
         return [r for r in self._rules.values() if r.severity == severity]
 
     def by_parameter(self, parameter: str) -> List[ElectrochemicalRule]:
-        """Return rules targeting *parameter* (case-insensitive)."""
+        """Return rules targeting a specific measurement parameter.
+
+        Parameters
+        ----------
+        parameter : str
+            Parameter name to filter by (case-insensitive), e.g.
+            ``"Rs"``, ``"Rp"``, ``"n"``.
+
+        Returns
+        -------
+        list[ElectrochemicalRule]
+            All rules whose ``parameter`` field matches.
+        """
         p = parameter.lower()
         return [r for r in self._rules.values() if r.parameter.lower() == p]
 
@@ -270,7 +344,14 @@ class KnowledgeBase:
     # ── Mutation ──────────────────────────────────────────────────────
 
     def add_rule(self, rule: ElectrochemicalRule) -> None:
-        """Register or update a rule (keyed by ``rule_id``)."""
+        """Register a new rule or update an existing one.
+
+        Parameters
+        ----------
+        rule : ElectrochemicalRule
+            The rule to add.  If a rule with the same ``rule_id``
+            already exists it is silently overwritten.
+        """
         self._rules[rule.rule_id] = rule
 
     def add_rules(self, rules: Sequence[ElectrochemicalRule]) -> None:
@@ -331,7 +412,14 @@ class KnowledgeBase:
     # ── JSON persistence ──────────────────────────────────────────────
 
     def to_json(self, path: str | Path) -> None:
-        """Write rules to a JSON file."""
+        """Persist all rules to a JSON file on disk.
+
+        Parameters
+        ----------
+        path : str or Path
+            Destination file path.  Parent directories are created
+            automatically if they do not exist.
+        """
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         data = [r.to_dict() for r in self._rules.values()]
@@ -341,7 +429,26 @@ class KnowledgeBase:
 
     @classmethod
     def from_json(cls, path: str | Path) -> "KnowledgeBase":
-        """Load rules from a JSON file."""
+        """Load a :class:`KnowledgeBase` from a JSON file.
+
+        Parameters
+        ----------
+        path : str or Path
+            Path to a JSON file containing a list of serialised
+            :class:`ElectrochemicalRule` dictionaries.
+
+        Returns
+        -------
+        KnowledgeBase
+            A new instance populated with the deserialised rules.
+
+        Raises
+        ------
+        FileNotFoundError
+            If *path* does not exist.
+        json.JSONDecodeError
+            If the file contains invalid JSON.
+        """
         path = Path(path)
         with open(path, encoding="utf-8") as fh:
             raw: list = json.load(fh)

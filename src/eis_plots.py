@@ -101,7 +101,31 @@ def plot_bode(
     show: bool = True,
     save: bool = True,
 ) -> Optional[str]:
-    """Bode plot with dual y-axis (|Z| left, phase right)."""
+    """Bode plot with dual y-axis (|Z| left, phase right).
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame with *frequency*, *zreal*, *zimag* columns.
+    sample_name : str
+        Label used in the plot title and saved filename.
+    ax : matplotlib.axes.Axes, optional
+        Existing axes for embedded mode. If *None* a new figure is created.
+    fig : matplotlib.figure.Figure, optional
+        Parent figure (used for ``tight_layout``). Ignored when *ax* is *None*.
+    out_dir : str, default ``"outputs/figures"``
+        Directory where the PNG is saved when *save* is True.
+    show : bool, default True
+        Whether to call ``plt.show()`` (standalone mode only).
+    save : bool, default True
+        Whether to persist the figure as PNG (standalone mode only).
+
+    Returns
+    -------
+    str or None
+        Absolute path to the saved PNG, or *None* if required columns are
+        missing.
+    """
     for col in ("frequency", "zreal", "zimag"):
         if col not in df.columns:
             return None

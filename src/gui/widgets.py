@@ -32,11 +32,12 @@ class LogRedirector:
         self._callback = callback
 
     def write(self, msg: str) -> None:
+        """Forward *msg* to the callback if it contains non-whitespace content."""
         if msg.strip():
             self._callback(msg)
 
     def flush(self) -> None:  # noqa: D401
-        """No-op required by the file protocol."""
+        """No-op that satisfies the writable file protocol; returns ``None`` immediately."""
         return None
 
 
@@ -64,7 +65,11 @@ class ChartExporter:
         dpi: int = 150,
         bbox_inches: str = "tight",
     ) -> ExportResult:
-        """Save a matplotlib *Figure* to *dest_path* (PNG / SVG / PDF)."""
+        """Save a matplotlib *Figure* to *dest_path* as PNG, SVG, or PDF.
+
+        Creates intermediate directories if needed and returns an
+        :class:`ExportResult` indicating success or failure.
+        """
         try:
             os.makedirs(os.path.dirname(dest_path) or ".", exist_ok=True)
             fig.savefig(dest_path, dpi=dpi, bbox_inches=bbox_inches)
@@ -74,7 +79,11 @@ class ChartExporter:
 
     @staticmethod
     def copy_image(src_path: str, dest_dir: str) -> ExportResult:
-        """Copy an existing image file into *dest_dir*."""
+        """Copy an existing image file at *src_path* into *dest_dir*.
+
+        Returns an :class:`ExportResult` with the destination path on
+        success, or an error message if the source file is missing.
+        """
         if not os.path.isfile(src_path):
             return ExportResult(
                 success=False, error=f"Arquivo não encontrado: {src_path}"
@@ -121,7 +130,10 @@ class FilterableTableManager:
     # ── Registration ────────────────────────────────────────────
 
     def register(self, key: str) -> TableState:
-        """Register a new table key; return its ``TableState``."""
+        """Register a new table identified by *key* and return its freshly created ``TableState``.
+
+        If *key* already exists its state is silently replaced.
+        """
         state = TableState()
         self._tables[key] = state
         return state
@@ -138,7 +150,7 @@ class FilterableTableManager:
     # ── Data ────────────────────────────────────────────────────
 
     def set_data(self, key: str, df: Optional[pd.DataFrame]) -> None:
-        """Replace the source DataFrame for *key*."""
+        """Replace the source DataFrame for *key* and reset filter, sort, and view state."""
         state = self._tables.get(key)
         if state is None:
             return
@@ -151,7 +163,11 @@ class FilterableTableManager:
     # ── Filtering ───────────────────────────────────────────────
 
     def apply_filter(self, key: str, text: str) -> Optional[pd.DataFrame]:
-        """Apply a case-insensitive text filter.  Returns the view DF."""
+        """Apply a case-insensitive substring filter across all columns.
+
+        Updates the internal view DataFrame and returns it, or ``None``
+        if the table key is unregistered or has no source data.
+        """
         state = self._tables.get(key)
         if state is None or state.source_df is None:
             return None
@@ -172,7 +188,12 @@ class FilterableTableManager:
     # ── Sorting ─────────────────────────────────────────────────
 
     def toggle_sort(self, key: str, column: str) -> Optional[pd.DataFrame]:
-        """Toggle sort on *column*.  Returns the sorted view DF."""
+        """Toggle ascending/descending sort on *column* for the table at *key*.
+
+        On first click the column sorts ascending; subsequent clicks on
+        the same column flip direction.  Returns the sorted view DataFrame
+        or ``None`` if the key is unregistered.
+        """
         state = self._tables.get(key)
         if state is None or state.view_df is None:
             return None

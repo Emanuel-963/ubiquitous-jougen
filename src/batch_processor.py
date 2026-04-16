@@ -82,22 +82,54 @@ class BatchProgress:
 
     @property
     def remaining(self) -> int:
+        """Number of items not yet completed or failed.
+
+        Returns
+        -------
+        int
+            ``total - completed - failed``, floored at 0.
+        """
         return max(0, self.total - self.completed - self.failed)
 
     @property
     def fraction(self) -> float:
-        """Progress fraction 0.0–1.0."""
+        """Progress fraction in the range 0.0–1.0.
+
+        Computed as ``(completed + failed) / total``.  Returns 0.0
+        when ``total`` is zero.
+
+        Returns
+        -------
+        float
+            Value between 0.0 (not started) and 1.0 (all done).
+        """
         if self.total == 0:
             return 0.0
         return (self.completed + self.failed) / self.total
 
     @property
     def percent(self) -> float:
+        """Progress percentage (0–100).
+
+        Returns
+        -------
+        float
+            ``fraction * 100``.
+        """
         return self.fraction * 100.0
 
     @property
     def eta_s(self) -> float:
-        """Estimated time remaining (seconds)."""
+        """Estimated time remaining in seconds.
+
+        Computed as ``remaining / items_per_second``.  Returns 0.0
+        when throughput is zero or negative.
+
+        Returns
+        -------
+        float
+            Estimated seconds until completion.
+        """
         if self.items_per_second <= 0:
             return 0.0
         return self.remaining / self.items_per_second
@@ -174,6 +206,13 @@ class ParallelFitter:
 
     @property
     def n_workers(self) -> int:
+        """Effective number of parallel worker processes.
+
+        Returns
+        -------
+        int
+            Worker count determined at construction time.
+        """
         return self._n_workers
 
     def fit_all(
@@ -388,12 +427,29 @@ class BatchResult:
 
     @property
     def success_rate(self) -> float:
+        """Fraction of files processed successfully.
+
+        Returns
+        -------
+        float
+            ``succeeded / total_files``, or 0.0 when no files.
+        """
         if self.total_files == 0:
             return 0.0
         return self.succeeded / self.total_files
 
     def summary(self) -> str:
-        """One-line human-readable summary."""
+        """One-line human-readable summary of the batch run.
+
+        Includes pipeline name, success/total counts, failure count,
+        and elapsed time.
+
+        Returns
+        -------
+        str
+            Formatted summary, e.g.
+            ``[eis] 12/15 files (80%), 3 failed, 4.2s``.
+        """
         return (
             f"[{self.pipeline}] {self.succeeded}/{self.total_files} files "
             f"({self.success_rate:.0%}), {self.failed} failed, "
@@ -453,12 +509,24 @@ class BatchProcessor:
     # ── Cancellation ─────────────────────────────────────────────
 
     def cancel(self) -> None:
-        """Signal workers to stop as soon as possible."""
+        """Signal workers to stop as soon as possible.
+
+        Sets the internal ``threading.Event`` so that running and
+        pending workers check the flag and exit cooperatively.
+        Safe to call from any thread; no-op if no run is active.
+        """
         if self._cancel is not None:
             self._cancel.set()
 
     @property
     def is_cancelled(self) -> bool:
+        """Whether a cancellation has been requested.
+
+        Returns
+        -------
+        bool
+            ``True`` if ``cancel()`` was called and the event is set.
+        """
         return self._cancel is not None and self._cancel.is_set()
 
     # ── EIS batch ────────────────────────────────────────────────

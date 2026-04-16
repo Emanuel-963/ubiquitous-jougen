@@ -59,7 +59,19 @@ class FittingReport:
     comparison_with_similar: str = ""
 
     def to_text(self) -> str:
-        """Render the full report as plain text."""
+        """Render the full report as plain text.
+
+        Concatenates all non-empty sections (summary, circuit
+        justification, parameter interpretation, quality assessment,
+        recommendations, and historical comparison) into a single
+        Markdown-formatted string separated by blank lines.
+
+        Returns
+        -------
+        str
+            Complete report in Markdown-flavoured plain text.  Empty
+            sections are silently omitted.
+        """
         sections: List[str] = []
 
         if self.summary:

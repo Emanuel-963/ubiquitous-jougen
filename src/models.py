@@ -36,13 +36,35 @@ class _DictAccessMixin:
             raise KeyError(key) from None
 
     def get(self, key: str, default: Any = None) -> Any:
+        """Return the value for *key*, or *default* if it does not exist.
+
+        Mimics ``dict.get()`` for backward-compatible bracket access.
+
+        Parameters
+        ----------
+        key : str
+            Attribute / field name to look up.
+        default : Any, optional
+            Value returned when *key* is not found (default ``None``).
+
+        Returns
+        -------
+        Any
+            Field value or *default*.
+        """
         return getattr(self, key, default)
 
     def __contains__(self, key: str) -> bool:
         return hasattr(self, key)
 
     def keys(self):
-        """Return field names, mimicking dict.keys()."""
+        """Return field names, mimicking ``dict.keys()``.
+
+        Returns
+        -------
+        List[str]
+            Names of all dataclass fields.
+        """
         return [f.name for f in self.__dataclass_fields__.values()]
 
 
@@ -113,22 +135,46 @@ class EISResult(_DictAccessMixin):
     # ── Legacy dict aliases (read-only properties for migration) ─────
     @property
     def df(self) -> pd.DataFrame:
-        """Legacy alias: ``result["df"]`` → ``result.features_df``."""
+        """Legacy alias: ``result["df"]`` → ``result.features_df``.
+
+        Returns
+        -------
+        pd.DataFrame
+            Per-file features before ranking.
+        """
         return self.features_df
 
     @property
     def df_ranked(self) -> pd.DataFrame:
-        """Legacy alias: ``result["df_ranked"]`` → ``result.ranked_df``."""
+        """Legacy alias: ``result["df_ranked"]`` → ``result.ranked_df``.
+
+        Returns
+        -------
+        pd.DataFrame
+            Features after classification and ranking.
+        """
         return self.ranked_df
 
     @property
     def cap_energy(self) -> pd.DataFrame:
-        """Legacy alias: ``result["cap_energy"]`` → ``result.cap_energy_df``."""
+        """Legacy alias: ``result["cap_energy"]`` → ``result.cap_energy_df``.
+
+        Returns
+        -------
+        pd.DataFrame
+            Capacitance, energy and retention table.
+        """
         return self.cap_energy_df
 
     @property
     def df_pca(self) -> Optional[pd.DataFrame]:
-        """Legacy alias: ``result["df_pca"]`` → ``result.pca.df_pca``."""
+        """Legacy alias: ``result["df_pca"]`` → ``result.pca.df_pca``.
+
+        Returns
+        -------
+        pd.DataFrame or None
+            PCA score matrix, or ``None`` if PCA was not computed.
+        """
         return self.pca.df_pca
 
     @property
@@ -147,7 +193,14 @@ class EISResult(_DictAccessMixin):
         return self.pca.figure_paths
 
     def to_dict(self) -> Dict[str, Any]:
-        """Return a dict matching the legacy return contract."""
+        """Return a dict matching the legacy return contract.
+
+        Returns
+        -------
+        Dict[str, Any]
+            Dictionary with keys expected by legacy callers
+            (``df``, ``df_ranked``, ``cap_energy``, etc.).
+        """
         return {
             "df": self.features_df,
             "df_ranked": self.ranked_df,

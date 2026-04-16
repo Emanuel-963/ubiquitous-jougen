@@ -5,11 +5,28 @@ import pandas as pd
 
 
 def preprocess(df: pd.DataFrame) -> pd.DataFrame:
-    """Valida dados EIS básicos e computa omega.
+    """Validate basic EIS data and compute angular frequency.
 
-    - Garante que colunas essenciais existam
-    - Remove linhas com NaN apenas nas colunas necessárias
-    - Ordena por frequência (desc) e calcula omega
+    Ensures that required columns exist, removes rows with NaN in
+    essential columns, filters non-positive frequencies, sorts by
+    frequency (descending) and adds an ``omega`` column.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Raw EIS DataFrame. Must contain columns ``frequency``,
+        ``zreal`` and ``zimag``.
+
+    Returns
+    -------
+    pd.DataFrame
+        Cleaned DataFrame sorted by frequency with an additional
+        ``omega`` (2πf) column.
+
+    Raises
+    ------
+    ValueError
+        If any of the required columns are missing.
     """
     required = {"frequency", "zreal", "zimag"}
     if not required.issubset(df.columns):

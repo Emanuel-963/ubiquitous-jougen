@@ -196,9 +196,11 @@ class ShortcutManager:
         return dict(self._bindings)
 
     def get_binding(self, action: ShortcutAction) -> Optional[ShortcutBinding]:
+        """Return the :class:`ShortcutBinding` for *action*, or ``None`` if not mapped."""
         return self._bindings.get(action)
 
     def get_action_for_tk(self, tk_sequence: str) -> Optional[ShortcutAction]:
+        """Resolve a tkinter event *tk_sequence* to its :class:`ShortcutAction`, or ``None``."""
         for b in self._bindings.values():
             if b.tk_sequence == tk_sequence:
                 return b.action
@@ -206,16 +208,19 @@ class ShortcutManager:
 
     @property
     def registered_actions(self) -> List[ShortcutAction]:
+        """Return a list of all actions that currently have a registered handler."""
         return list(self._handlers.keys())
 
     # -- enable / disable ----------------------------------------------------
 
     @property
     def enabled(self) -> bool:
+        """Whether shortcut dispatching is currently enabled."""
         return self._enabled
 
     @enabled.setter
     def enabled(self, value: bool) -> None:
+        """Enable or disable shortcut dispatching globally."""
         self._enabled = bool(value)
 
     # -- customisation -------------------------------------------------------
@@ -255,22 +260,27 @@ class StatusBarState:
     # -- convenience ---------------------------------------------------------
 
     def set_running(self, pipeline_name: str) -> None:
+        """Transition status to *running* for the given *pipeline_name* and update timestamp."""
         self.pipeline_status = f"running: {pipeline_name}"
         self.last_updated = time.time()
 
     def set_idle(self) -> None:
+        """Reset status to *idle* and update the timestamp."""
         self.pipeline_status = "idle"
         self.last_updated = time.time()
 
     def set_error(self, message: str = "error") -> None:
+        """Transition status to *error* with an optional diagnostic *message* and update timestamp."""
         self.pipeline_status = f"error: {message}"
         self.last_updated = time.time()
 
     @property
     def is_running(self) -> bool:
+        """Return ``True`` if a pipeline is currently running."""
         return self.pipeline_status.startswith("running")
 
     def as_dict(self) -> Dict[str, Any]:
+        """Serialize the status bar state to a plain dictionary (excludes ``last_updated``)."""
         return {
             "pipeline_status": self.pipeline_status,
             "samples_loaded": self.samples_loaded,
@@ -329,13 +339,16 @@ class TooltipRegistry:
         return raw
 
     def remove(self, widget_id: str) -> None:
+        """Remove the tooltip for *widget_id* (no-op if absent)."""
         self._tips.pop(widget_id, None)
 
     def has(self, widget_id: str) -> bool:
+        """Return ``True`` if a tooltip is registered for *widget_id*."""
         return widget_id in self._tips
 
     @property
     def all_ids(self) -> List[str]:
+        """Return a list of all widget identifiers that have registered tooltips."""
         return list(self._tips.keys())
 
     def __len__(self) -> int:
@@ -399,10 +412,12 @@ class AccessibilitySettings:
         return self.font_size
 
     def as_dict(self) -> Dict[str, Any]:
+        """Serialize accessibility preferences to a plain dictionary for persistence."""
         return {"font_size": self.font_size, "high_contrast": self.high_contrast}
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "AccessibilitySettings":
+        """Construct an :class:`AccessibilitySettings` instance from a saved dictionary."""
         return cls(
             font_size=data.get("font_size", DEFAULT_FONT_SIZE),
             high_contrast=data.get("high_contrast", False),

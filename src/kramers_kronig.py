@@ -320,7 +320,23 @@ class KramersKronigValidator:
         x: np.ndarray,
         tau_vec: np.ndarray,
     ) -> np.ndarray:
-        """Reconstruct Z_model from the least-squares solution vector."""
+        """Reconstruct the model impedance from the least-squares solution.
+
+        Parameters
+        ----------
+        omega : np.ndarray
+            Angular frequency vector (rad/s).
+        x : np.ndarray
+            Solution vector ``[R_inf, R_1, …, R_M, (L)]`` from
+            :func:`numpy.linalg.lstsq`.
+        tau_vec : np.ndarray
+            Time constants for the Voigt elements.
+
+        Returns
+        -------
+        np.ndarray
+            Complex impedance array of the same length as *omega*.
+        """
         r_inf = x[0]
         z_model = np.full_like(omega, r_inf, dtype=complex)
         for k, tau_k in enumerate(tau_vec):
@@ -543,10 +559,19 @@ class KramersKronigValidator:
 
     @staticmethod
     def to_dict(result: KKResult) -> Dict[str, Any]:
-        """Convert KK result to a flat dict for CSV/DataFrame integration.
+        """Convert a KK result to a flat dict for CSV/DataFrame integration.
 
-        Returns keys: ``KK_valid``, ``KK_class``, ``KK_mean_re``,
-        ``KK_mean_im``, ``KK_max``, ``KK_n_voigt``.
+        Parameters
+        ----------
+        result : KKResult
+            Output from :meth:`validate`.
+
+        Returns
+        -------
+        dict[str, Any]
+            Keys: ``KK_valid`` (bool), ``KK_class`` (str),
+            ``KK_mean_re_pct`` (float), ``KK_mean_im_pct`` (float),
+            ``KK_max_pct`` (float), ``KK_n_voigt`` (int).
         """
         return {
             "KK_valid": result.kk_valid,

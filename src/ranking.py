@@ -5,11 +5,24 @@ from sklearn.preprocessing import StandardScaler
 
 
 def apply_classification(df: pd.DataFrame, safe: bool = True) -> pd.DataFrame:
-    """Classifica amostras a partir de Rs e Rp.
+    """Classify samples based on Rs and Rp fitted values.
 
-    - Usa K-Means (2 clusters) em (Rs_fit, Rp_fit) padronizados quando houver dados suficientes.
-    - Fallback robusto por quartis se não houver variância ou dados mínimos.
-    - Mantém rótulos de "Indefinida" quando insumos estiverem ausentes.
+    Uses K-Means (2 clusters) on standardised ``(Rs_fit, Rp_fit)``
+    when enough data is available.  Falls back to a robust
+    quartile-based heuristic otherwise.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing at least ``Rs_fit`` and ``Rp_fit``
+        columns from circuit fitting.
+    safe : bool, default True
+        Reserved for future use (safe-mode toggle).
+
+    Returns
+    -------
+    pd.DataFrame
+        Copy of *df* with an added ``Subclass`` column.
     """
 
     df = df.copy()
@@ -56,6 +69,19 @@ def apply_classification(df: pd.DataFrame, safe: bool = True) -> pd.DataFrame:
     rp_q25 = rp.quantile(0.25)
 
     def classify(row):
+        """Classify a single sample by quartile thresholds.
+
+        Parameters
+        ----------
+        row : pd.Series
+            A row containing ``Rs_fit`` and ``Rp_fit`` values.
+
+        Returns
+        -------
+        str
+            Classification label: ``'Interface eficiente'``,
+            ``'Genérica estável'`` or ``'Indefinida (fit falhou)'``.
+        """
         if np.isnan(row["Rs_fit"]) or np.isnan(row["Rp_fit"]):
             return "Indefinida (fit falhou)"
         if row["Rs_fit"] < rs_q75 and row["Rp_fit"] > rp_q25:
@@ -67,10 +93,23 @@ def apply_classification(df: pd.DataFrame, safe: bool = True) -> pd.DataFrame:
 
 
 def _compute_composite_score(df: pd.DataFrame) -> pd.Series:
-    """Score ponderado usando métricas chave.
+    """Compute a weighted composite score from key metrics.
 
-    Peso padrão: Rp(+), Rs(-), C_mean(+), Energy_mean(+).
-    Normaliza por z-score para torná-los comparáveis.
+    Default weights: ``Rp_fit`` (+0.35), ``Rs_fit`` (−0.25),
+    ``C_mean`` (+0.25), ``Energy_mean`` (+0.15).  Each metric is
+    z-score normalised before weighting.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame with optional columns ``Rp_fit``, ``Rs_fit``,
+        ``C_mean`` and ``Energy_mean``.
+
+    Returns
+    -------
+    pd.Series
+        Composite score aligned with *df*'s index.  ``NaN`` when
+        no metric columns are available.
     """
 
     weights = {
@@ -99,10 +138,22 @@ def _compute_composite_score(df: pd.DataFrame) -> pd.Series:
 
 
 def rank_within_subclass(df: pd.DataFrame) -> pd.DataFrame:
-    """Ranking interno por desempenho eletroquímico.
+    """Rank samples within each subclass by electrochemical performance.
 
-    - Usa score composto (Rp alto, Rs baixo, C_mean alto, Energy_mean alta).
-    - Fallback para Rp quando score não estiver disponível.
+    Uses the composite score (high Rp, low Rs, high C_mean,
+    high Energy_mean).  Falls back to ``Rp_fit`` ranking when the
+    composite score is entirely ``NaN``.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame with a ``Subclass`` column (from
+        :func:`apply_classification`) and metric columns.
+
+    Returns
+    -------
+    pd.DataFrame
+        Copy of *df* with added ``Score`` and ``Rank`` columns.
     """
 
     df = df.copy()

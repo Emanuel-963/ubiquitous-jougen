@@ -56,17 +56,29 @@ class PipelineController:
     # ── Event bus ───────────────────────────────────────────────
 
     def on(self, event: str, callback: Callable[..., Any]) -> None:
-        """Register *callback* for *event*."""
+        """Register *callback* to be invoked whenever *event* is emitted.
+
+        Multiple callbacks may be registered for the same event; they are
+        called in registration order.
+        """
         self._listeners.setdefault(event, []).append(callback)
 
     def off(self, event: str, callback: Callable[..., Any]) -> None:
-        """Un-register *callback* from *event* (no-op if absent)."""
+        """Remove *callback* from the listener list for *event*.
+
+        Does nothing if *callback* was never registered for *event*.
+        """
         cbs = self._listeners.get(event, [])
         if callback in cbs:
             cbs.remove(callback)
 
     def emit(self, event: str, *args: Any, **kwargs: Any) -> None:
-        """Fire all callbacks registered for *event*."""
+        """Fire all callbacks registered for *event*, forwarding *args* and *kwargs*.
+
+        Listeners are invoked synchronously in registration order.  A copy
+        of the listener list is iterated so that callbacks may safely
+        unregister themselves during dispatch.
+        """
         for cb in list(self._listeners.get(event, [])):
             cb(*args, **kwargs)
 
@@ -310,7 +322,12 @@ class PipelineController:
     # ── Pipeline lifecycle ─────────────────────────────────────
 
     def start_pipeline(self, pipeline_name: str) -> None:
-        """Mark the beginning of a pipeline run (no threading here)."""
+        """Prepare application state for a new pipeline run.
+
+        Sets ``is_running``, clears previous plot items, disables UI
+        buttons, and emits ``progress_start`` so the view can show a
+        spinner or progress indicator.  Threading is handled by the caller.
+        """
         self.state.is_running = True
         self.state.status = f"rodando {pipeline_name}"
         self.state.plot_items.clear()
@@ -321,7 +338,11 @@ class PipelineController:
     # ── Settings management ────────────────────────────────────
 
     def load_settings(self) -> Dict[str, Any]:
-        """Load persisted JSON settings into ``state.gui_settings``."""
+        """Load persisted JSON settings from disk into ``state.gui_settings``.
+
+        Returns the loaded dictionary, or an empty dict if the file is
+        missing, unreadable, or contains non-dict JSON.
+        """
         if not self.settings_path or not os.path.exists(self.settings_path):
             return {}
         try:
@@ -334,7 +355,11 @@ class PipelineController:
             return {}
 
     def save_settings(self) -> bool:
-        """Persist ``state.gui_settings`` to the JSON file."""
+        """Persist ``state.gui_settings`` to the JSON file on disk.
+
+        Returns ``True`` on success, ``False`` if no path is configured
+        or the write fails.
+        """
         if not self.settings_path:
             return False
         try:

@@ -30,6 +30,22 @@ def _save_with_watermark(fig, filepath, dpi=300, bbox_inches="tight"):
 
 
 def nyquist(df, label=None):
+    """Plot a Nyquist diagram (Z' vs -Z'').
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DataFrame containing at least the columns ``zreal`` (real part of
+        impedance) and ``zimag`` (imaginary part of impedance).
+    label : str or None, optional
+        Legend label for the plotted curve.  If *None* the legend is not
+        shown.
+
+    Returns
+    -------
+    None
+        The plot is drawn on the current Matplotlib axes.
+    """
     plt.plot(df["zreal"], -df["zimag"], "o-", label=label)
     plt.xlabel("Z' (Ω)")
     plt.ylabel("-Z'' (Ω)")
@@ -39,7 +55,27 @@ def nyquist(df, label=None):
 
 
 def pca_2d(df_pca, labels, title="PCA 2D", out_dir="outputs/figures", evr=None):
-    """Gráfico 2D de PCA colorido por subclasse (PC1 x PC2)."""
+    """Generate a 2-D PCA scatter plot coloured by sub-class (PC1 × PC2).
+
+    Parameters
+    ----------
+    df_pca : pandas.DataFrame
+        DataFrame with at least columns ``PC1`` and ``PC2``.
+    labels : pandas.Series
+        Series of class/sub-class labels aligned with *df_pca* rows.
+    title : str, optional
+        Plot title (default ``'PCA 2D'``).
+    out_dir : str, optional
+        Directory where the figure is saved (default ``'outputs/figures'``).
+    evr : pandas.Series or None, optional
+        Explained-variance ratio per component.  When provided the axis
+        labels include the percentage of variance explained.
+
+    Returns
+    -------
+    str
+        File path of the saved PNG image.
+    """
     os.makedirs(out_dir, exist_ok=True)
 
     plt.figure(figsize=(10, 8))
@@ -80,7 +116,27 @@ def pca_2d(df_pca, labels, title="PCA 2D", out_dir="outputs/figures", evr=None):
 
 
 def pca_3d(df_pca, labels, title="PCA 3D", out_dir="outputs/figures", evr=None):
-    """Gráfico 3D de PCA colorido por subclasse."""
+    """Generate a 3-D PCA scatter plot coloured by sub-class (PC1 × PC2 × PC3).
+
+    Parameters
+    ----------
+    df_pca : pandas.DataFrame
+        DataFrame with at least columns ``PC1``, ``PC2``, and ``PC3``.
+    labels : pandas.Series
+        Series of class/sub-class labels aligned with *df_pca* rows.
+    title : str, optional
+        Plot title (default ``'PCA 3D'``).
+    out_dir : str, optional
+        Directory where the figure is saved (default ``'outputs/figures'``).
+    evr : pandas.Series or None, optional
+        Explained-variance ratio per component.  When provided the axis
+        labels include the percentage of variance explained.
+
+    Returns
+    -------
+    str or None
+        File path of the saved PNG image, or *None* if ``PC3`` is missing.
+    """
     os.makedirs(out_dir, exist_ok=True)
 
     if "PC3" not in df_pca.columns:
@@ -261,7 +317,23 @@ def scatter_rank_retention(df, out_dir="outputs/figures"):
 
 
 def correlation_heatmap(df, cols, out_dir="outputs/figures"):
-    """Heatmap de correlação (Spearman) com anotação de coeficientes."""
+    """Plot a Spearman correlation heatmap with coefficient annotations.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Source data containing the columns listed in *cols*.
+    cols : list of str
+        Column names to include in the correlation matrix.
+    out_dir : str, optional
+        Directory where the figure is saved (default ``'outputs/figures'``).
+
+    Returns
+    -------
+    str or None
+        File path of the saved PNG image, or *None* if fewer than two
+        valid columns are available or the data is empty.
+    """
     os.makedirs(out_dir, exist_ok=True)
     cols = [c for c in cols if c in df.columns]
     if len(cols) < 2:
@@ -426,7 +498,24 @@ def _safe_filename(text: str) -> str:
 
 
 def series_by_prefix(df, value_col: str, out_dir="outputs/figures"):
-    """Plota série (linha) ordenada por prefixo numérico do nome do arquivo."""
+    """Plot a line series ordered by the numeric prefix of each file name.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DataFrame whose index contains file names with a leading numeric
+        prefix (e.g. ``'01 sample.txt'``).
+    value_col : str
+        Column in *df* to plot on the y-axis.
+    out_dir : str, optional
+        Directory where figures are saved (default ``'outputs/figures'``).
+
+    Returns
+    -------
+    list of str or None
+        List of file paths for the saved PNG images, or *None* if no
+        plottable data is found.
+    """
     os.makedirs(out_dir, exist_ok=True)
     if value_col not in df.columns:
         return None
@@ -472,6 +561,24 @@ def series_by_prefix(df, value_col: str, out_dir="outputs/figures"):
 
 
 def boxplot_param(df, param, by, out_dir="outputs/figures"):
+    """Create a box-plot of a parameter grouped by a categorical column.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Source data.
+    param : str
+        Numeric column to plot.
+    by : str
+        Categorical column used to group the boxes.
+    out_dir : str, optional
+        Directory where the figure is saved (default ``'outputs/figures'``).
+
+    Returns
+    -------
+    str
+        File path of the saved PNG image.
+    """
     os.makedirs(out_dir, exist_ok=True)
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111)

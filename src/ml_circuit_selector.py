@@ -83,17 +83,40 @@ class CircuitMLSelector:
 
     @property
     def is_trained(self) -> bool:
-        """``True`` when the forest has been fitted on enough data."""
+        """Check whether the Random Forest has been successfully trained.
+
+        Returns
+        -------
+        bool
+            ``True`` if :meth:`train` has been called and the store
+            contained at least ``min_samples`` records with ≥ 2 distinct
+            circuit classes; ``False`` otherwise.
+        """
         return self._trained
 
     @property
     def n_training_samples(self) -> int:
-        """Number of samples the last ``train()`` used."""
+        """Number of valid samples used in the most recent training run.
+
+        Returns
+        -------
+        int
+            Count of records with complete, finite spectral features that
+            were passed to ``RandomForestClassifier.fit``.  Returns 0 if
+            the model has never been trained.
+        """
         return self._n_train
 
     @property
     def classes(self) -> List[str]:
-        """Circuit names the model can predict."""
+        """Circuit names the trained model can predict.
+
+        Returns
+        -------
+        list[str]
+            Sorted class labels learnt by the Random Forest.  Returns an
+            empty list when the model is not trained.
+        """
         return list(self._classes)
 
     # ── Train ────────────────────────────────────────────────────────

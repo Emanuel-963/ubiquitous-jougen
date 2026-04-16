@@ -176,7 +176,20 @@ def reload_strings() -> None:
 
 
 def set_language(lang: str) -> None:
-    """Set the active language.  Must be one of ``LANGUAGES``."""
+    """Set the active language for all subsequent ``tr()`` calls.
+
+    The code is lower-cased and truncated to two characters.  If it is
+    not in ``LANGUAGES`` the language falls back to ``"pt"``.
+
+    Parameters
+    ----------
+    lang : str
+        Language code (e.g. ``"en"``, ``"pt"``, ``"es"``).
+
+    Returns
+    -------
+    None
+    """
     global _current
     code = lang.lower().strip()[:2]
     if code not in LANGUAGES:
@@ -186,12 +199,24 @@ def set_language(lang: str) -> None:
 
 
 def get_language() -> str:
-    """Return the current language code (``"pt"``, ``"en"`` or ``"es"``)."""
+    """Return the current language code.
+
+    Returns
+    -------
+    str
+        Active language code (``"pt"``, ``"en"`` or ``"es"``).
+    """
     return _current
 
 
 def get_languages() -> Tuple[str, ...]:
-    """Return all supported language codes."""
+    """Return all supported language codes.
+
+    Returns
+    -------
+    Tuple[str, ...]
+        Language codes recognised by ``set_language``.
+    """
     return LANGUAGES
 
 
@@ -312,7 +337,22 @@ def missing_keys(lang: str) -> List[str]:
 
 
 def translation_coverage(lang: str) -> float:
-    """Return fraction of ``pt.json`` keys covered by *lang* (0.0-1.0)."""
+    """Return the fraction of ``pt.json`` keys covered by *lang*.
+
+    The Portuguese file is treated as the reference set.  A return value
+    of ``1.0`` means every Portuguese key has a corresponding entry in
+    the target language.
+
+    Parameters
+    ----------
+    lang : str
+        Language code to evaluate (e.g. ``"en"``, ``"es"``).
+
+    Returns
+    -------
+    float
+        Coverage ratio in the range ``[0.0, 1.0]``.
+    """
     _ensure_loaded()
     pt_keys = set(_flat.get("pt", {}).keys())
     if not pt_keys:

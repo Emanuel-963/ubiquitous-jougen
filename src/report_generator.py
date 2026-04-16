@@ -157,7 +157,22 @@ class GenerationHistory:
             json.dump(self._records, fh, indent=2, ensure_ascii=False, default=str)
 
     def add(self, record: GenerationRecord) -> int:
-        """Add a generation record and return the version number."""
+        """Add a generation record and return its version number.
+
+        The version is auto-incremented per unique ``output_path``
+        and the history is persisted to disk immediately.
+
+        Parameters
+        ----------
+        record : GenerationRecord
+            The record to append.  Its ``version`` field is updated
+            in-place before storage.
+
+        Returns
+        -------
+        int
+            Assigned version number (1-based).
+        """
         # Calculate version based on same output_path
         same_path = [
             r for r in self._records
@@ -172,7 +187,13 @@ class GenerationHistory:
 
     @property
     def records(self) -> List[Dict[str, Any]]:
-        """Return all history records."""
+        """Return all history records as a defensive copy.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            Each dict mirrors the fields of ``GenerationRecord``.
+        """
         return list(self._records)
 
     def __len__(self) -> int:
@@ -562,7 +583,17 @@ class _IonFlowPDF:
         self.pdf.set_text_color(*rgb)
 
     def add_cover_page(self, ai_summary: Optional[str] = None) -> None:
-        """Add a professional cover page."""
+        """Add a professional cover page to the PDF.
+
+        Renders logo, title, subtitle, author, institution, date,
+        and an optional AI-generated executive summary.
+
+        Parameters
+        ----------
+        ai_summary : str or None, optional
+            Executive summary text.  If provided it is printed below
+            the header block on the cover page.
+        """
         cfg = self.cfg
         pw = self.pdf.w - 2 * cfg.margin  # printable width
 
@@ -620,7 +651,18 @@ class _IonFlowPDF:
             self.pdf.ln(5)
 
     def add_section_header(self, title: str, level: int = 1) -> None:
-        """Add a styled section header."""
+        """Add a styled section header to the PDF.
+
+        Level 1 headers start on a new page with an underline rule.
+        Levels 2 and 3 are progressively smaller inline headers.
+
+        Parameters
+        ----------
+        title : str
+            Header text.
+        level : int, optional
+            Heading depth (1, 2, or 3).  Default is 1.
+        """
         cfg = self.cfg
         pw = self.pdf.w - 2 * cfg.margin
 
@@ -646,7 +688,16 @@ class _IonFlowPDF:
             self.pdf.ln(2)
 
     def add_text(self, text: str) -> None:
-        """Add body text."""
+        """Add a block of body text to the current page.
+
+        Markdown bold/italic markers and non-Latin1 characters are
+        stripped automatically via ``_clean_text``.
+
+        Parameters
+        ----------
+        text : str
+            Plain or lightly-formatted text to render.
+        """
         cfg = self.cfg
         pw = self.pdf.w - 2 * cfg.margin
         self._set_color(cfg.color_secondary)
@@ -710,7 +761,22 @@ class _IonFlowPDF:
             self.add_text(f"Showing {max_rows} of {len(df)} rows.")
 
     def add_image(self, path: str, caption: str = "", width: float = 0) -> None:
-        """Add an image with optional caption."""
+        """Add an image with optional caption to the PDF.
+
+        The image is centred horizontally.  If the current vertical
+        position is near the page bottom a new page is added first.
+        Missing or invalid paths are silently skipped.
+
+        Parameters
+        ----------
+        path : str
+            Filesystem path to the image file.
+        caption : str, optional
+            Italic caption rendered below the image.
+        width : float, optional
+            Image width in mm.  ``0`` (default) uses 80 % of the
+            printable width.
+        """
         if not path or not os.path.exists(path):
             return
 
@@ -758,7 +824,21 @@ class _IonFlowPDF:
         self.pdf.ln(6)
 
     def save(self, path: str) -> str:
-        """Write PDF to disk."""
+        """Write the assembled PDF document to disk.
+
+        Parent directories are created automatically if they do not
+        exist.
+
+        Parameters
+        ----------
+        path : str
+            Destination file path (e.g. ``"outputs/report.pdf"``).
+
+        Returns
+        -------
+        str
+            The *path* argument, echoed back for chaining.
+        """
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         self.pdf.output(path)
         return path

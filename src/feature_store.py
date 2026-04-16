@@ -95,7 +95,20 @@ class FeatureStore:
     # ── Core CRUD ────────────────────────────────────────────────────
 
     def add_record(self, record: Dict[str, Any]) -> None:
-        """Append a record and persist to disk."""
+        """Append a single record and persist to disk.
+
+        Parameters
+        ----------
+        record : dict[str, Any]
+            Flat dictionary with at least ``sample_id`` and ``circuit_name``.
+            A ``timestamp`` key is auto-filled with the current ISO-8601
+            datetime if absent.
+
+        Raises
+        ------
+        ValueError
+            If any key listed in ``_REQUIRED_KEYS`` is missing from *record*.
+        """
         missing = [k for k in _REQUIRED_KEYS if k not in record]
         if missing:
             raise ValueError(f"Record missing required keys: {missing}")
@@ -109,7 +122,23 @@ class FeatureStore:
         logger.debug("FeatureStore: added record for '%s'", record["sample_id"])
 
     def add_records(self, records: Sequence[Dict[str, Any]]) -> None:
-        """Bulk-add records (single save at the end)."""
+        """Bulk-add multiple records with a single disk write.
+
+        Validates every record before appending. The JSON file is written
+        only once after all records have been appended, which is faster
+        than calling :meth:`add_record` in a loop.
+
+        Parameters
+        ----------
+        records : Sequence[dict[str, Any]]
+            Iterable of record dicts.  Each must contain at least
+            ``sample_id`` and ``circuit_name``.
+
+        Raises
+        ------
+        ValueError
+            If any record is missing a required key.
+        """
         for rec in records:
             missing = [k for k in _REQUIRED_KEYS if k not in rec]
             if missing:
@@ -121,7 +150,15 @@ class FeatureStore:
 
     @property
     def records(self) -> List[Dict[str, Any]]:
-        """Return a shallow copy of all records."""
+        """Return a shallow copy of all records.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            A new list containing references to the stored record dicts.
+            Mutating the list itself does not affect the store, but
+            mutating individual dicts *will* modify the underlying data.
+        """
         return list(self._records)
 
     def __len__(self) -> int:
@@ -138,7 +175,23 @@ class FeatureStore:
         circuit_name: Optional[str] = None,
         sample_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        """Simple filter — returns records matching all supplied criteria."""
+        """Filter records matching all supplied criteria.
+
+        Criteria are combined with logical AND.  Passing no arguments
+        returns all records.
+
+        Parameters
+        ----------
+        circuit_name : str | None
+            If given, keep only records whose ``circuit_name`` equals this.
+        sample_id : str | None
+            If given, keep only records whose ``sample_id`` equals this.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            Matching records (may be empty).
+        """
         results = self._records
         if circuit_name is not None:
             results = [r for r in results if r.get("circuit_name") == circuit_name]
@@ -147,11 +200,25 @@ class FeatureStore:
         return results
 
     def unique_circuits(self) -> List[str]:
-        """Return sorted list of distinct circuit names."""
+        """Return sorted list of distinct circuit names.
+
+        Returns
+        -------
+        list[str]
+            Alphabetically sorted unique values of the ``circuit_name``
+            field across all stored records.
+        """
         return sorted({r.get("circuit_name", "") for r in self._records})
 
     def unique_samples(self) -> List[str]:
-        """Return sorted list of distinct sample IDs."""
+        """Return sorted list of distinct sample IDs.
+
+        Returns
+        -------
+        list[str]
+            Alphabetically sorted unique values of the ``sample_id``
+            field across all stored records.
+        """
         return sorted({r.get("sample_id", "") for r in self._records})
 
     # ── Persistence ──────────────────────────────────────────────────
@@ -176,13 +243,23 @@ class FeatureStore:
             self._records = []
 
     def clear(self) -> None:
-        """Remove all records and delete the JSON file."""
+        """Remove all records from memory and delete the backing JSON file.
+
+        After calling this method the store is empty and
+        :pyattr:`len(store)` returns 0.  The file on disk is removed
+        if it exists.
+        """
         self._records.clear()
         if self.path.exists():
             self.path.unlink()
 
     def reload(self) -> None:
-        """Re-read from disk (useful if another process wrote)."""
+        """Re-read all records from the backing JSON file.
+
+        Discards the current in-memory records and reloads from disk.
+        Useful when another process or thread has appended records to
+        the same file.
+        """
         self._records.clear()
         if self.path.exists():
             self._load()

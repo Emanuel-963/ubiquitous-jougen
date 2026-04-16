@@ -555,6 +555,14 @@ class _MLPredictor:
 
     @property
     def is_trained(self) -> bool:
+        """Whether the internal ML models have been successfully trained.
+
+        Returns
+        -------
+        bool
+            ``True`` if :meth:`train` completed with at least one valid
+            target model; ``False`` otherwise.
+        """
         return self._is_trained
 
     def train(
@@ -615,7 +623,23 @@ class _MLPredictor:
         self,
         params: Dict[str, float],
     ) -> CyclingPrediction:
-        """Predict cycling performance from EIS parameters."""
+        """Predict cycling performance from EIS parameters.
+
+        Falls back to :func:`_heuristic_cycling_prediction` when the
+        model is untrained or the feature vector cannot be built.
+
+        Parameters
+        ----------
+        params : dict[str, float]
+            EIS parameter dictionary keyed by feature names in
+            ``_EIS_FEATURE_KEYS``.
+
+        Returns
+        -------
+        CyclingPrediction
+            Predicted energy, power and retention together with
+            confidence score, method tag, and explanation.
+        """
         if not self._is_trained:
             return _heuristic_cycling_prediction(params)
 
@@ -739,7 +763,14 @@ class PerformancePredictor:
 
     @property
     def is_ml_trained(self) -> bool:
-        """Whether the ML model has been trained."""
+        """Whether the underlying ML regressor has been trained.
+
+        Returns
+        -------
+        bool
+            ``True`` if the internal :class:`_MLPredictor` was
+            successfully fitted on ≥ 30 historical records.
+        """
         return self._ml.is_trained
 
     # ── Training ──────────────────────────────────────────────────────
@@ -795,7 +826,23 @@ class PerformancePredictor:
         self,
         eis_result: Any,
     ) -> CyclingPrediction:
-        """Predict cycling performance from an EISResult object."""
+        """Predict cycling performance from an ``EISResult`` object.
+
+        Extracts median EIS parameters from ``eis_result.ranked_df``
+        and delegates to :meth:`predict_cycling_from_eis`.
+
+        Parameters
+        ----------
+        eis_result : Any
+            An object with a ``ranked_df`` attribute (a
+            :class:`~pandas.DataFrame` of ranked fitting results).
+
+        Returns
+        -------
+        CyclingPrediction
+            Predicted cycling metrics, or an empty prediction with an
+            explanatory message when input data is missing.
+        """
         ranked_df = getattr(eis_result, "ranked_df", None)
         if ranked_df is None or not isinstance(ranked_df, pd.DataFrame) or ranked_df.empty:
             return CyclingPrediction(
@@ -831,7 +878,23 @@ class PerformancePredictor:
         eis_before: Any,
         eis_after: Any,
     ) -> DegradationPrediction:
-        """Compare two EISResult objects."""
+        """Compare two ``EISResult`` objects to classify degradation.
+
+        Median EIS parameters are extracted from each result's
+        ``ranked_df`` and passed to :meth:`predict_degradation`.
+
+        Parameters
+        ----------
+        eis_before : Any
+            EIS result **before** cycling.
+        eis_after : Any
+            EIS result **after** cycling.
+
+        Returns
+        -------
+        DegradationPrediction
+            Classification with mechanism, severity and explanation.
+        """
         df_before = getattr(eis_before, "ranked_df", None)
         df_after = getattr(eis_after, "ranked_df", None)
         if df_before is None or df_after is None:
@@ -871,7 +934,22 @@ class PerformancePredictor:
         self,
         eis_result: Any,
     ) -> List[Improvement]:
-        """Suggest improvements from an EISResult object."""
+        """Suggest improvements extracted from an ``EISResult`` object.
+
+        Median EIS parameters are extracted from ``eis_result.ranked_df``
+        and fed to :meth:`recommend_improvements`.
+
+        Parameters
+        ----------
+        eis_result : Any
+            An object with a ``ranked_df`` attribute.
+
+        Returns
+        -------
+        list[Improvement]
+            Priority-sorted improvement suggestions, or an empty list
+            when input data is unavailable.
+        """
         ranked_df = getattr(eis_result, "ranked_df", None)
         if ranked_df is None or not isinstance(ranked_df, pd.DataFrame) or ranked_df.empty:
             return []

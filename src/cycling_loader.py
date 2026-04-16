@@ -8,7 +8,29 @@ from pathlib import Path
 
 
 def load_cycling_files(directory: Path) -> dict[str, pd.DataFrame]:
-    """Load all .txt files from directory, handling real file format with semicolon separator and European decimals."""
+    """Load all cycling ``.txt`` files from a directory.
+
+    Files are expected to use semicolon separators and European decimal
+    format (comma). Columns are renamed to the internal convention
+    (*tempo*, *corrente*, *potencial*, *ciclo*) and rows with NaN/inf
+    values are dropped.
+
+    Parameters
+    ----------
+    directory : pathlib.Path
+        Folder containing ``.txt`` cycling data files.
+
+    Returns
+    -------
+    dict[str, pd.DataFrame]
+        Mapping of file stem → cleaned DataFrame with columns
+        *tempo*, *corrente*, *potencial*, and *ciclo*.
+
+    Raises
+    ------
+    ValueError
+        If a file does not contain the expected columns after renaming.
+    """
     files = list(directory.glob("*.txt"))
     data = {}
     for file in files:
