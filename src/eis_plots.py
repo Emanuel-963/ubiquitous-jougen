@@ -5,8 +5,9 @@ All plot functions support both standalone (save/show) and embeddable
 """
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -173,6 +174,8 @@ def plot_ragone(
     export_tables: Dict[str, pd.DataFrame],
     *,
     highlight_sample: Optional[str] = None,
+    target_energy: Optional[float] = None,
+    target_power: Optional[float] = None,
     ax: Optional[Axes] = None,
     fig: Optional[Figure] = None,
     out_dir: str = "outputs/figures",
@@ -257,6 +260,19 @@ def plot_ragone(
     ax.set_title("Ragone Plot", fontsize=12, fontweight="bold")
     ax.grid(True, which="both", alpha=0.2, linestyle="--", linewidth=0.5)
 
+    # ── Target point & reference zones ──────────────────────────
+    if target_energy is not None and target_power is not None:
+        ax.scatter(
+            [target_energy], [target_power],
+            s=220, marker="X", c="#e74c3c",
+            edgecolors="black", linewidths=1.0,
+            zorder=6, label="Target",
+        )
+        # Reference technology zones (approximate, log-log)
+        _draw_reference_zones(ax)
+
+        ax.legend(loc="best", fontsize=8, framealpha=0.85)
+
     if fig is not None:
         fig.tight_layout()
 
@@ -277,6 +293,176 @@ def plot_ragone(
 
 def _norm(text: str) -> str:
     return os.path.splitext(str(text).strip().lower())[0]
+
+
+# ── Reference technology zones for Ragone plot ─────────────────────
+
+def _draw_reference_zones(ax: Axes) -> None:
+    """Draw approximate reference technology zones on a Ragone plot.
+
+    Regions based on literature values for supercapacitors, batteries,
+    and fuel cells on a log-log Energy (Wh/kg) vs Power (W/kg) plot.
+    """
+    zones = [
+        # (x_min, x_max, y_min, y_max, label, colour)
+        (0.01, 0.1, 1e3, 1e5, "Capacitors", "#bdc3c7"),
+        (1, 30, 100, 1e4, "Supercapacitors", "#aed6f1"),
+        (20, 300, 10, 1e3, "Li-ion Batteries", "#a9dfbf"),
+        (200, 2000, 1, 500, "Fuel Cells", "#f9e79f"),
+    ]
+    for x0, x1, y0, y1, label, colour in zones:
+        ax.fill_between(
+            [x0, x1], y0, y1,
+            alpha=0.12, color=colour, zorder=0,
+        )
+        # Place label at geometric center
+        cx = np.sqrt(x0 * x1)
+        cy = np.sqrt(y0 * y1)
+        ax.text(
+            cx, cy, label,
+            ha="center", va="center", fontsize=7,
+            color="#555555", fontstyle="italic", zorder=1,
+        )
+
+
+# ── Gap analysis to target ──────────────────────────────────────────
+
+
+@dataclass
+class RagoneGapResult:
+    """Result of gap analysis between measured samples and a Ragone target."""
+
+    target_energy: float
+    target_power: float
+    sample_medians: Dict[str, Tuple[float, float]]  # name → (energy, power)
+    best_sample: str
+    best_energy: float
+    best_power: float
+    energy_error_pct: float      # relative error (%) to target energy
+    power_error_pct: float       # relative error (%) to target power
+    energy_gap: float            # absolute gap (Wh/kg)
+    power_gap: float             # absolute gap (W/kg)
+    energy_factor: float         # how many × improvement needed
+    power_factor: float          # how many × improvement needed
+    recommendations: List[str]
+
+
+def ragone_gap_analysis(
+    export_tables: Dict[str, pd.DataFrame],
+    target_energy: float = 300.0,
+    target_power: float = 3000.0,
+) -> Optional[RagoneGapResult]:
+    """Compute relative error and gap to a Ragone target point.
+
+    Parameters
+    ----------
+    export_tables : ``{sample: DataFrame}`` with energy/power columns.
+    target_energy : Target energy density in Wh/kg (default 300).
+    target_power : Target power density in W/kg (default 3000).
+
+    Returns
+    -------
+    RagoneGapResult or None if no valid data.
+    """
+    medians: Dict[str, Tuple[float, float]] = {}
+
+    col_e = col_p = None
+    for tbl in export_tables.values():
+        if col_e is None:
+            for c in ("Energia (Wh/kg)", "energia_wh_kg"):
+                if c in tbl.columns:
+                    col_e = c
+                    break
+        if col_p is None:
+            for c in ("Potência (W/kg)", "potencia_w_kg"):
+                if c in tbl.columns:
+                    col_p = c
+                    break
+        if col_e and col_p:
+            break
+
+    if col_e is None or col_p is None:
+        return None
+
+    for name, tbl in export_tables.items():
+        if col_e not in tbl.columns or col_p not in tbl.columns:
+            continue
+        energy = pd.to_numeric(tbl[col_e], errors="coerce")
+        power = pd.to_numeric(tbl[col_p], errors="coerce")
+        mask = energy.notna() & power.notna() & (energy > 0) & (power > 0)
+        if mask.sum() == 0:
+            continue
+        medians[name] = (float(energy[mask].median()), float(power[mask].median()))
+
+    if not medians:
+        return None
+
+    # Find best sample (closest in Euclidean log-space to target)
+    best_name = ""
+    best_dist = float("inf")
+    for name, (e, p) in medians.items():
+        dist = np.sqrt(
+            (np.log10(e) - np.log10(target_energy)) ** 2
+            + (np.log10(p) - np.log10(target_power)) ** 2
+        )
+        if dist < best_dist:
+            best_dist = dist
+            best_name = name
+
+    best_e, best_p = medians[best_name]
+
+    energy_error_pct = abs(target_energy - best_e) / target_energy * 100
+    power_error_pct = abs(target_power - best_p) / target_power * 100
+    energy_gap = target_energy - best_e
+    power_gap = target_power - best_p
+    energy_factor = target_energy / best_e if best_e > 0 else float("inf")
+    power_factor = target_power / best_p if best_p > 0 else float("inf")
+
+    recs: List[str] = []
+    if energy_factor > 1.05:
+        recs.append(
+            f"Energy density needs {energy_factor:.1f}× improvement "
+            f"({best_e:.2f} → {target_energy:.0f} Wh/kg). "
+            "Consider: increase active material loading, optimise electrolyte "
+            "concentration, extend potential window."
+        )
+    if power_factor > 1.05:
+        recs.append(
+            f"Power density needs {power_factor:.1f}× improvement "
+            f"({best_p:.1f} → {target_power:.0f} W/kg). "
+            "Consider: reduce Rs (better contacts), increase conductivity, "
+            "optimise electrode porosity for fast ion transport."
+        )
+    if energy_factor <= 1.05 and power_factor <= 1.05:
+        recs.append("Target achieved! Current performance meets the goal.")
+
+    # Material-specific recommendations
+    if energy_gap > 0:
+        recs.append(
+            "Electrode design: increase specific capacitance via "
+            "nanostructuring or surface activation to boost energy."
+        )
+    if power_gap > 0:
+        recs.append(
+            "Kinetics: minimise charge-transfer resistance (Rp) and "
+            "diffusion impedance to improve rate capability and power."
+        )
+
+    return RagoneGapResult(
+        target_energy=target_energy,
+        target_power=target_power,
+        sample_medians=medians,
+        best_sample=best_name,
+        best_energy=best_e,
+        best_power=best_p,
+        energy_error_pct=energy_error_pct,
+        power_error_pct=power_error_pct,
+        energy_gap=energy_gap,
+        power_gap=power_gap,
+        energy_factor=energy_factor,
+        power_factor=power_factor,
+        recommendations=recs,
+    )
 
 
 # =====================================================================

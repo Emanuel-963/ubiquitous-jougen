@@ -24,7 +24,7 @@ from src.feature_store import FeatureStore, FittingHistory, record_from_shortlis
 from src.loader import load_eis_file
 from src.ml_circuit_selector import CircuitMLSelector
 from src.logger import setup_logging
-from src.metadata import extract_metadata
+from src.metadata import extract_metadata, extract_material_type, extract_synthesis_process
 from src.models import EISResult, PCAResult
 from src.pca_analysis import run_pca
 from src.physics_metrics import extract_features
@@ -40,8 +40,10 @@ from src.visualization import (
     pca_2d_metric,
     scatter_rank_retention,
     correlation_heatmap,
+    production_heatmap,
     series_by_prefix,
 )
+from src.eis_plots import ragone_gap_analysis
 
 logger = logging.getLogger(__name__)
 
@@ -229,6 +231,8 @@ def build_features_df(records: Dict[str, dict]) -> pd.DataFrame:
         *[extract_metadata(name) for name in df.index]
     )
     df["Sample"] = [extract_sample_id(name) for name in df.index]
+    df["Material_Type"] = [extract_material_type(name) for name in df.index]
+    df["Synthesis"] = [extract_synthesis_process(name) for name in df.index]
     return df
 
 
@@ -403,6 +407,20 @@ def generate_analytics_plots(
         paths = series_by_prefix(cap_energy, col_name, out_dir=analytics_dir)
         if paths:
             extra.extend(paths)
+
+    # ── Production variables heatmap ──────────────────────────────
+    prod_metrics = [
+        "Rs_fit", "Rp_fit", "n", "C_espec (F/g)",
+        "Energy_mean", "Retenção (%)", "Score",
+    ]
+    ph = production_heatmap(
+        df_ranked, prod_metrics,
+        group_col="Material_Type",
+        secondary_group="Synthesis",
+        out_dir=analytics_dir,
+    )
+    if ph:
+        extra.append(ph)
 
     return extra
 

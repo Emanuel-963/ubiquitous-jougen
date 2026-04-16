@@ -315,6 +315,108 @@ def correlation_heatmap(df, cols, out_dir="outputs/figures"):
     return filepath
 
 
+def production_heatmap(
+    df,
+    metric_cols,
+    group_col="Material_Type",
+    secondary_group="Synthesis",
+    out_dir="outputs/figures",
+):
+    """Heatmap of *metric_cols* aggregated by production variables.
+
+    Rows are combinations of *group_col* × *secondary_group*
+    (e.g. Nb2/Prisca, Nb4/Standard).  Columns are the selected metrics.
+    Values are z-score normalised means for cross-metric comparison.
+
+    Returns
+    -------
+    str | None
+        Path to saved figure, or ``None`` if insufficient data.
+    """
+    os.makedirs(out_dir, exist_ok=True)
+
+    cols_present = [c for c in metric_cols if c in df.columns]
+    if len(cols_present) < 1:
+        return None
+
+    # Build grouping label
+    has_primary = group_col in df.columns
+    has_secondary = secondary_group in df.columns
+
+    if not has_primary and not has_secondary:
+        return None
+
+    df = df.copy()
+    if has_primary and has_secondary:
+        df["_group"] = df[group_col].astype(str) + " / " + df[secondary_group].astype(str)
+    elif has_primary:
+        df["_group"] = df[group_col].astype(str)
+    else:
+        df["_group"] = df[secondary_group].astype(str)
+
+    # Filter out trivial groups
+    df = df[df["_group"].str.lower() != "unknown / unknown"]
+    df = df[df["_group"].str.lower() != "unknown"]
+
+    if df["_group"].nunique() < 2:
+        return None
+
+    # Aggregate: mean per group
+    numeric = df.groupby("_group")[cols_present].apply(
+        lambda g: g.apply(pd.to_numeric, errors="coerce").mean()
+    )
+
+    if numeric.dropna(how="all").empty:
+        return None
+
+    # Z-score normalise across groups for comparability
+    zscore = numeric.copy()
+    for col in zscore.columns:
+        col_data = zscore[col]
+        std = col_data.std()
+        if std and std > 0:
+            zscore[col] = (col_data - col_data.mean()) / std
+        else:
+            zscore[col] = 0.0
+
+    fig, ax = plt.subplots(figsize=(max(8, len(cols_present) * 0.9), max(4, len(zscore) * 0.8)))
+
+    im = ax.imshow(zscore.values, cmap="RdYlGn", aspect="auto")
+    ax.set_xticks(range(len(cols_present)))
+    ax.set_xticklabels(cols_present, rotation=45, ha="right", fontsize=9)
+    ax.set_yticks(range(len(zscore)))
+    ax.set_yticklabels(zscore.index, fontsize=9)
+
+    # Annotate cells with raw means
+    for i in range(len(zscore)):
+        for j in range(len(cols_present)):
+            raw_val = numeric.iloc[i, j]
+            z_val = zscore.iloc[i, j]
+            if np.isnan(raw_val):
+                txt = "—"
+            elif abs(raw_val) >= 1000:
+                txt = f"{raw_val:.0f}"
+            elif abs(raw_val) >= 1:
+                txt = f"{raw_val:.2f}"
+            else:
+                txt = f"{raw_val:.3f}"
+            colour = "white" if abs(z_val) > 1.2 else "black"
+            ax.text(j, i, txt, ha="center", va="center", fontsize=8, color=colour)
+
+    plt.colorbar(im, ax=ax, label="z-score (across groups)", shrink=0.85)
+    ax.set_title("Production Variables — Metric Comparison", fontsize=12, fontweight="bold")
+    fig.tight_layout()
+
+    filepath = os.path.join(out_dir, "production_heatmap.png")
+    _save_with_watermark(fig, filepath, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+    # Also export raw means CSV
+    numeric.to_csv(os.path.join(out_dir, "production_means.csv"))
+
+    return filepath
+
+
 def _safe_filename(text: str) -> str:
     """Remove separadores e caracteres inválidos para nomes de arquivo."""
     text = text.strip()
