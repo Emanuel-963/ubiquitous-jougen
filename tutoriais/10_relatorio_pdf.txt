@@ -1,0 +1,39 @@
+=====================================
+Tutorial 10 — Relatório PDF (v0.2.0)
+=====================================
+
+O IonFlow Pipeline gera relatórios PDF profissionais com gráficos,
+tabelas e interpretações.
+
+1. Via GUI
+----------
+1) Execute um pipeline (EIS, Ciclagem ou DRT).
+2) Clique no botão "📄 Gerar Relatório PDF" no menu lateral.
+3) Escolha o local para salvar o arquivo.
+4) O relatório inclui:
+   • Capa com metadados do experimento
+   • Gráficos de Nyquist, Bode, DRT
+   • Tabelas de parâmetros ajustados
+   • Validação Kramers-Kronig
+   • Diagnóstico de qualidade do ajuste
+   • Análise IA (se ativada)
+
+2. Via CLI
+----------
+  # Relatório EIS
+  ionflow-cli eis --data-dir data/raw --output outputs/ --export-pdf
+
+  # Relatório completo com IA
+  ionflow-cli analyze --all --ai --export-pdf report.pdf
+
+3. Via Script Python
+--------------------
+  from src.report_generator import ReportGenerator
+  gen = ReportGenerator()
+  gen.generate(eis_result, output_path="meu_relatorio.pdf")
+
+Personalização
+--------------
+• O idioma do relatório acompanha a configuração da GUI (PT/EN/ES).
+• Gráficos são vetoriais (SVG embutido) para máxima qualidade.
+• O histórico de relatórios é salvo em outputs/report_history.json.

@@ -1,0 +1,40 @@
+=====================================
+Tutorial 13 — Auto-Composição de Circuitos (v0.2.0)
+=====================================
+
+O CircuitComposer analisa os dados de impedância e sugere automaticamente
+o circuito equivalente mais adequado.
+
+1. Via GUI
+----------
+1) Carregue os dados EIS (aba principal).
+2) Clique em "🧩 Auto-Compor Circuitos" no menu lateral.
+3) O sistema analisa os dados e propõe circuitos candidatos.
+4) Selecione o circuito desejado para ajustar os parâmetros.
+
+2. Via CLI
+----------
+  ionflow-cli auto-compose --data-dir data/raw/
+
+3. Via Script Python
+--------------------
+  from src.circuit_composer import CircuitComposer
+  composer = CircuitComposer()
+  candidates = composer.suggest(z_data, freq)
+  for c in candidates:
+      print(f"{c.circuit_string}  (score: {c.score:.3f})")
+
+Como Funciona
+-------------
+• O algoritmo avalia a forma do diagrama de Nyquist.
+• Identifica arcos, caudas de difusão e indutâncias.
+• Pontua circuitos candidatos do registo (CircuitRegistry).
+• O ML Circuit Selector pode refinar a seleção com aprendizado.
+
+Circuitos Suportados
+--------------------
+• Randles: R0-p(R1,C1)
+• Randles + Warburg: R0-p(R1,C1)-W1
+• Duplo arco: R0-p(R1,C1)-p(R2,C2)
+• CPE: R0-p(R1,CPE1)
+• Personalizado: defina no CircuitRegistry.

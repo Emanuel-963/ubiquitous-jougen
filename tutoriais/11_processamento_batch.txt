@@ -1,0 +1,36 @@
+=====================================
+Tutorial 11 — Processamento Batch (v0.2.0)
+=====================================
+
+Processe múltiplos ficheiros de uma só vez com o modo batch.
+
+1. Via GUI
+----------
+1) Coloque todos os ficheiros .csv/.xlsx na pasta data/raw/.
+2) Clique em "⚡ Batch Processing" no menu lateral.
+3) Selecione a pasta com os ficheiros.
+4) O pipeline será executado para cada ficheiro automaticamente.
+5) Os resultados aparecem na barra de status (progresso).
+6) Relatórios individuais são salvos em outputs/.
+
+2. Via CLI
+----------
+  # Processar todos os ficheiros numa pasta
+  ionflow-cli eis --data-dir data/raw/ --batch --output outputs/
+
+  # Batch com relatório PDF para cada ficheiro
+  ionflow-cli eis --data-dir data/raw/ --batch --export-pdf --output outputs/
+
+3. Via Script Python
+--------------------
+  from src.batch_processor import BatchProcessor, BatchResult
+  bp = BatchProcessor()
+  results: list[BatchResult] = bp.process_directory("data/raw/")
+  for r in results:
+      print(f"{r.filename}: {r.status}")
+
+Notas
+-----
+• Ficheiros com erro são registados no log mas não interrompem o batch.
+• O progresso é exibido na barra de status da GUI.
+• Resultados agregados podem ser exportados como tabela Excel.

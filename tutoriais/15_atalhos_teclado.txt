@@ -1,0 +1,22 @@
+=====================================
+Tutorial 15 — Atalhos de Teclado (v0.2.0)
+=====================================
+
+A GUI suporta atalhos de teclado para acesso rápido às funcionalidades.
+
+Atalhos Disponíveis
+-------------------
+  Ctrl+1          Mudar para aba EIS
+  Ctrl+2          Mudar para aba Ciclagem
+  Ctrl+3          Mudar para aba DRT
+  Ctrl+Shift+A    Abrir aba Análise IA
+  Ctrl+E          Exportar dados
+  Ctrl+G          Gerar relatório PDF
+  Ctrl+S          Salvar configuração
+  F5              Executar pipeline
+  Escape          Fechar diálogo / cancelar
+
+Personalização
+--------------
+Os atalhos podem ser alterados editando src/gui/shortcuts.py
+ou via a classe ShortcutManager no código.

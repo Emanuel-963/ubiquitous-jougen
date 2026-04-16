@@ -1,0 +1,34 @@
+=====================================
+Tutorial 14 — Validação Kramers-Kronig (v0.2.0)
+=====================================
+
+A validação KK verifica a consistência dos dados de impedância,
+detectando artefactos experimentais e dados corrompidos.
+
+1. Via GUI
+----------
+1) Execute o pipeline EIS.
+2) Clique na aba "🔬 Validação KK".
+3) Clique em "Executar Validação KK".
+4) Resultados mostrados:
+   • Resíduos (%) — devem ser < 1% para dados de qualidade
+   • Gráfico de resíduos vs frequência
+   • Veredicto: PASS / WARN / FAIL
+
+2. Via CLI
+----------
+  ionflow-cli validate-kk --data-dir data/raw/
+
+3. Via Script Python
+--------------------
+  from src.kramers_kronig import KramersKronigValidator, KKResult
+  validator = KramersKronigValidator()
+  result: KKResult = validator.validate(z_data, freq)
+  print(f"Resíduo médio: {result.mean_residual:.4f}%")
+  print(f"Veredicto: {result.verdict}")
+
+Interpretação
+-------------
+• Resíduo < 0.5%: Dados excelentes
+• Resíduo 0.5–1.0%: Dados aceitáveis
+• Resíduo > 1.0%: Dados com artefactos — verificar setup experimental

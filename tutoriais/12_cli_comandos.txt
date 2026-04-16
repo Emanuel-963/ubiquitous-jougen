@@ -1,0 +1,54 @@
+=====================================
+Tutorial 12 — Comandos CLI (v0.2.0)
+=====================================
+
+O IonFlow Pipeline oferece uma interface de linha de comandos completa
+via o comando "ionflow-cli".
+
+Instalação
+----------
+  pip install -e .
+  ionflow-cli --help
+
+Comandos Disponíveis
+--------------------
+
+1. EIS (Espectroscopia de Impedância)
+   ionflow-cli eis --data-dir data/raw/ --output outputs/
+   ionflow-cli eis --data-dir data/raw/ --circuit "R0-p(R1,C1)" --output outputs/
+
+2. Ciclagem Galvanostática
+   ionflow-cli cycling --data-dir data/raw/ --output outputs/
+
+3. DRT (Distribution of Relaxation Times)
+   ionflow-cli drt --data-dir data/raw/ --output outputs/
+
+4. Análise Completa
+   ionflow-cli analyze --all --output outputs/
+   ionflow-cli analyze --all --ai --export-pdf report.pdf
+
+5. Validação Kramers-Kronig
+   ionflow-cli validate-kk --data-dir data/raw/
+
+6. Auto-Composição de Circuitos
+   ionflow-cli auto-compose --data-dir data/raw/
+
+Flags Globais
+-------------
+  --output DIR       Pasta de saída (default: outputs/)
+  --lang LANG        Idioma: pt, en, es
+  --ai               Ativar análise por agente IA
+  --export-pdf       Gerar relatório PDF
+  --batch            Modo batch (múltiplos ficheiros)
+  --verbose          Log detalhado
+
+Exemplos Práticos
+-----------------
+  # Pipeline EIS completo com IA e PDF
+  ionflow-cli eis --data-dir data/raw/ --ai --export-pdf --output outputs/
+
+  # Só DRT, em inglês
+  ionflow-cli drt --data-dir data/raw/ --lang en --output outputs/
+
+  # Batch de ciclagem
+  ionflow-cli cycling --data-dir data/raw/ --batch --output outputs/

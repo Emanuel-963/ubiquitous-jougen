@@ -1,0 +1,44 @@
+=====================================
+Tutorial 09 — Agente IA (v0.2.0)
+=====================================
+
+O IonFlow Pipeline inclui um agente de inteligência artificial que interpreta
+automaticamente os resultados eletroquímicos.
+
+Pré-requisitos
+--------------
+• Ter uma chave de API da OpenAI (OPENAI_API_KEY) ou Ollama local instalado.
+• Selecionar o provedor LLM na GUI (menu lateral → LLM Provider).
+
+1. Via GUI
+----------
+1) Abra a GUI: python gui_app.py
+2) No menu lateral, selecione o provedor LLM: OpenAI ou Ollama.
+3) Execute qualquer pipeline (EIS, Ciclagem ou DRT).
+4) Clique na aba "🤖 Análise IA".
+5) Clique em "Analisar com IA" — o agente receberá os dados do último
+   pipeline executado e retornará uma interpretação científica.
+6) O resultado aparece na caixa de texto da aba, com:
+   • Diagnóstico do sistema eletroquímico
+   • Identificação de processos (difusão, transferência de carga, etc.)
+   • Recomendações experimentais
+
+2. Via CLI
+----------
+  ionflow-cli analyze --all --ai --export-pdf report.pdf
+
+O flag --ai ativa a análise por agente IA. O resultado é incluído no
+relatório PDF gerado.
+
+3. Via Script Python
+--------------------
+  from src.ai.ai_agent import AIAgent
+  agent = AIAgent(provider="openai")
+  result = agent.analyze(eis_result)
+  print(result.interpretation)
+
+Dicas
+-----
+• O Ollama é gratuito e roda localmente — ideal para dados confidenciais.
+• A análise IA é opcional; o pipeline funciona normalmente sem ela.
+• Os resultados IA são armazenados em outputs/report_history.json.
