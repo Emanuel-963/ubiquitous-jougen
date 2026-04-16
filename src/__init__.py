@@ -10,7 +10,9 @@ from src.gui import AIPanelConfig, AIPanelResult, run_ai_analysis  # noqa: F401
 from src.fitting_diagnostics import FittingDiagnostics, QualityIndicator, assess_quality  # noqa: F401
 from src.fitting_report import FittingReport, FittingReportGenerator  # noqa: F401
 from src.feature_store import FeatureStore, FittingHistory  # noqa: F401
-from src.i18n import get_language, set_language, tr  # noqa: F401
+from src.i18n import get_language, set_language, tr, LANGUAGES, SECTIONS  # noqa: F401
+from src.i18n import tr_section, available_keys, get_section, reload_strings  # noqa: F401
+from src.i18n import missing_keys, translation_coverage, get_languages  # noqa: F401
 from src.kramers_kronig import KKResult, KramersKronigValidator  # noqa: F401
 from src.ml_circuit_selector import CircuitMLSelector  # noqa: F401
 from src.logger import setup_logging, GUIQueueHandler, get_logger  # noqa: F401

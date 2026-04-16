@@ -4,29 +4,175 @@ Usage
 -----
     from src.i18n import tr, set_language, get_language, LANGUAGES
 
-    set_language("en")          # switch to English
-    label = tr("Pipelines")    # returns "Pipelines"
+    # Legacy mode -- Portuguese key returns translated value:
+    set_language("en")
+    label = tr("Rodar Pipeline EIS")  # -> "Run EIS Pipeline"
 
-    set_language("pt")          # switch to Portuguese
-    label = tr("Pipelines")    # returns "Pipelines" (same, it's intl.)
+    # New section-key mode -- dotted key lookup:
+    label = tr("ui.run_eis")          # -> "Run EIS Pipeline"
 
-Design decisions:
-    * Keys are the *Portuguese* strings used in the original codebase, so
-      existing code only needs ``tr(original_string)`` wrappers.
-    * When the active language is ``"pt"`` the key is returned as-is (zero-cost).
-    * A missing key always returns the key itself — the app never crashes
-      because of a missing translation.
+    # Convenience for a specific section:
+    label = tr_section("plots", "frequency_axis")  # -> "Frequency (Hz)"
+
+    # List available languages:
+    from src.i18n import LANGUAGES     # ("pt", "en", "es")
+
+Design decisions
+----------------
+* **Backward compatible**: ``tr("Portuguese string")`` still works exactly as
+  before.  When the active language is ``"pt"`` the key is returned as-is.
+* **JSON-based string files**: translations live in
+  ``src/i18n_strings/{pt,en,es}.json``, organised by section
+  (``ui``, ``pipeline``, ``ai``, ``reports``, ``columns``, ``plots``,
+  ``diagnostics``, ``cli``, ``empty``, ``log``, ``knowledge``).
+* **Dotted-key lookup**: ``tr("section.key")`` for structured access.
+* **Missing keys never crash**: a missing key always returns the key itself.
+* **Thread-safe**: language switching is protected by a ``threading.Lock``.
+* **Lazy loading**: JSON files are read once on first ``tr()`` call.
 """
+
 from __future__ import annotations
 
+import json
+import logging
+import os
 import threading
-from typing import Dict
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple
 
-# ── Public API ───────────────────────────────────────────────────────
-LANGUAGES = ("pt", "en")
+logger = logging.getLogger(__name__)
+
+# =====================================================================
+# Public constants
+# =====================================================================
+
+LANGUAGES: Tuple[str, ...] = ("pt", "en", "es")
+"""Supported language codes."""
+
+SECTIONS: Tuple[str, ...] = (
+    "ui",
+    "pipeline",
+    "ai",
+    "reports",
+    "columns",
+    "plots",
+    "diagnostics",
+    "cli",
+    "empty",
+    "log",
+    "knowledge",
+)
+"""Top-level sections in each language JSON file."""
+
+# =====================================================================
+# Module state
+# =====================================================================
 
 _lock = threading.Lock()
 _current: str = "pt"
+
+# Populated by _ensure_loaded():
+# _flat[lang] = {"ui.run_eis": "Run EIS Pipeline", ...}
+_flat: Dict[str, Dict[str, str]] = {}
+
+# _legacy[lang] = {"Rodar Pipeline EIS": "Run EIS Pipeline", ...}
+# Built so tr("Portuguese string") still works for en/es.
+_legacy: Dict[str, Dict[str, str]] = {}
+
+# _raw[lang] = original nested dict from JSON
+_raw: Dict[str, Dict[str, Any]] = {}
+
+_loaded: bool = False
+
+# =====================================================================
+# Internal -- loading & flattening
+# =====================================================================
+
+_STRINGS_DIR = Path(__file__).resolve().parent / "i18n_strings"
+
+
+def _flatten(d: Dict[str, Any], prefix: str = "") -> Dict[str, str]:
+    """Recursively flatten a nested dict to dotted-key -> string."""
+    result: Dict[str, str] = {}
+    for key, value in d.items():
+        full_key = f"{prefix}.{key}" if prefix else key
+        if isinstance(value, dict):
+            result.update(_flatten(value, full_key))
+        else:
+            result[full_key] = str(value)
+    return result
+
+
+def _load_language(lang: str) -> Dict[str, Any]:
+    """Load a language JSON file; return empty dict on failure."""
+    path = _STRINGS_DIR / f"{lang}.json"
+    if not path.exists():
+        logger.warning("i18n strings file not found: %s", path)
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as exc:
+        logger.error("Failed to load i18n strings for '%s': %s", lang, exc)
+        return {}
+
+
+def _build_legacy_table(
+    pt_flat: Dict[str, str], other_flat: Dict[str, str],
+) -> Dict[str, str]:
+    """Build a Portuguese-value -> other-language-value map.
+
+    For each dotted key present in both dicts, maps
+    ``pt_flat[key]`` -> ``other_flat[key]``.
+    """
+    legacy: Dict[str, str] = {}
+    for key, pt_value in pt_flat.items():
+        if key in other_flat:
+            legacy[pt_value] = other_flat[key]
+    return legacy
+
+
+def _ensure_loaded() -> None:
+    """Lazy-load all JSON files on first use."""
+    global _loaded
+    if _loaded:
+        return
+    with _lock:
+        if _loaded:
+            return
+        for lang in LANGUAGES:
+            raw = _load_language(lang)
+            _raw[lang] = raw
+            _flat[lang] = _flatten(raw)
+
+        # Build legacy reverse tables for non-Portuguese languages
+        pt_flat = _flat.get("pt", {})
+        for lang in LANGUAGES:
+            if lang == "pt":
+                _legacy[lang] = {}
+                continue
+            _legacy[lang] = _build_legacy_table(pt_flat, _flat[lang])
+
+        _loaded = True
+
+
+def reload_strings() -> None:
+    """Force reload of all language JSON files.
+
+    Useful after editing the JSON files at runtime (e.g. GUI editor).
+    """
+    global _loaded
+    with _lock:
+        _loaded = False
+        _flat.clear()
+        _legacy.clear()
+        _raw.clear()
+    _ensure_loaded()
+
+
+# =====================================================================
+# Public API
+# =====================================================================
 
 
 def set_language(lang: str) -> None:
@@ -40,213 +186,136 @@ def set_language(lang: str) -> None:
 
 
 def get_language() -> str:
-    """Return the current language code."""
+    """Return the current language code (``"pt"``, ``"en"`` or ``"es"``)."""
     return _current
 
 
+def get_languages() -> Tuple[str, ...]:
+    """Return all supported language codes."""
+    return LANGUAGES
+
+
 def tr(key: str) -> str:
-    """Translate *key* (Portuguese original) to the current language."""
-    if _current == "pt":
+    """Translate *key* to the current language.
+
+    Supports two lookup modes:
+
+    1. **Dotted key** (``"section.key"``): looks up in the flattened JSON
+       table for the current language.
+    2. **Legacy Portuguese string**: when the current language is not
+       ``"pt"``, tries to find the Portuguese string in the legacy reverse
+       table and returns its translation.
+
+    If no translation is found, *key* is returned unchanged -- the app
+    never crashes because of a missing translation.
+
+    Examples
+    --------
+    >>> set_language("en")
+    >>> tr("ui.run_eis")
+    'Run EIS Pipeline'
+    >>> tr("Rodar Pipeline EIS")       # legacy mode
+    'Run EIS Pipeline'
+    >>> set_language("pt")
+    >>> tr("Rodar Pipeline EIS")       # Portuguese returns key as-is
+    'Rodar Pipeline EIS'
+    """
+    _ensure_loaded()
+    lang = _current
+
+    # Fast path: Portuguese returns key unchanged for legacy calls
+    if lang == "pt":
+        # But dotted keys should still resolve from pt.json
+        if "." in key:
+            return _flat.get("pt", {}).get(key, key)
         return key
-    table = _TABLES.get(_current)
-    if table is None:
-        return key
-    return table.get(key, key)
+
+    # Try dotted-key lookup first
+    flat_table = _flat.get(lang, {})
+    if key in flat_table:
+        return flat_table[key]
+
+    # Try legacy (Portuguese string -> translated) lookup
+    legacy_table = _legacy.get(lang, {})
+    if key in legacy_table:
+        return legacy_table[key]
+
+    # Fallback: return key unchanged
+    return key
 
 
-# ── English translations ─────────────────────────────────────────────
-# Grouped by UI region for maintainability.
+def tr_section(section: str, key: str) -> str:
+    """Translate a key within a specific section.
 
-_EN: Dict[str, str] = {
-    # -- Sidebar buttons --------------------------------------------------
-    "Pipelines": "Pipelines",
-    "Scan rate (A/g)": "Scan rate (A/g)",
-    "Importar EIS para raw": "Import EIS to raw",
-    "Importar Ciclagem para processed": "Import Cycling to processed",
-    "Gráficos Interativos": "Interactive Charts",
-    "Rodar Pipeline EIS": "Run EIS Pipeline",
-    "Rodar Pipeline Ciclagem": "Run Cycling Pipeline",
-    "Rodar Ambos": "Run Both",
-    "Rodar Pipeline DRT": "Run DRT Pipeline",
-    "Aplicar preset": "Apply preset",
-    "Reset DRT": "Reset DRT",
-    "Preset DRT": "DRT Preset",
-    "λ DRT": "λ DRT",
-    "n_taus": "n_taus",
-    "Rápido:30 | Balanceado:50 | Alta:80": "Fast:30 | Balanced:50 | High:80",
+    Equivalent to ``tr(f"{section}.{key}")``.
 
-    # -- Appearance / Theme -----------------------------------------------
-    "Tema": "Theme",
-    "Claro": "Light",
-    "Escuro": "Dark",
-    "Sistema": "System",
-    "Idioma": "Language",
+    Parameters
+    ----------
+    section : str
+        Top-level section name (e.g. ``"ui"``, ``"plots"``).
+    key : str
+        Key within the section.
 
-    # -- DRT presets -------------------------------------------------------
-    "Rápido": "Fast",
-    "Balanceado": "Balanced",
-    "Alta resolução": "High resolution",
+    Returns
+    -------
+    str
+        Translated string, or the dotted key if not found.
+    """
+    return tr(f"{section}.{key}")
 
-    # -- DRT modes ---------------------------------------------------------
-    "Espectro": "Spectrum",
 
-    # -- Main tabs ---------------------------------------------------------
-    "Gráficos": "Charts",
-    "Tabelas": "Tables",
-    "Logs": "Logs",
+def available_keys(section: Optional[str] = None) -> List[str]:
+    """Return all dotted keys for a section, or all keys if *section* is None.
 
-    # -- Table sub-tabs ----------------------------------------------------
-    "EIS": "EIS",
-    "Ciclagem": "Cycling",
-    "Circuitos": "Circuits",
-    "DRT": "DRT",
-    "DRT Peaks": "DRT Peaks",
-    "DRT + EIS": "DRT + EIS",
+    Useful for tooling, introspection and tests.
+    """
+    _ensure_loaded()
+    pt_flat = _flat.get("pt", {})
+    if section is None:
+        return sorted(pt_flat.keys())
+    prefix = f"{section}."
+    return sorted(k for k in pt_flat if k.startswith(prefix))
 
-    # -- Interactive window tabs -------------------------------------------
-    "Rank vs Retenção": "Rank vs Retention",
-    "Nyquist": "Nyquist",
-    "Bode": "Bode",
-    "PCA 2D": "PCA 2D",
-    "PCA Retenção": "PCA Retention",
-    "Correlação": "Correlation",
-    "Séries": "Series",
-    "Energia × Potência": "Energy × Power",
-    "Ragone": "Ragone",
-    "Energia vs Ciclo": "Energy vs Cycle",
-    "Retenção vs Ciclo": "Retention vs Cycle",
-    "Heatmap |Z|": "Heatmap |Z|",
-    "Box-plot": "Box-plot",
-    "Radar": "Radar",
-    "DRT × EIS": "DRT × EIS",
 
-    # -- Common labels -----------------------------------------------------
-    "Filtro:": "Filter:",
-    "Amostra:": "Sample:",
-    "Arquivo:": "File:",
-    "Destaque:": "Highlight:",
-    "Métrica:": "Metric:",
-    "Coluna:": "Column:",
-    "Série:": "Series:",
-    "Modo:": "Mode:",
-    "Overlay (vírgula):": "Overlay (comma):",
-    "Amostras (separe por ';'):": "Samples (separate with ';'):",
-    "Linhas: 0/0": "Rows: 0/0",
-    "— nenhum —": "— none —",
+def get_section(section: str, lang: Optional[str] = None) -> Dict[str, str]:
+    """Return all key->value pairs for a section in the given language.
 
-    # -- Buttons -----------------------------------------------------------
-    "Salvar imagem": "Save image",
-    "Salvar filtrado": "Save filtered",
-    "Salvar tudo": "Save all",
-    "Salvar gráfico": "Save chart",
-    "Aplicar overlay": "Apply overlay",
-    "Atualizar": "Update",
-    "Salvar visual": "Save visual",
-    "Ver interativo": "View interactive",
-    "Top 5": "Top 5",
-    "Todos": "All",
+    Parameters
+    ----------
+    section : str
+        Section name (e.g. ``"ui"``).
+    lang : str | None
+        Language code.  ``None`` -> current language.
 
-    # -- Placeholders ------------------------------------------------------
-    "Buscar em todas as colunas": "Search all columns",
+    Returns
+    -------
+    dict[str, str]
+        Keys are *short* (without the section prefix).
+    """
+    _ensure_loaded()
+    lang = lang or _current
+    flat_table = _flat.get(lang, {})
+    prefix = f"{section}."
+    plen = len(prefix)
+    return {k[plen:]: v for k, v in flat_table.items() if k.startswith(prefix)}
 
-    # -- Status messages ---------------------------------------------------
-    "Status: pronto": "Status: ready",
-    "Pronto": "Ready",
-    "rodando EIS": "running EIS",
-    "rodando Ciclagem": "running Cycling",
-    "rodando ambos": "running both",
-    "rodando DRT": "running DRT",
-    "erro no EIS": "EIS error",
-    "erro na Ciclagem": "Cycling error",
-    "erro ao rodar ambos": "error running both",
-    "erro no DRT": "DRT error",
-    "EIS concluído": "EIS completed",
-    "Ciclagem concluída": "Cycling completed",
-    "Ambos concluídos": "Both completed",
-    "DRT concluído": "DRT completed",
 
-    # -- Progress messages -------------------------------------------------
-    "Identificando amostras EIS...": "Identifying EIS samples…",
-    "Calculando valores EIS...": "Calculating EIS values…",
-    "Gerando tabelas e gráficos...": "Generating tables and charts…",
-    "Identificando ciclos...": "Identifying cycles…",
-    "Calculando valores de energia...": "Calculating energy values…",
-    "Gerando gráficos e tabelas...": "Generating charts and tables…",
-    "Identificando dados EIS e ciclos...": "Identifying EIS data and cycles…",
-    "Calculando EIS...": "Calculating EIS…",
-    "Calculando ciclagem...": "Calculating cycling…",
-    "Calculando DRT...": "Calculating DRT…",
-    "Executando inversão DRT...": "Running DRT inversion…",
-    "Organizando resultados DRT...": "Organising DRT results…",
-    "Erro": "Error",
+def missing_keys(lang: str) -> List[str]:
+    """Return dotted keys present in ``pt.json`` but missing from *lang*.
 
-    # -- Empty-state labels ------------------------------------------------
-    "Nenhum dado disponível.": "No data available.",
-    "Sem dados para Rank vs Retenção": "No data for Rank vs Retention",
-    "Sem dados EIS disponíveis": "No EIS data available",
-    "Sem dados de PCA": "No PCA data",
-    "Sem dados de PCA/Retenção": "No PCA/Retention data",
-    "Sem dados suficientes para correlação": "Insufficient data for correlation",
-    "Sem dados combinados DRT+EIS": "No combined DRT+EIS data",
-    "Sem dados de ciclagem disponíveis": "No cycling data available",
-    "Sem dados de ciclos para esta amostra": "No cycle data for this sample",
-    "Sem dados para Ragone": "No data for Ragone",
-    "Sem dados de ciclagem para Ragone": "No cycling data for Ragone",
-    "Sem métricas de ciclagem": "No cycling metrics",
-    "Sem dados EIS para heatmap": "No EIS data for heatmap",
-    "Não foi possível gerar heatmap": "Could not generate heatmap",
-    "Sem métricas numéricas para box-plot": "No numeric metrics for box-plot",
-    "Sem dados EIS para box-plot": "No EIS data for box-plot",
-    "Precisa de ≥2 amostras para radar": "Need ≥2 samples for radar",
-    "Sem dados EIS para radar": "No EIS data for radar",
-    "Selecione ao menos 2 amostras com ≥3 métricas numéricas":
-        "Select at least 2 samples with ≥3 numeric metrics",
-    "Sem dados suficientes para retenção": "Insufficient data for retention",
-    "Sem colunas de série disponíveis": "No series columns available",
-    "Sem séries identificadas": "No series identified",
-    "Sem dados de séries disponíveis": "No series data available",
-    "Sem resultados DRT disponíveis": "No DRT results available",
-    "Sem dados DRT disponíveis": "No DRT data available",
-    "Sem dados disponíveis": "No data available",
-    "Dados insuficientes\npara radar": "Insufficient data\nfor radar",
-    "Todas": "All",
+    Useful for detecting incomplete translations.
+    """
+    _ensure_loaded()
+    pt_keys = set(_flat.get("pt", {}).keys())
+    lang_keys = set(_flat.get(lang, {}).keys())
+    return sorted(pt_keys - lang_keys)
 
-    # -- Log messages (selection of most common) ---------------------------
-    "Interativo não disponível para este gráfico.":
-        "Interactive not available for this chart.",
-    "DRT resetado para preset padrão (Balanceado).":
-        "DRT reset to default preset (Balanced).",
-    "Tabela não encontrada.":
-        "Table not found.",
-    "Nenhum dado para salvar.":
-        "No data to save.",
-    "Sem dados de rank vs retenção para exibir.":
-        "No rank vs retention data to display.",
-    "Dados de Rank/Retenção ausentes.":
-        "Rank/Retention data missing.",
-    "mplcursors não encontrado; hover desabilitado.":
-        "mplcursors not found; hover disabled.",
-    "Sem dados de PCA para exibir.":
-        "No PCA data to display.",
-    "Sem dados para correlação.":
-        "No data for correlation.",
-    "Dados insuficientes para correlação.":
-        "Insufficient data for correlation.",
-    "Sem dados de séries para exibir.":
-        "No series data to display.",
-    "Formato de série não reconhecido.":
-        "Series format not recognised.",
-    "Sem pontos para esta série.":
-        "No data points for this series.",
-    "Sem visual DRT para salvar.":
-        "No DRT visual to save.",
-    "Nenhum gráfico EP para salvar.":
-        "No EP chart to save.",
-    "Subclasse": "Subclass",
-    "Amostras": "Samples",
-}
 
-# ── Table of all languages → dict ────────────────────────────────────
-_TABLES: Dict[str, Dict[str, str]] = {
-    "en": _EN,
-}
+def translation_coverage(lang: str) -> float:
+    """Return fraction of ``pt.json`` keys covered by *lang* (0.0-1.0)."""
+    _ensure_loaded()
+    pt_keys = set(_flat.get("pt", {}).keys())
+    if not pt_keys:
+        return 1.0
+    lang_keys = set(_flat.get(lang, {}).keys())
+    return len(pt_keys & lang_keys) / len(pt_keys)
