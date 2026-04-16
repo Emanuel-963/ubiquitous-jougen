@@ -50,6 +50,19 @@ from src.gui.widgets import (  # noqa: F401
 )
 from src.gui.tabs.ai_panel import run_ai_analysis, AIPanelConfig, AIPanelResult
 from src.report_generator import ReportGenerator, ReportConfig
+from src.kramers_kronig import KramersKronigValidator, KKResult
+from src.fitting_diagnostics import FittingDiagnostics, assess_quality
+from src.fitting_report import FittingReportGenerator, FittingReport
+from src.batch_processor import BatchProcessor, BatchResult
+from src.circuit_composer import CircuitComposer
+from src.uncertainty import UncertaintyAnalyzer
+from src.gui.shortcuts import (
+    ShortcutManager,
+    ShortcutAction,
+    DEFAULT_BINDINGS,
+    StatusBarState,
+    AccessibilitySettings,
+)
 from src.gui.tabs import (  # noqa: F401
     build_fig_rank as _build_fig_rank_mod,
     build_fig_pca as _build_fig_pca_mod,
@@ -144,6 +157,7 @@ class PipelineApp(ctk.CTk):
         }
 
         self._build_layout()
+        self._setup_shortcuts()
         self._restore_ui_preferences()
         self._restore_language()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -606,6 +620,41 @@ class PipelineApp(ctk.CTk):
         )
         self.btn_report.grid(row=10, column=0, padx=16, pady=(0, 8), sticky="ew")
 
+        self.btn_batch = ctk.CTkButton(
+            sidebar,
+            text="⚡ " + tr("Batch Processing"),
+            command=self._run_batch_clicked,
+        )
+        self.btn_batch.grid(row=18, column=0, padx=16, pady=(0, 8), sticky="ew")
+
+        self.btn_compose = ctk.CTkButton(
+            sidebar,
+            text="🧩 " + tr("Auto-Compor Circuitos"),
+            command=self._run_compose_clicked,
+        )
+        self.btn_compose.grid(row=19, column=0, padx=16, pady=(0, 8), sticky="ew")
+
+        self.btn_save_config = ctk.CTkButton(
+            sidebar,
+            text="💾 " + tr("Salvar Configuração"),
+            command=self._save_config_clicked,
+        )
+        self.btn_save_config.grid(row=20, column=0, padx=16, pady=(0, 8), sticky="ew")
+
+        # ── LLM Provider selector ────────────────────────────────
+        ctk.CTkLabel(sidebar, text=tr("Provedor IA"), anchor="w").grid(
+            row=21, column=0, padx=16, pady=(8, 4), sticky="ew"
+        )
+        self.llm_provider_selector = ctk.CTkSegmentedButton(
+            sidebar,
+            values=[tr("Nenhum"), "OpenAI", "Ollama"],
+            command=self._on_llm_provider_change,
+        )
+        self.llm_provider_selector.grid(
+            row=22, column=0, padx=16, pady=(0, 12), sticky="ew"
+        )
+        self.llm_provider_selector.set(tr("Nenhum"))
+
         self.status_label = ctk.CTkLabel(
             sidebar, text=tr("Status: pronto"), anchor="w"
         )
@@ -651,6 +700,9 @@ class PipelineApp(ctk.CTk):
         self.tab_tables = self.tabs.add(tr("Tabelas"))
         self.tab_logs = self.tabs.add(tr("Logs"))
         self.tab_ai = self.tabs.add("🤖 " + tr("Análise IA"))
+        self.tab_kk = self.tabs.add("🔬 " + tr("Validação KK"))
+        self.tab_diag = self.tabs.add("🩺 " + tr("Diagnóstico Fitting"))
+        self.tab_report_text = self.tabs.add("📝 " + tr("Relatório Fitting"))
 
         # ── AI Analysis tab content ──────────────────────────────
         ai_frame = ctk.CTkFrame(self.tab_ai)
@@ -687,6 +739,62 @@ class PipelineApp(ctk.CTk):
         self.ai_textbox = ctk.CTkTextbox(ai_frame, wrap="word", font=ctk.CTkFont(size=13))
         self.ai_textbox.pack(fill="both", expand=True, padx=8, pady=8)
 
+        # ── KK Validation tab content ────────────────────────────
+        kk_frame = ctk.CTkFrame(self.tab_kk)
+        kk_frame.pack(fill="both", expand=True, padx=12, pady=12)
+
+        kk_top = ctk.CTkFrame(kk_frame)
+        kk_top.pack(fill="x", padx=8, pady=(8, 4))
+
+        ctk.CTkButton(
+            kk_top,
+            text=tr("Executar Validação Kramers-Kronig"),
+            command=self._run_kk_validation_clicked,
+        ).pack(side="left", padx=8)
+
+        ctk.CTkLabel(
+            kk_top,
+            text=tr("Valida causalidade e linearidade dos dados EIS"),
+            font=ctk.CTkFont(size=11),
+        ).pack(side="left", padx=16)
+
+        self.kk_textbox = ctk.CTkTextbox(kk_frame, wrap="word", font=ctk.CTkFont(size=13))
+        self.kk_textbox.pack(fill="both", expand=True, padx=8, pady=8)
+
+        # ── Fitting Diagnostics tab content ──────────────────────
+        diag_frame = ctk.CTkFrame(self.tab_diag)
+        diag_frame.pack(fill="both", expand=True, padx=12, pady=12)
+
+        diag_top = ctk.CTkFrame(diag_frame)
+        diag_top.pack(fill="x", padx=8, pady=(8, 4))
+
+        ctk.CTkButton(
+            diag_top,
+            text=tr("Gerar Diagnósticos de Fitting"),
+            command=self._run_fitting_diagnostics_clicked,
+        ).pack(side="left", padx=8)
+
+        self.diag_textbox = ctk.CTkTextbox(diag_frame, wrap="word", font=ctk.CTkFont(size=13))
+        self.diag_textbox.pack(fill="both", expand=True, padx=8, pady=8)
+
+        # ── Fitting Report tab content ───────────────────────────
+        report_txt_frame = ctk.CTkFrame(self.tab_report_text)
+        report_txt_frame.pack(fill="both", expand=True, padx=12, pady=12)
+
+        report_top = ctk.CTkFrame(report_txt_frame)
+        report_top.pack(fill="x", padx=8, pady=(8, 4))
+
+        ctk.CTkButton(
+            report_top,
+            text=tr("Gerar Relatório Textual do Fitting"),
+            command=self._run_fitting_report_clicked,
+        ).pack(side="left", padx=8)
+
+        self.fitting_report_textbox = ctk.CTkTextbox(
+            report_txt_frame, wrap="word", font=ctk.CTkFont(size=13)
+        )
+        self.fitting_report_textbox.pack(fill="both", expand=True, padx=8, pady=8)
+
         # Plots area
         self.plots_frame = ctk.CTkScrollableFrame(self.tab_plots)
         self.plots_frame.pack(fill="both", expand=True, padx=12, pady=12)
@@ -714,6 +822,22 @@ class PipelineApp(ctk.CTk):
         # Logs area
         self.log_text = ctk.CTkTextbox(self.tab_logs, wrap="word")
         self.log_text.pack(fill="both", expand=True, padx=12, pady=12)
+
+        # ── Status bar (Day 26) ──────────────────────────────────
+        from src import __version__ as _app_version
+        self._status_bar_state = StatusBarState(version=_app_version)
+        self.status_bar_frame = ctk.CTkFrame(self, height=28, corner_radius=0)
+        self.status_bar_frame.grid(
+            row=1, column=0, columnspan=2, sticky="ew", padx=0, pady=0,
+        )
+        self.status_bar_label = ctk.CTkLabel(
+            self.status_bar_frame,
+            text=self._status_bar_state.format_bar(),
+            font=ctk.CTkFont(size=11),
+            anchor="w",
+        )
+        self.status_bar_label.pack(fill="x", padx=12, pady=2)
+        self.grid_rowconfigure(1, weight=0)
 
     def _create_table(self, parent, table_key: str) -> ttk.Treeview:
         frame = ctk.CTkFrame(parent)
@@ -3797,6 +3921,238 @@ class PipelineApp(ctk.CTk):
 
     # ── v0.2.0 feature handlers ────────────────────────────────────────
 
+    def _setup_shortcuts(self):
+        """Bind keyboard shortcuts (Day 26)."""
+        self._shortcut_mgr = ShortcutManager()
+        self._shortcut_mgr.register_handler(ShortcutAction.PIPELINE_EIS, self._run_eis_clicked)
+        self._shortcut_mgr.register_handler(ShortcutAction.PIPELINE_CYCLING, self._run_ciclagem_clicked)
+        self._shortcut_mgr.register_handler(ShortcutAction.PIPELINE_DRT, self._run_drt_clicked)
+        self._shortcut_mgr.register_handler(ShortcutAction.AI_ANALYSIS, self._run_ai_analysis_clicked)
+        self._shortcut_mgr.register_handler(ShortcutAction.EXPORT_PDF, self._generate_report_clicked)
+        self._shortcut_mgr.register_handler(ShortcutAction.OPEN_CHARTS, self._open_interactive_window)
+        self._shortcut_mgr.register_handler(ShortcutAction.SAVE_CONFIG, self._save_config_clicked)
+        self._shortcut_mgr.register_handler(ShortcutAction.RERUN_LAST, self._rerun_last_pipeline)
+        self._shortcut_mgr.register_handler(ShortcutAction.CANCEL_PIPELINE, self._cancel_pipeline)
+
+        for binding in DEFAULT_BINDINGS:
+            self.bind_all(
+                binding.tk_sequence,
+                lambda e, a=binding.action: self._shortcut_mgr.dispatch(a),
+            )
+        self._last_pipeline: Optional[str] = None
+
+    def _update_status_bar(self, **kwargs):
+        """Update the bottom status bar."""
+        for k, v in kwargs.items():
+            if hasattr(self._status_bar_state, k):
+                setattr(self._status_bar_state, k, v)
+        with contextlib.suppress(Exception):
+            self.status_bar_label.configure(
+                text=self._status_bar_state.format_bar()
+            )
+
+    def _rerun_last_pipeline(self):
+        """F5 — re-run the last executed pipeline."""
+        if self._last_pipeline == "eis":
+            self._run_eis_clicked()
+        elif self._last_pipeline == "cycling":
+            self._run_ciclagem_clicked()
+        elif self._last_pipeline == "drt":
+            self._run_drt_clicked()
+        elif self._last_pipeline == "both":
+            self._run_both_clicked()
+        else:
+            self._append_log(tr("Nenhum pipeline executado anteriormente. Use Ctrl+1/2/3."))
+
+    def _cancel_pipeline(self):
+        """Escape — cancel running pipeline."""
+        if hasattr(self, "_batch_proc") and self._batch_proc is not None:
+            self._batch_proc.cancel()
+        self._append_log(tr("Cancelamento solicitado."))
+        self._update_status_bar(pipeline_status="cancelled")
+
+    def _on_llm_provider_change(self, value: str):
+        """Save LLM provider preference."""
+        provider_map = {"Nenhum": "none", "OpenAI": "openai", "Ollama": "ollama"}
+        provider = provider_map.get(value, "none")
+        self.gui_settings["llm_provider"] = provider
+        self._save_gui_settings()
+        self._append_log(f"Provedor IA: {value}")
+
+    def _save_config_clicked(self):
+        """Ctrl+S — save current config to JSON."""
+        from src.config import PipelineConfig
+        out = filedialog.asksaveasfilename(
+            defaultextension=".json",
+            filetypes=[("JSON", "*.json")],
+            initialdir=".",
+            title=tr("Salvar Configuração"),
+        )
+        if not out:
+            return
+        try:
+            cfg = PipelineConfig.default()
+            with contextlib.suppress(Exception):
+                cfg.scan_rate = float(self.scan_rate_entry.get())
+            with contextlib.suppress(Exception):
+                cfg.drt_lambda = float(self.drt_lambda_entry.get())
+            with contextlib.suppress(Exception):
+                cfg.drt_n_tau = int(self.drt_n_taus_entry.get())
+            cfg.language = self.gui_settings.get("language", "pt")
+            cfg.to_json(out)
+            self._append_log(f"Configuração salva: {out}")
+        except Exception as exc:
+            self._append_log(f"Erro ao salvar configuração: {exc}")
+
+    def _run_kk_validation_clicked(self):
+        """Run Kramers-Kronig validation on loaded EIS data."""
+        self._append_log(tr("Executando validação Kramers-Kronig..."))
+        self.tabs.set("🔬 " + tr("Validação KK"))
+
+        def worker():
+            try:
+                lines = []
+                kk = KramersKronigValidator()
+                raw = getattr(self, "raw_eis", {}) or {}
+                if not raw:
+                    self.log_queue.put(("kk_result", tr("Nenhum dado EIS carregado.")))
+                    return
+                for name, df in raw.items():
+                    try:
+                        freq = df.iloc[:, 0].values.astype(float)
+                        zr = df.iloc[:, 1].values.astype(float)
+                        zi = df.iloc[:, 2].values.astype(float)
+                        z = zr + 1j * zi
+                        result = kk.validate(freq, z)
+                        icon = {"excelente": "🟢", "aceitável": "🟡"}.get(
+                            result.classification, "🔴"
+                        )
+                        lines.append(
+                            f"{icon} {name}: {result.classification} "
+                            f"(resíduo médio: {result.mean_residual:.4f})"
+                        )
+                    except Exception as exc:
+                        lines.append(f"⚠️ {name}: erro — {exc}")
+                self.log_queue.put(("kk_result", "\n".join(lines)))
+            except Exception as exc:
+                self.log_queue.put(("kk_result", f"Erro KK: {exc}"))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _run_fitting_diagnostics_clicked(self):
+        """Generate fitting diagnostic plots and quality assessment."""
+        self._append_log(tr("Gerando diagnósticos de fitting..."))
+        self.tabs.set("🩺 " + tr("Diagnóstico Fitting"))
+
+        def worker():
+            try:
+                eis_result = getattr(self, "last_eis_result", None)
+                if not eis_result:
+                    self.log_queue.put(("diag_result", tr("Execute o pipeline EIS primeiro.")))
+                    return
+                lines = []
+                circuit_table = eis_result.get("circuit_table")
+                if circuit_table is not None and not circuit_table.empty:
+                    for _, row in circuit_table.iterrows():
+                        name = row.get("sample", row.get("Arquivo", "?"))
+                        best_circuit = row.get("best_circuit", row.get("Circuito", "?"))
+                        bic = row.get("bic", row.get("BIC", "?"))
+                        fit_dict = {"circuit_name": best_circuit, "bic": bic, "params": {}}
+                        qi = assess_quality(fit_dict)
+                        icon = {"green": "🟢", "yellow": "🟡", "red": "🔴"}.get(qi.color, "⚪")
+                        lines.append(f"{icon} {name}: {best_circuit} (BIC={bic}) — {qi.label}")
+                else:
+                    lines.append(tr("Sem dados de circuitos."))
+                self.log_queue.put(("diag_result", "\n".join(lines)))
+            except Exception as exc:
+                self.log_queue.put(("diag_result", f"Erro diagnóstico: {exc}"))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _run_fitting_report_clicked(self):
+        """Generate textual fitting report."""
+        self._append_log(tr("Gerando relatório textual de fitting..."))
+        self.tabs.set("📝 " + tr("Relatório Fitting"))
+
+        def worker():
+            try:
+                eis_result = getattr(self, "last_eis_result", None)
+                if not eis_result:
+                    self.log_queue.put(("fitting_report_result", tr("Execute o pipeline EIS primeiro.")))
+                    return
+                gen = FittingReportGenerator()
+                lines = []
+                circuit_table = eis_result.get("circuit_table")
+                if circuit_table is not None and not circuit_table.empty:
+                    for _, row in circuit_table.head(10).iterrows():
+                        fit_dict = {
+                            "circuit_name": row.get("best_circuit", row.get("Circuito", "?")),
+                            "bic": row.get("bic", row.get("BIC", None)),
+                            "params": {},
+                        }
+                        report = gen.generate(fit_result=fit_dict)
+                        lines.append(f"═══ {row.get('sample', row.get('Arquivo', '?'))} ═══")
+                        lines.append(report.to_text())
+                        lines.append("")
+                else:
+                    lines.append(tr("Sem dados de circuitos."))
+                self.log_queue.put(("fitting_report_result", "\n".join(lines)))
+            except Exception as exc:
+                self.log_queue.put(("fitting_report_result", f"Erro relatório: {exc}"))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _run_batch_clicked(self):
+        """Run batch processing on a selected folder."""
+        folder = filedialog.askdirectory(title=tr("Selecionar pasta para batch processing"))
+        if not folder:
+            return
+        self._append_log(f"Batch processing: {folder}")
+        self._update_status_bar(pipeline_status="running: batch")
+
+        def worker():
+            try:
+                bp = BatchProcessor()
+                self._batch_proc = bp
+                result = bp.run_eis(folder)
+                self._batch_proc = None
+                summary = result.summary()
+                self.log_queue.put(("log", f"Batch concluído: {summary}"))
+                self.log_queue.put(("status_update", {"pipeline_status": "idle"}))
+            except Exception as exc:
+                self._batch_proc = None
+                self.log_queue.put(("log", f"Erro batch: {exc}"))
+                self.log_queue.put(("status_update", {"pipeline_status": "idle"}))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _run_compose_clicked(self):
+        """Auto-compose circuits using CircuitComposer."""
+        self._append_log(tr("Auto-composição de circuitos..."))
+
+        def worker():
+            try:
+                raw = getattr(self, "raw_eis", {}) or {}
+                if not raw:
+                    self.log_queue.put(("log", tr("Carregue dados EIS primeiro.")))
+                    return
+                composer = CircuitComposer()
+                first_name = next(iter(raw))
+                df = raw[first_name]
+                freq = df.iloc[:, 0].values.astype(float)
+                zr = df.iloc[:, 1].values.astype(float)
+                zi = df.iloc[:, 2].values.astype(float)
+                z = zr + 1j * zi
+                top = composer.auto_select(freq, z, max_elements=3, top_n=5)
+                lines = [f"Top circuitos compostos para {first_name}:"]
+                for i, tpl in enumerate(top, 1):
+                    lines.append(f"  {i}. {tpl.name} (n_params={tpl.n_params})")
+                self.log_queue.put(("log", "\n".join(lines)))
+            except Exception as exc:
+                self.log_queue.put(("log", f"Erro auto-compose: {exc}"))
+
+        threading.Thread(target=worker, daemon=True).start()
+
     def _run_ai_analysis_clicked(self):
         """Run AI analysis using current pipeline results."""
         self._append_log("Iniciando análise IA...")
@@ -3867,6 +4223,8 @@ class PipelineApp(ctk.CTk):
         threading.Thread(target=worker, daemon=True).start()
 
     def _run_eis_clicked(self):
+        self._last_pipeline = "eis"
+        self._update_status_bar(pipeline_status="running: EIS")
         self._disable_buttons()
         self._set_status("rodando EIS")
         self._start_progress("Identificando amostras EIS...")
@@ -3889,6 +4247,8 @@ class PipelineApp(ctk.CTk):
         threading.Thread(target=worker, daemon=True).start()
 
     def _run_ciclagem_clicked(self):
+        self._last_pipeline = "cycling"
+        self._update_status_bar(pipeline_status="running: Cycling")
         self._disable_buttons()
         self._set_status("rodando Ciclagem")
         self._start_progress("Identificando ciclos...")
@@ -3912,6 +4272,8 @@ class PipelineApp(ctk.CTk):
         threading.Thread(target=worker, daemon=True).start()
 
     def _run_both_clicked(self):
+        self._last_pipeline = "both"
+        self._update_status_bar(pipeline_status="running: EIS+Cycling")
         self._disable_buttons()
         self._set_status("rodando ambos")
         self._start_progress("Identificando dados EIS e ciclos...")
@@ -3945,6 +4307,8 @@ class PipelineApp(ctk.CTk):
         threading.Thread(target=worker, daemon=True).start()
 
     def _run_drt_clicked(self):
+        self._last_pipeline = "drt"
+        self._update_status_bar(pipeline_status="running: DRT")
         self._disable_buttons()
         self._set_status("rodando DRT")
         self._start_progress("Calculando DRT...")
@@ -4005,6 +4369,17 @@ class PipelineApp(ctk.CTk):
                 elif msg_type == "ai_result":
                     self.ai_textbox.delete("1.0", "end")
                     self.ai_textbox.insert("1.0", item[1])
+                elif msg_type == "kk_result":
+                    self.kk_textbox.delete("1.0", "end")
+                    self.kk_textbox.insert("1.0", item[1])
+                elif msg_type == "diag_result":
+                    self.diag_textbox.delete("1.0", "end")
+                    self.diag_textbox.insert("1.0", item[1])
+                elif msg_type == "fitting_report_result":
+                    self.fitting_report_textbox.delete("1.0", "end")
+                    self.fitting_report_textbox.insert("1.0", item[1])
+                elif msg_type == "status_update":
+                    self._update_status_bar(**item[1])
             except Exception as exc:
                 # Não deixar o loop quebrar; logar e continuar
                 self._append_log(f"Erro no processamento da fila: {exc}")
@@ -4042,6 +4417,7 @@ class PipelineApp(ctk.CTk):
         self._set_status("EIS concluído")
         self._stop_progress("EIS concluído")
         self._enable_buttons()
+        self._update_status_bar(pipeline_status="idle", samples_loaded=len(self.raw_eis))
         # Atualiza janela interativa se estiver aberta
         if self.interactive_win is not None and self.interactive_win.winfo_exists():
             self._open_interactive_window()
