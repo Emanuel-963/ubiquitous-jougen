@@ -9,7 +9,7 @@
 ; ──────────────────────────────────────────────────────────────
 
 #define MyAppName      "IonFlow Pipeline"
-#define MyAppVersion   "0.2.0-rc1"
+#define MyAppVersion   "0.2.0"
 #define MyAppPublisher "Emanuel"
 #define MyAppURL       "https://github.com/Emanuel-963/ubiquitous-jougen"
 #define MyAppExeName   "IonFlow_Pipeline.exe"

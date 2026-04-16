@@ -1,6 +1,6 @@
 """IonFlow Pipeline — EIS analytics package."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 # Convenience re-exports so users can do ``from src import tr, check_for_updates``
 from src.circuit_composer import CircuitBlock, CircuitComposer  # noqa: F401

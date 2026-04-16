@@ -1,20 +1,61 @@
-# EIS Analytics Framework — One-page summary
+# IonFlow Pipeline v0.2.0 — One-page Summary
 
-Resumo rápido:
-- O EIS Analytics Framework automatiza a análise de Espectroscopia de Impedância Eletroquímica (EIS) para caracterização e comparação de materiais.
-- Extrai métricas físicas robustas (Resistência série Rs, Resistência de polarização Rp, Capacitância efetiva dependente de frequência, Energia acumulada, Tau, Dispersion Index) e realiza análise multivariada (PCA) para comparação entre amostras.
+## What it is
 
-Pontos-chave para comunicar:
-- Reprodutibilidade: ambiente virtual, testes unitários (pytest) e scripts para regenerar figuras.
-- Uso prático: executar `python main.py` com os arquivos EIS em `data/raw/` gera `outputs/` com figuras e tabelas.
-- Código: modular, documentado com docstrings e tipos, test coverage atual ~76%.
+IonFlow Pipeline is a professional, lab-grade analytics platform for **Electrochemical
+Impedance Spectroscopy (EIS)**, **galvanostatic cycling**, and **Distribution of
+Relaxation Times (DRT)** analysis. It features an AI-powered interpretation agent,
+PDF reporting, parallel processing, and an interactive GUI — all in a single installable
+desktop application.
 
-Como demonstrar (2–3 minutos):
-1. Mostrar o repositório e o README breve.
-2. Rodar `python scripts/regenerate_figures.py` para gerar uma PCA 2D de exemplo.
-3. Mostrar resultados em `outputs/figures` e `outputs/tables`.
+## Key Features (v0.2.0)
 
-Links úteis:
-- Código: https://github.com/Emanuel-963/ubiquitous-jougen
-- Pull request com melhorias de qualidade: https://github.com/Emanuel-963/ubiquitous-jougen/pull/1
+| Category | Capabilities |
+|----------|-------------|
+| **EIS Analysis** | 7 equivalent circuit models (extensible registry), auto-selection via ML classifier, Monte Carlo uncertainty, Kramers-Kronig validation |
+| **Cycling** | Ragone plots with technology reference zones, gap analysis vs targets (300 Wh/kg, 3000 W/kg), retention metrics |
+| **DRT** | Tikhonov regularisation, peak detection, multi-sample overlay |
+| **AI Agent** | 50+ electrochemical rules, inference engine, performance predictor, process advisor, optional LLM enrichment (OpenAI/Ollama) |
+| **Visualisation** | Nyquist, Bode, PCA 2D/3D, correlation heatmaps, production heatmaps (material × synthesis), boxplots |
+| **Reporting** | Automated PDF with cover, EIS/Cycling/DRT/AI sections, images, tables |
+| **GUI** | MVC architecture, 6 tab modules, keyboard shortcuts, 3 languages (PT/EN/ES), accessibility settings |
+| **CLI** | `ionflow-cli eis / cycling / drt / analyze / validate / config` |
+| **Quality** | 1782 automated tests, GitHub Actions CI, structured logging |
+
+## Quick Start
+
+```bash
+# Install
+pip install -e .
+
+# GUI
+ionflow
+
+# CLI
+ionflow-cli eis --data-dir data/raw --output outputs/
+ionflow-cli analyze --all --ai --export-pdf report.pdf
+
+# Or run directly
+python gui_app.py
+```
+
+## For Researchers
+
+1. Place your EIS `.csv` files in `data/raw/`
+2. Launch the GUI or CLI
+3. The pipeline automatically: loads → validates (Kramers-Kronig) → fits 7 circuits → ranks by BIC → runs PCA → generates heatmaps
+4. The AI agent interprets results and recommends process improvements
+5. Export a complete PDF report with one click
+
+## Architecture
+
+- **35+ Python modules** with typed dataclasses and structured logging
+- **`src/ai/`** — Knowledge base (50+ rules), inference engine, performance predictor, process advisor, LLM adapter
+- **`src/gui/`** — MVC pattern with modular tab system
+- **`src/config.py`** — Single `PipelineConfig` dataclass (zero magic numbers)
+
+## Links
+
+- Repository: https://github.com/Emanuel-963/ubiquitous-jougen
+- License: MIT
 
