@@ -17,13 +17,13 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
         raise ValueError(f"Colunas faltando: {missing}")
 
     # Remover linhas que tenham NaN nas colunas essenciais
-    df = df.dropna(subset=list(required))
+    df = df.dropna(subset=list(required)).copy()
 
     # Forçar tipos numéricos, caso venham como string
     df["frequency"] = pd.to_numeric(df["frequency"], errors="coerce")
 
     # Filtrar frequências inválidas
-    df = df[df["frequency"] > 0]
+    df = df[df["frequency"] > 0].copy()
     df = df.sort_values("frequency", ascending=False)
 
     df["omega"] = 2 * np.pi * df["frequency"]
