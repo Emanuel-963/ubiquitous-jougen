@@ -6593,3 +6593,516 @@
 [2026-04-16 12:33:10] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-137\test_unicode_in_summary0\report.pdf (v1, 6.8 KB, 0.0s)
 [2026-04-16 12:33:12] [WARNING] [src.validation] Validation: w
 [2026-04-16 12:33:12] [ERROR  ] [src.validation] Validation: e
+[2026-04-16 12:48:20] [INFO   ] [src.config] Config saved → C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_main_config_init0\test_cfg.json
+[2026-04-16 12:48:20] [INFO   ] [src.config] Config saved → C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_roundtrip_defaults0\cfg.json
+[2026-04-16 12:48:20] [INFO   ] [src.config] Config saved → C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_roundtrip_custom_values0\custom.json
+[2026-04-16 12:48:20] [INFO   ] [src.config] Config saved → C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_json_file_is_valid_json0\test.json
+[2026-04-16 12:48:20] [INFO   ] [src.config] Config saved → C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_creates_parent_dirs0\deep\nested\cfg.json
+[2026-04-16 12:48:20] [WARNING] [src.config] Config: unknown key 'brand_new_field_v99' ignored
+[2026-04-16 12:48:20] [WARNING] [src.config] Failed to load config from C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_from_json_safe_on_bad_fil0\bad.json: Expecting value: line 1 column 1 (char 0) — using defaults
+[2026-04-16 12:48:20] [WARNING] [src.config] Failed to load config from C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_from_json_safe_on_missing0\nonexistent.json: [Errno 2] No such file or directory: 'C:\\Users\\eso41\\AppData\\Local\\Temp\\pytest-of-eso41\\pytest-138\\test_from_json_safe_on_missing0\\nonexistent.json' — using defaults
+[2026-04-16 12:48:25] [DEBUG  ] [src.loader] Falha ao ler C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_empty_file_raises0\empty.csv com sep=;: No columns to parse from file
+[2026-04-16 12:48:25] [DEBUG  ] [src.loader] Falha ao ler C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_empty_file_raises0\empty.csv com sep=	: No columns to parse from file
+[2026-04-16 12:48:25] [DEBUG  ] [src.loader] Falha ao ler C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_empty_file_raises0\empty.csv com sep=,: No columns to parse from file
+[2026-04-16 12:48:25] [DEBUG  ] [src.loader] Falha ao ler C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_empty_file_raises0\empty.csv com sep=None: Could not determine delimiter
+[2026-04-16 12:48:25] [DEBUG  ] [src.drt_analysis] DRT: n_freq=40  n_taus=40  λ=1.00e-03  R_inf=1.0000 Ω  peaks=5
+[2026-04-16 12:48:25] [DEBUG  ] [src.drt_analysis] DRT: n_freq=40  n_taus=40  λ=1.00e-03  R_inf=1.0000 Ω  peaks=5
+[2026-04-16 12:48:25] [DEBUG  ] [src.drt_analysis] DRT: n_freq=30  n_taus=40  λ=1.00e-03  R_inf=1.0000 Ω  peaks=5
+[2026-04-16 12:48:25] [DEBUG  ] [src.drt_analysis] DRT: n_freq=40  n_taus=50  λ=1.00e-03  R_inf=1.0000 Ω  peaks=5
+[2026-04-16 12:48:25] [DEBUG  ] [src.drt_analysis] DRT: n_freq=60  n_taus=80  λ=1.00e-04  R_inf=1.0000 Ω  peaks=5
+[2026-04-16 12:48:25] [DEBUG  ] [src.drt_analysis] DRT: n_freq=40  n_taus=50  λ=1.00e-03  R_inf=1.0000 Ω  peaks=5
+[2026-04-16 12:48:25] [DEBUG  ] [src.drt_analysis] DRT: n_freq=40  n_taus=50  λ=1.00e-03  R_inf=1.0000 Ω  peaks=5
+[2026-04-16 12:48:25] [DEBUG  ] [src.drt_analysis] DRT: n_freq=40  n_taus=50  λ=1.00e-03  R_inf=1.0000 Ω  peaks=5
+[2026-04-16 12:48:25] [DEBUG  ] [src.drt_analysis] DRT: n_freq=40  n_taus=50  λ=1.00e-03  R_inf=1.0000 Ω  peaks=5
+[2026-04-16 12:48:25] [DEBUG  ] [src.drt_analysis] DRT: n_freq=60  n_taus=80  λ=1.00e-04  R_inf=1.0000 Ω  peaks=5
+[2026-04-16 12:48:25] [DEBUG  ] [src.drt_analysis] DRT: n_freq=60  n_taus=80  λ=1.00e-04  R_inf=1.0000 Ω  peaks=5
+[2026-04-16 12:48:25] [DEBUG  ] [src.drt_analysis] DRT: n_freq=60  n_taus=80  λ=1.00e-04  R_inf=1.0000 Ω  peaks=5
+[2026-04-16 12:48:25] [DEBUG  ] [src.drt_analysis] DRT: n_freq=40  n_taus=50  λ=5.00e-04  R_inf=1.0000 Ω  peaks=5
+[2026-04-16 12:48:25] [DEBUG  ] [src.drt_analysis] DRT: n_freq=40  n_taus=35  λ=1.00e-03  R_inf=1.0000 Ω  peaks=5
+[2026-04-16 12:48:25] [DEBUG  ] [src.drt_analysis] DRT: n_freq=40  n_taus=50  λ=1.00e-03  R_inf=1.0326 Ω  peaks=7
+[2026-04-16 12:48:25] [DEBUG  ] [src.drt_analysis] DRT: n_freq=50  n_taus=50  λ=1.00e-06  R_inf=1.0000 Ω  peaks=7
+[2026-04-16 12:48:25] [DEBUG  ] [src.drt_analysis] DRT: n_freq=50  n_taus=50  λ=1.00e+00  R_inf=1.0000 Ω  peaks=3
+[2026-04-16 12:48:25] [DEBUG  ] [src.drt_analysis] DRT: n_freq=4  n_taus=10  λ=1.00e-03  R_inf=1.0000 Ω  peaks=1
+[2026-04-16 12:48:25] [DEBUG  ] [src.drt_analysis] DRT: n_freq=28  n_taus=50  λ=1.00e-03  R_inf=1.0000 Ω  peaks=5
+[2026-04-16 12:48:25] [DEBUG  ] [src.drt_analysis] DRT: n_freq=50  n_taus=200  λ=1.00e-03  R_inf=1.0000 Ω  peaks=5
+[2026-04-16 12:48:25] [DEBUG  ] [src.drt_analysis] DRT: n_freq=40  n_taus=60  λ=1.00e-03  R_inf=1.0011 Ω  peaks=6
+[2026-04-16 12:48:26] [DEBUG  ] [src.drt_analysis] DRT: n_freq=40  n_taus=60  λ=1.00e-03  R_inf=0.9958 Ω  peaks=6
+[2026-04-16 12:48:26] [DEBUG  ] [src.drt_analysis] DRT: n_freq=40  n_taus=60  λ=1.00e-03  R_inf=0.9833 Ω  peaks=6
+[2026-04-16 12:48:26] [DEBUG  ] [src.drt_analysis] DRT: n_freq=40  n_taus=60  λ=1.00e-03  R_inf=0.9980 Ω  peaks=6
+[2026-04-16 12:48:26] [DEBUG  ] [src.drt_analysis] DRT: n_freq=40  n_taus=60  λ=1.00e-03  R_inf=0.9889 Ω  peaks=6
+[2026-04-16 12:48:26] [DEBUG  ] [src.drt_analysis] DRT: n_freq=40  n_taus=60  λ=1.00e-03  R_inf=1.0004 Ω  peaks=6
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_001.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'x.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_001.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_001.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_001.txt'
+[2026-04-16 12:48:29] [WARNING] [src.feature_store] FeatureStore: failed to load C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_corrupted_json_resets_gra0\ml\test_store.json: Expecting value: line 1 column 1 (char 0)
+[2026-04-16 12:48:29] [WARNING] [src.feature_store] FeatureStore: unexpected JSON root type, resetting.
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'np.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_001.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'same.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'diff.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 's0.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 's1.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 's2.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 's3.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 's4.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 's5.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 's6.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 's7.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 's8.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 's9.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'no_feat.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'with_feat.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'a.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'only.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'x.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'r0.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'r1.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'r2.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 't0.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 's0.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 's1.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 's2.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 's3.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 's4.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_000.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_001.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_002.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_003.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_004.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_005.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_006.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_007.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_008.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_009.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_010.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_011.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_012.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_013.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_014.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_015.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_016.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_017.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_018.txt'
+[2026-04-16 12:48:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_019.txt'
+[2026-04-16 12:48:32] [INFO   ] [src.fitting_diagnostics] FittingDiagnostics: test_01 — 🟢 Fit excelente (5 plots saved)
+[2026-04-16 12:48:35] [INFO   ] [src.fitting_diagnostics] FittingDiagnostics: test_02 — 🟢 Fit excelente (4 plots saved)
+[2026-04-16 12:48:38] [INFO   ] [src.fitting_diagnostics] FittingDiagnostics: test_03 — 🟢 Fit excelente (4 plots saved)
+[2026-04-16 12:48:41] [INFO   ] [src.fitting_diagnostics] FittingDiagnostics: test_04 — 🟢 Fit excelente (4 plots saved)
+[2026-04-16 12:48:43] [INFO   ] [src.fitting_diagnostics] FittingDiagnostics: test_05 — 🟢 Fit excelente (4 plots saved)
+[2026-04-16 12:48:46] [INFO   ] [src.fitting_diagnostics] FittingDiagnostics: test_06 — 🟢 Fit excelente (5 plots saved)
+[2026-04-16 12:48:49] [INFO   ] [src.fitting_diagnostics] FittingDiagnostics: test_07 — 🟢 Fit excelente (4 plots saved)
+[2026-04-16 12:48:51] [INFO   ] [src.fitting_diagnostics] FittingDiagnostics: test_08 — 🟢 Fit excelente (4 plots saved)
+[2026-04-16 12:48:53] [INFO   ] [src.fitting_diagnostics] FittingDiagnostics: notemplate — 🟢 Fit excelente (3 plots saved)
+[2026-04-16 12:48:56] [INFO   ] [src.fitting_diagnostics] FittingDiagnostics: nocomp — 🟢 Fit excelente (4 plots saved)
+[2026-04-16 12:48:57] [INFO   ] [src.fitting_diagnostics] FittingDiagnostics: noparams — 🟢 Fit excelente (2 plots saved)
+[2026-04-16 12:48:59] [INFO   ] [src.fitting_diagnostics] FittingDiagnostics: infbic — 🟢 Fit excelente (4 plots saved)
+[2026-04-16 12:49:03] [INFO   ] [src.fitting_diagnostics] FittingDiagnostics: single — 🟢 Fit excelente (5 plots saved)
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_diagnostics] FittingDiagnostics: allplots — 🟢 Fit excelente (5 plots saved)
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit problemático
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit aceitável
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit problemático
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit aceitável
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_000.txt'
+[2026-04-16 12:49:05] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_001.txt'
+[2026-04-16 12:49:05] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_002.txt'
+[2026-04-16 12:49:05] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_003.txt'
+[2026-04-16 12:49:05] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_004.txt'
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_000.txt'
+[2026-04-16 12:49:05] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_001.txt'
+[2026-04-16 12:49:05] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_002.txt'
+[2026-04-16 12:49:05] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_003.txt'
+[2026-04-16 12:49:05] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_004.txt'
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_000.txt'
+[2026-04-16 12:49:05] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_001.txt'
+[2026-04-16 12:49:05] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_002.txt'
+[2026-04-16 12:49:05] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_003.txt'
+[2026-04-16 12:49:05] [DEBUG  ] [src.feature_store] FeatureStore: added record for 'sample_004.txt'
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit excelente
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit problemático
+[2026-04-16 12:49:05] [INFO   ] [src.fitting_report] FittingReport generated for Randles-CPE-W — Fit aceitável
+[2026-04-16 12:49:07] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:49:07] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:49:07] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:49:07] [INFO   ] [src.ai.inference_engine] InferenceEngine analysis complete: 4 findings, 0 anomalies, 3 recommendations, quality=97
+[2026-04-16 12:49:07] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:49:07] [INFO   ] [src.ai.inference_engine] InferenceEngine analysis complete: 1 findings, 5 anomalies, 0 recommendations, quality=35
+[2026-04-16 12:49:07] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:49:07] [INFO   ] [src.ai.inference_engine] InferenceEngine analysis complete: 5 findings, 0 anomalies, 4 recommendations, quality=97
+[2026-04-16 12:49:07] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:49:07] [INFO   ] [src.ai.inference_engine] InferenceEngine analysis complete: 9 findings, 0 anomalies, 10 recommendations, quality=83
+[2026-04-16 12:49:07] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:49:07] [INFO   ] [src.ai.inference_engine] InferenceEngine analysis complete: 5 findings, 0 anomalies, 4 recommendations, quality=97
+[2026-04-16 12:49:07] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:49:07] [INFO   ] [src.ai.inference_engine] InferenceEngine analysis complete: 5 findings, 1 anomalies, 3 recommendations, quality=92
+[2026-04-16 12:49:07] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:49:07] [INFO   ] [src.ai.inference_engine] InferenceEngine analysis complete: 6 findings, 0 anomalies, 5 recommendations, quality=97
+[2026-04-16 12:49:07] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:49:07] [INFO   ] [src.ai.inference_engine] InferenceEngine analysis complete: 0 findings, 0 anomalies, 0 recommendations, quality=100
+[2026-04-16 12:49:07] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:49:07] [INFO   ] [src.ai.inference_engine] InferenceEngine analysis complete: 0 findings, 0 anomalies, 0 recommendations, quality=100
+[2026-04-16 12:49:07] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:49:07] [INFO   ] [src.ai.inference_engine] InferenceEngine analysis complete: 0 findings, 0 anomalies, 0 recommendations, quality=100
+[2026-04-16 12:49:07] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:49:07] [INFO   ] [src.ai.inference_engine] InferenceEngine analysis complete: 0 findings, 0 anomalies, 0 recommendations, quality=100
+[2026-04-16 12:49:07] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:49:07] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:49:07] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:49:07] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:49:07] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:49:07] [INFO   ] [src.ai.inference_engine] InferenceEngine analysis complete: 0 findings, 0 anomalies, 0 recommendations, quality=100
+[2026-04-16 12:49:07] [INFO   ] [src.config] Config saved → C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_default_round_trip0\cfg.json
+[2026-04-16 12:49:07] [INFO   ] [src.config] Config saved → C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_custom_values_round_trip0\custom.json
+[2026-04-16 12:49:07] [WARNING] [src.config] Config: unknown key 'future_key_v0.3.0' ignored
+[2026-04-16 12:49:07] [WARNING] [src.config] Failed to load config from C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_from_json_safe_fallback0\bad.json: Expecting value: line 1 column 1 (char 0) — using defaults
+[2026-04-16 12:49:07] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: only 0 valid records (need 30) — falling back to heuristic.
+[2026-04-16 12:49:07] [WARNING] [src.validation] Validation: 38% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:49:08] [INFO   ] [main] Feature history for 1 Syn H2SO4 Am1.txt: Sem histórico de fittings — recomendação baseada em heurística.
+[2026-04-16 12:49:08] [DEBUG  ] [src.feature_store] FeatureStore: added record for '1 Syn H2SO4 Am1.txt'
+[2026-04-16 12:49:08] [WARNING] [src.validation] Validation: 40% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:49:09] [INFO   ] [main] Feature history for 2 Syn H2SO4 Am2.txt: Com base em 1 amostras anteriores, o modelo Simple-RC tem 100% de probabilidade de ser o melhor., Amostras com slope_low=-0.01 e phase_min=-14.2° tipicamente convergem para Simple-RC.
+[2026-04-16 12:49:10] [DEBUG  ] [src.feature_store] FeatureStore: added record for '2 Syn H2SO4 Am2.txt'
+[2026-04-16 12:49:10] [WARNING] [src.validation] Validation: 42% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:49:11] [INFO   ] [main] Feature history for 3 Syn H2SO4 Am3.txt: Com base em 2 amostras anteriores, o modelo Simple-RC tem 50% de probabilidade de ser o melhor., Amostras com slope_low=-0.00 e phase_min=-20.5° tipicamente convergem para Simple-RC.
+[2026-04-16 12:49:11] [DEBUG  ] [src.feature_store] FeatureStore: added record for '3 Syn H2SO4 Am3.txt'
+[2026-04-16 12:49:17] [INFO   ] [main] EIS pipeline complete — 3 files processed.
+[2026-04-16 12:49:17] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: only 0 valid records (need 30) — falling back to heuristic.
+[2026-04-16 12:49:17] [WARNING] [src.validation] Validation: 38% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:49:19] [INFO   ] [main] Feature history for 1 Syn H2SO4 Am1.txt: Sem histórico de fittings — recomendação baseada em heurística.
+[2026-04-16 12:49:19] [DEBUG  ] [src.feature_store] FeatureStore: added record for '1 Syn H2SO4 Am1.txt'
+[2026-04-16 12:49:19] [WARNING] [src.validation] Validation: 40% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:49:20] [INFO   ] [main] Feature history for 2 Syn H2SO4 Am2.txt: Com base em 1 amostras anteriores, o modelo Simple-RC tem 100% de probabilidade de ser o melhor., Amostras com slope_low=-0.01 e phase_min=-14.2° tipicamente convergem para Simple-RC.
+[2026-04-16 12:49:20] [DEBUG  ] [src.feature_store] FeatureStore: added record for '2 Syn H2SO4 Am2.txt'
+[2026-04-16 12:49:20] [WARNING] [src.validation] Validation: 42% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:49:21] [INFO   ] [main] Feature history for 3 Syn H2SO4 Am3.txt: Com base em 2 amostras anteriores, o modelo Simple-RC tem 50% de probabilidade de ser o melhor., Amostras com slope_low=-0.00 e phase_min=-20.5° tipicamente convergem para Simple-RC.
+[2026-04-16 12:49:21] [DEBUG  ] [src.feature_store] FeatureStore: added record for '3 Syn H2SO4 Am3.txt'
+[2026-04-16 12:49:26] [INFO   ] [main] EIS pipeline complete — 3 files processed.
+[2026-04-16 12:49:26] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: only 0 valid records (need 30) — falling back to heuristic.
+[2026-04-16 12:49:26] [WARNING] [src.validation] Validation: 38% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:49:27] [INFO   ] [main] Feature history for 1 Syn H2SO4 Am1.txt: Sem histórico de fittings — recomendação baseada em heurística.
+[2026-04-16 12:49:27] [DEBUG  ] [src.feature_store] FeatureStore: added record for '1 Syn H2SO4 Am1.txt'
+[2026-04-16 12:49:27] [WARNING] [src.validation] Validation: 40% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:49:29] [INFO   ] [main] Feature history for 2 Syn H2SO4 Am2.txt: Com base em 1 amostras anteriores, o modelo Simple-RC tem 100% de probabilidade de ser o melhor., Amostras com slope_low=-0.01 e phase_min=-14.2° tipicamente convergem para Simple-RC.
+[2026-04-16 12:49:29] [DEBUG  ] [src.feature_store] FeatureStore: added record for '2 Syn H2SO4 Am2.txt'
+[2026-04-16 12:49:29] [WARNING] [src.validation] Validation: 42% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:49:30] [INFO   ] [main] Feature history for 3 Syn H2SO4 Am3.txt: Com base em 2 amostras anteriores, o modelo Simple-RC tem 50% de probabilidade de ser o melhor., Amostras com slope_low=-0.00 e phase_min=-20.5° tipicamente convergem para Simple-RC.
+[2026-04-16 12:49:30] [DEBUG  ] [src.feature_store] FeatureStore: added record for '3 Syn H2SO4 Am3.txt'
+[2026-04-16 12:49:35] [INFO   ] [main] EIS pipeline complete — 3 files processed.
+[2026-04-16 12:49:35] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: only 0 valid records (need 30) — falling back to heuristic.
+[2026-04-16 12:49:35] [WARNING] [src.validation] Validation: 37% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:49:37] [INFO   ] [main] Feature history for 1 Syn H2SO4 Am1.txt: Sem histórico de fittings — recomendação baseada em heurística.
+[2026-04-16 12:49:37] [DEBUG  ] [src.feature_store] FeatureStore: added record for '1 Syn H2SO4 Am1.txt'
+[2026-04-16 12:49:37] [WARNING] [src.validation] Validation: 40% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:49:39] [INFO   ] [main] Feature history for 2 Syn H2SO4 Am2.txt: Com base em 1 amostras anteriores, o modelo Simple-RC tem 100% de probabilidade de ser o melhor., Amostras com slope_low=-0.01 e phase_min=-6.4° tipicamente convergem para Simple-RC.
+[2026-04-16 12:49:39] [DEBUG  ] [src.feature_store] FeatureStore: added record for '2 Syn H2SO4 Am2.txt'
+[2026-04-16 12:49:39] [INFO   ] [main] PCA skipped: insufficient variance or too few rows.
+[2026-04-16 12:49:41] [INFO   ] [main] EIS pipeline complete — 2 files processed.
+[2026-04-16 12:49:41] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: only 0 valid records (need 30) — falling back to heuristic.
+[2026-04-16 12:49:41] [WARNING] [src.validation] Validation: 37% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:49:42] [INFO   ] [main] Feature history for 1 Syn H2SO4 Am1.txt: Sem histórico de fittings — recomendação baseada em heurística.
+[2026-04-16 12:49:42] [DEBUG  ] [src.feature_store] FeatureStore: added record for '1 Syn H2SO4 Am1.txt'
+[2026-04-16 12:49:42] [WARNING] [src.validation] Validation: 40% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:49:43] [INFO   ] [main] Feature history for 2 Syn H2SO4 Am2.txt: Com base em 1 amostras anteriores, o modelo Simple-RC tem 100% de probabilidade de ser o melhor., Amostras com slope_low=-0.01 e phase_min=-6.4° tipicamente convergem para Simple-RC.
+[2026-04-16 12:49:43] [DEBUG  ] [src.feature_store] FeatureStore: added record for '2 Syn H2SO4 Am2.txt'
+[2026-04-16 12:49:43] [INFO   ] [main] PCA skipped: insufficient variance or too few rows.
+[2026-04-16 12:49:45] [INFO   ] [main] EIS pipeline complete — 2 files processed.
+[2026-04-16 12:49:45] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: only 0 valid records (need 30) — falling back to heuristic.
+[2026-04-16 12:49:45] [WARNING] [src.validation] Validation: 38% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:49:47] [INFO   ] [main] Feature history for 1 Syn H2SO4 Am1.txt: Sem histórico de fittings — recomendação baseada em heurística.
+[2026-04-16 12:49:47] [DEBUG  ] [src.feature_store] FeatureStore: added record for '1 Syn H2SO4 Am1.txt'
+[2026-04-16 12:49:47] [WARNING] [src.validation] Validation: 40% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:49:48] [INFO   ] [main] Feature history for 2 Syn H2SO4 Am2.txt: Com base em 1 amostras anteriores, o modelo Simple-RC tem 100% de probabilidade de ser o melhor., Amostras com slope_low=-0.01 e phase_min=-14.2° tipicamente convergem para Simple-RC.
+[2026-04-16 12:49:48] [DEBUG  ] [src.feature_store] FeatureStore: added record for '2 Syn H2SO4 Am2.txt'
+[2026-04-16 12:49:48] [WARNING] [src.validation] Validation: 42% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:49:49] [INFO   ] [main] Feature history for 3 Syn H2SO4 Am3.txt: Com base em 2 amostras anteriores, o modelo Simple-RC tem 50% de probabilidade de ser o melhor., Amostras com slope_low=-0.00 e phase_min=-20.5° tipicamente convergem para Simple-RC.
+[2026-04-16 12:49:49] [DEBUG  ] [src.feature_store] FeatureStore: added record for '3 Syn H2SO4 Am3.txt'
+[2026-04-16 12:49:49] [WARNING] [src.validation] Validation: 42% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:49:51] [INFO   ] [main] Feature history for 4 Syn H2SO4 Am4.txt: Com base em 3 amostras anteriores, o modelo Simple-RC tem 67% de probabilidade de ser o melhor., Amostras com slope_low=-0.01 e phase_min=-17.8° tipicamente convergem para Simple-RC.
+[2026-04-16 12:49:51] [DEBUG  ] [src.feature_store] FeatureStore: added record for '4 Syn H2SO4 Am4.txt'
+[2026-04-16 12:49:56] [INFO   ] [main] EIS pipeline complete — 4 files processed.
+[2026-04-16 12:49:56] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: only 0 valid records (need 30) — falling back to heuristic.
+[2026-04-16 12:49:56] [WARNING] [src.validation] Validation: 38% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:49:57] [INFO   ] [main] Feature history for 1 Syn H2SO4 Am1.txt: Sem histórico de fittings — recomendação baseada em heurística.
+[2026-04-16 12:49:57] [DEBUG  ] [src.feature_store] FeatureStore: added record for '1 Syn H2SO4 Am1.txt'
+[2026-04-16 12:49:57] [WARNING] [src.validation] Validation: 40% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:49:59] [INFO   ] [main] Feature history for 2 Syn H2SO4 Am2.txt: Com base em 1 amostras anteriores, o modelo Simple-RC tem 100% de probabilidade de ser o melhor., Amostras com slope_low=-0.01 e phase_min=-14.2° tipicamente convergem para Simple-RC.
+[2026-04-16 12:49:59] [DEBUG  ] [src.feature_store] FeatureStore: added record for '2 Syn H2SO4 Am2.txt'
+[2026-04-16 12:49:59] [WARNING] [src.validation] Validation: 42% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:00] [INFO   ] [main] Feature history for 3 Syn H2SO4 Am3.txt: Com base em 2 amostras anteriores, o modelo Simple-RC tem 50% de probabilidade de ser o melhor., Amostras com slope_low=-0.00 e phase_min=-20.5° tipicamente convergem para Simple-RC.
+[2026-04-16 12:50:00] [DEBUG  ] [src.feature_store] FeatureStore: added record for '3 Syn H2SO4 Am3.txt'
+[2026-04-16 12:50:00] [WARNING] [src.validation] Validation: 42% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:02] [INFO   ] [main] Feature history for 4 Syn H2SO4 Am4.txt: Com base em 3 amostras anteriores, o modelo Simple-RC tem 67% de probabilidade de ser o melhor., Amostras com slope_low=-0.01 e phase_min=-17.8° tipicamente convergem para Simple-RC.
+[2026-04-16 12:50:02] [DEBUG  ] [src.feature_store] FeatureStore: added record for '4 Syn H2SO4 Am4.txt'
+[2026-04-16 12:50:07] [INFO   ] [main] EIS pipeline complete — 4 files processed.
+[2026-04-16 12:50:07] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: only 0 valid records (need 30) — falling back to heuristic.
+[2026-04-16 12:50:07] [WARNING] [src.validation] Validation: 37% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:08] [INFO   ] [main] Feature history for 1 Syn H2SO4 Am1.txt: Sem histórico de fittings — recomendação baseada em heurística.
+[2026-04-16 12:50:08] [DEBUG  ] [src.feature_store] FeatureStore: added record for '1 Syn H2SO4 Am1.txt'
+[2026-04-16 12:50:08] [WARNING] [src.validation] Validation: 40% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:10] [INFO   ] [main] Feature history for 2 Syn H2SO4 Am2.txt: Com base em 1 amostras anteriores, o modelo Simple-RC tem 100% de probabilidade de ser o melhor., Amostras com slope_low=-0.01 e phase_min=-6.4° tipicamente convergem para Simple-RC.
+[2026-04-16 12:50:10] [DEBUG  ] [src.feature_store] FeatureStore: added record for '2 Syn H2SO4 Am2.txt'
+[2026-04-16 12:50:10] [WARNING] [src.validation] Validation: 63% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:11] [INFO   ] [main] Feature history for 3 Syn H2SO4 Am3.txt: Com base em 2 amostras anteriores, o modelo Randles-CPE-W tem 50% de probabilidade de ser o melhor., Amostras com slope_low=-0.00 e phase_min=-9.9° tipicamente convergem para Randles-CPE-W.
+[2026-04-16 12:50:11] [DEBUG  ] [src.feature_store] FeatureStore: added record for '3 Syn H2SO4 Am3.txt'
+[2026-04-16 12:50:16] [INFO   ] [main] EIS pipeline complete — 3 files processed.
+[2026-04-16 12:50:16] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: only 0 valid records (need 30) — falling back to heuristic.
+[2026-04-16 12:50:16] [WARNING] [main] No EIS files found in C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_empty_data_dir0\data\raw
+[2026-04-16 12:50:16] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: only 0 valid records (need 30) — falling back to heuristic.
+[2026-04-16 12:50:16] [WARNING] [src.validation] Validation: 37% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:17] [INFO   ] [main] Feature history for 1 Syn H2SO4 Am1.txt: Sem histórico de fittings — recomendação baseada em heurística.
+[2026-04-16 12:50:17] [DEBUG  ] [src.feature_store] FeatureStore: added record for '1 Syn H2SO4 Am1.txt'
+[2026-04-16 12:50:17] [WARNING] [src.validation] Validation: 40% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:19] [INFO   ] [main] Feature history for 2 Syn H2SO4 Am2.txt: Com base em 1 amostras anteriores, o modelo Simple-RC tem 100% de probabilidade de ser o melhor., Amostras com slope_low=-0.01 e phase_min=-6.4° tipicamente convergem para Simple-RC.
+[2026-04-16 12:50:19] [DEBUG  ] [src.feature_store] FeatureStore: added record for '2 Syn H2SO4 Am2.txt'
+[2026-04-16 12:50:19] [INFO   ] [main] PCA skipped: insufficient variance or too few rows.
+[2026-04-16 12:50:21] [INFO   ] [main] EIS pipeline complete — 2 files processed.
+[2026-04-16 12:50:21] [WARNING] [src.validation] Validation: 37% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:21] [DEBUG  ] [src.drt_analysis] DRT: n_freq=30  n_taus=50  λ=1.00e-03  R_inf=2.4224 Ω  peaks=4
+[2026-04-16 12:50:21] [INFO   ] [main_drt] DRT OK: 1 Syn H2SO4 Am1.txt                       peaks=4  R_inf=2.4224 Ω
+[2026-04-16 12:50:21] [WARNING] [src.validation] Validation: 40% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:21] [DEBUG  ] [src.drt_analysis] DRT: n_freq=30  n_taus=50  λ=1.00e-03  R_inf=1.8567 Ω  peaks=4
+[2026-04-16 12:50:22] [INFO   ] [main_drt] DRT OK: 2 Syn H2SO4 Am2.txt                       peaks=4  R_inf=1.8567 Ω
+[2026-04-16 12:50:22] [INFO   ] [main_drt] DRT table saved → C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_pipeline_returns_dict0\outputs\tables\drt_results.csv  (2 rows)
+[2026-04-16 12:50:22] [WARNING] [src.validation] Validation: 37% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:22] [DEBUG  ] [src.drt_analysis] DRT: n_freq=30  n_taus=50  λ=1.00e-03  R_inf=2.4224 Ω  peaks=4
+[2026-04-16 12:50:22] [INFO   ] [main_drt] DRT OK: 1 Syn H2SO4 Am1.txt                       peaks=4  R_inf=2.4224 Ω
+[2026-04-16 12:50:22] [WARNING] [src.validation] Validation: 40% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:22] [DEBUG  ] [src.drt_analysis] DRT: n_freq=30  n_taus=50  λ=1.00e-03  R_inf=1.8567 Ω  peaks=4
+[2026-04-16 12:50:23] [INFO   ] [main_drt] DRT OK: 2 Syn H2SO4 Am2.txt                       peaks=4  R_inf=1.8567 Ω
+[2026-04-16 12:50:23] [INFO   ] [main_drt] DRT table saved → C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_drt_table_populated0\outputs\tables\drt_results.csv  (2 rows)
+[2026-04-16 12:50:23] [WARNING] [src.validation] Validation: 37% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:23] [DEBUG  ] [src.drt_analysis] DRT: n_freq=30  n_taus=50  λ=1.00e-03  R_inf=2.4224 Ω  peaks=4
+[2026-04-16 12:50:24] [INFO   ] [main_drt] DRT OK: 1 Syn H2SO4 Am1.txt                       peaks=4  R_inf=2.4224 Ω
+[2026-04-16 12:50:24] [WARNING] [src.validation] Validation: 40% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:24] [DEBUG  ] [src.drt_analysis] DRT: n_freq=30  n_taus=50  λ=1.00e-03  R_inf=1.8567 Ω  peaks=4
+[2026-04-16 12:50:24] [INFO   ] [main_drt] DRT OK: 2 Syn H2SO4 Am2.txt                       peaks=4  R_inf=1.8567 Ω
+[2026-04-16 12:50:24] [INFO   ] [main_drt] DRT table saved → C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_per_file_results_populate0\outputs\tables\drt_results.csv  (2 rows)
+[2026-04-16 12:50:24] [WARNING] [src.validation] Validation: 37% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:24] [DEBUG  ] [src.drt_analysis] DRT: n_freq=30  n_taus=50  λ=1.00e-03  R_inf=2.4224 Ω  peaks=4
+[2026-04-16 12:50:25] [INFO   ] [main_drt] DRT OK: 1 Syn H2SO4 Am1.txt                       peaks=4  R_inf=2.4224 Ω
+[2026-04-16 12:50:25] [INFO   ] [main_drt] DRT table saved → C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_plot_paths_exist0\outputs\tables\drt_results.csv  (1 rows)
+[2026-04-16 12:50:25] [WARNING] [src.validation] Validation: 37% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:25] [DEBUG  ] [src.drt_analysis] DRT: n_freq=30  n_taus=50  λ=1.00e-03  R_inf=2.4224 Ω  peaks=4
+[2026-04-16 12:50:25] [INFO   ] [main_drt] DRT OK: 1 Syn H2SO4 Am1.txt                       peaks=4  R_inf=2.4224 Ω
+[2026-04-16 12:50:25] [INFO   ] [main_drt] DRT table saved → C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_run_meta_present0\outputs\tables\drt_results.csv  (1 rows)
+[2026-04-16 12:50:25] [WARNING] [src.validation] Validation: 37% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:25] [DEBUG  ] [src.drt_analysis] DRT: n_freq=30  n_taus=50  λ=1.00e-03  R_inf=2.4224 Ω  peaks=4
+[2026-04-16 12:50:26] [INFO   ] [main_drt] DRT OK: 1 Syn H2SO4 Am1.txt                       peaks=4  R_inf=2.4224 Ω
+[2026-04-16 12:50:26] [WARNING] [src.validation] Validation: 40% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:26] [DEBUG  ] [src.drt_analysis] DRT: n_freq=30  n_taus=50  λ=1.00e-03  R_inf=1.8567 Ω  peaks=4
+[2026-04-16 12:50:26] [INFO   ] [main_drt] DRT OK: 2 Syn H2SO4 Am2.txt                       peaks=4  R_inf=1.8567 Ω
+[2026-04-16 12:50:26] [INFO   ] [main_drt] DRT table saved → C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_drt_peaks_table0\outputs\tables\drt_results.csv  (2 rows)
+[2026-04-16 12:50:26] [WARNING] [src.validation] Validation: 37% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:26] [DEBUG  ] [src.drt_analysis] DRT: n_freq=30  n_taus=50  λ=1.00e-03  R_inf=2.4224 Ω  peaks=4
+[2026-04-16 12:50:27] [INFO   ] [main_drt] DRT OK: 1 Syn H2SO4 Am1.txt                       peaks=4  R_inf=2.4224 Ω
+[2026-04-16 12:50:27] [INFO   ] [main_drt] DRT table saved → C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_errors_dict_present0\outputs\tables\drt_results.csv  (1 rows)
+[2026-04-16 12:50:27] [WARNING] [main_drt] No .txt files found in C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_empty_data_dir_no_crash0\data\raw
+[2026-04-16 12:50:27] [INFO   ] [main_drt] DRT table saved → C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_empty_data_dir_no_crash0\outputs\tables\drt_results.csv  (0 rows)
+[2026-04-16 12:50:27] [INFO   ] [src.cycling_calculator] Exported to outputs/excel\GCD_syn_Am1.xlsx
+[2026-04-16 12:50:27] [INFO   ] [src.cycling_calculator] Exported to outputs/excel\GCD_syn_Am2.xlsx
+[2026-04-16 12:50:28] [INFO   ] [src.cycling_calculator] Exported to outputs/excel\GCD_syn_Am1.xlsx
+[2026-04-16 12:50:28] [INFO   ] [src.cycling_calculator] Exported to outputs/excel\GCD_syn_Am2.xlsx
+[2026-04-16 12:50:30] [INFO   ] [src.cycling_calculator] Exported to outputs/excel\GCD_syn_Am1.xlsx
+[2026-04-16 12:50:31] [INFO   ] [src.cycling_calculator] Exported to outputs/excel\GCD_syn_Am1.xlsx
+[2026-04-16 12:50:31] [INFO   ] [src.cycling_calculator] Exported to outputs/excel\GCD_syn_Am2.xlsx
+[2026-04-16 12:50:32] [INFO   ] [src.cycling_calculator] Exported to outputs/excel\GCD_syn_Am1.xlsx
+[2026-04-16 12:50:33] [INFO   ] [src.cycling_calculator] Exported to outputs/excel\GCD_syn_Am1.xlsx
+[2026-04-16 12:50:34] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: only 0 valid records (need 30) — falling back to heuristic.
+[2026-04-16 12:50:34] [WARNING] [src.validation] Validation: 37% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:35] [INFO   ] [main] Feature history for 1 Syn H2SO4 Am1.txt: Sem histórico de fittings — recomendação baseada em heurística.
+[2026-04-16 12:50:35] [DEBUG  ] [src.feature_store] FeatureStore: added record for '1 Syn H2SO4 Am1.txt'
+[2026-04-16 12:50:35] [WARNING] [src.validation] Validation: 40% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:37] [INFO   ] [main] Feature history for 2 Syn H2SO4 Am2.txt: Com base em 1 amostras anteriores, o modelo Simple-RC tem 100% de probabilidade de ser o melhor., Amostras com slope_low=-0.01 e phase_min=-6.4° tipicamente convergem para Simple-RC.
+[2026-04-16 12:50:37] [DEBUG  ] [src.feature_store] FeatureStore: added record for '2 Syn H2SO4 Am2.txt'
+[2026-04-16 12:50:37] [WARNING] [src.validation] Validation: 63% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:39] [INFO   ] [main] Feature history for 3 Syn H2SO4 Am3.txt: Com base em 2 amostras anteriores, o modelo Randles-CPE-W tem 50% de probabilidade de ser o melhor., Amostras com slope_low=-0.00 e phase_min=-9.9° tipicamente convergem para Randles-CPE-W.
+[2026-04-16 12:50:39] [DEBUG  ] [src.feature_store] FeatureStore: added record for '3 Syn H2SO4 Am3.txt'
+[2026-04-16 12:50:43] [INFO   ] [main] EIS pipeline complete — 3 files processed.
+[2026-04-16 12:50:43] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: only 0 valid records (need 30) — falling back to heuristic.
+[2026-04-16 12:50:43] [WARNING] [src.validation] Validation: 37% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:45] [INFO   ] [main] Feature history for 1 Syn H2SO4 Am1.txt: Sem histórico de fittings — recomendação baseada em heurística.
+[2026-04-16 12:50:45] [DEBUG  ] [src.feature_store] FeatureStore: added record for '1 Syn H2SO4 Am1.txt'
+[2026-04-16 12:50:45] [WARNING] [src.validation] Validation: 40% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:46] [INFO   ] [main] Feature history for 2 Syn H2SO4 Am2.txt: Com base em 1 amostras anteriores, o modelo Simple-RC tem 100% de probabilidade de ser o melhor., Amostras com slope_low=-0.01 e phase_min=-6.4° tipicamente convergem para Simple-RC.
+[2026-04-16 12:50:46] [DEBUG  ] [src.feature_store] FeatureStore: added record for '2 Syn H2SO4 Am2.txt'
+[2026-04-16 12:50:46] [INFO   ] [main] PCA skipped: insufficient variance or too few rows.
+[2026-04-16 12:50:48] [INFO   ] [main] EIS pipeline complete — 2 files processed.
+[2026-04-16 12:50:49] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: only 0 valid records (need 30) — falling back to heuristic.
+[2026-04-16 12:50:49] [WARNING] [src.validation] Validation: 37% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:50] [INFO   ] [main] Feature history for 1 Syn H2SO4 Am1.txt: Sem histórico de fittings — recomendação baseada em heurística.
+[2026-04-16 12:50:50] [DEBUG  ] [src.feature_store] FeatureStore: added record for '1 Syn H2SO4 Am1.txt'
+[2026-04-16 12:50:50] [WARNING] [src.validation] Validation: 40% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:51] [INFO   ] [main] Feature history for 2 Syn H2SO4 Am2.txt: Com base em 1 amostras anteriores, o modelo Simple-RC tem 100% de probabilidade de ser o melhor., Amostras com slope_low=-0.01 e phase_min=-6.4° tipicamente convergem para Simple-RC.
+[2026-04-16 12:50:51] [DEBUG  ] [src.feature_store] FeatureStore: added record for '2 Syn H2SO4 Am2.txt'
+[2026-04-16 12:50:51] [WARNING] [src.validation] Validation: 63% of points exceed 5 % residual — data may be noisy or corrupted.
+[2026-04-16 12:50:52] [INFO   ] [main] Feature history for 3 Syn H2SO4 Am3.txt: Com base em 2 amostras anteriores, o modelo Randles-CPE-W tem 50% de probabilidade de ser o melhor., Amostras com slope_low=-0.00 e phase_min=-9.9° tipicamente convergem para Randles-CPE-W.
+[2026-04-16 12:50:52] [DEBUG  ] [src.feature_store] FeatureStore: added record for '3 Syn H2SO4 Am3.txt'
+[2026-04-16 12:50:57] [INFO   ] [main] EIS pipeline complete — 3 files processed.
+[2026-04-16 12:50:57] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: trained on 3 samples, 2 classes (Randles-CPE-W, Simple-RC).
+[2026-04-16 12:50:57] [INFO   ] [src.ai.knowledge_base] KnowledgeBase saved → C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_round_trip1\test_rules.json  (2 rules)
+[2026-04-16 12:50:57] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_round_trip1\test_rules.json  (2 rules)
+[2026-04-16 12:50:57] [WARNING] [src.ai.knowledge_base] Failed to load knowledge base from C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_from_json_safe_missing0\missing.json: [Errno 2] No such file or directory: 'C:\\Users\\eso41\\AppData\\Local\\Temp\\pytest-of-eso41\\pytest-138\\test_from_json_safe_missing0\\missing.json'
+[2026-04-16 12:50:57] [WARNING] [src.ai.knowledge_base] Failed to load knowledge base from C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_from_json_safe_corrupt0\bad.json: Expecting value: line 1 column 1 (char 0)
+[2026-04-16 12:50:58] [INFO   ] [src.ai.knowledge_base] KnowledgeBase saved → C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_json_file_valid0\out.json  (1 rules)
+[2026-04-16 12:50:58] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:50:58] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:50:58] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:50:58] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:50:58] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:50:58] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:50:58] [INFO   ] [src.ai.knowledge_base] KnowledgeBase loaded ← C:\Users\eso41\OneDrive\Documentos\ubiquitous-jougenNEW-Copia\eis_analytics\data\knowledge\electrochemistry_rules.json  (56 rules)
+[2026-04-16 12:50:58] [INFO   ] [src.kramers_kronig] KK test: 60 points, 30 Voigt elements → excelente (mean ΔRe=0.00%, ΔIm=0.00%)
+[2026-04-16 12:50:58] [INFO   ] [src.kramers_kronig] KK test: 60 points, 30 Voigt elements → excelente (mean ΔRe=0.08%, ΔIm=0.08%)
+[2026-04-16 12:50:58] [INFO   ] [src.kramers_kronig] KK test: 60 points, 30 Voigt elements → excelente (mean ΔRe=0.00%, ΔIm=0.00%)
+[2026-04-16 12:50:58] [INFO   ] [src.kramers_kronig] KK test: 60 points, 30 Voigt elements → excelente (mean ΔRe=0.00%, ΔIm=0.00%)
+[2026-04-16 12:50:58] [INFO   ] [src.kramers_kronig] KK test: 40 points, 20 Voigt elements → excelente (mean ΔRe=0.07%, ΔIm=0.07%)
+[2026-04-16 12:50:58] [INFO   ] [src.kramers_kronig] KK test: 60 points, 30 Voigt elements → excelente (mean ΔRe=0.00%, ΔIm=0.00%)
+[2026-04-16 12:50:58] [INFO   ] [src.kramers_kronig] KK test: 60 points, 10 Voigt elements → aceitável (mean ΔRe=2.77%, ΔIm=2.79%)
+[2026-04-16 12:50:58] [INFO   ] [src.kramers_kronig] KK test: 50 points, 25 Voigt elements → excelente (mean ΔRe=0.00%, ΔIm=0.00%)
+[2026-04-16 12:50:58] [INFO   ] [src.kramers_kronig] KK test: 60 points, 30 Voigt elements → suspeito (mean ΔRe=12.13%, ΔIm=11.36%)
+[2026-04-16 12:50:58] [INFO   ] [src.kramers_kronig] KK test: 50 points, 25 Voigt elements → suspeito (mean ΔRe=51.48%, ΔIm=42.54%)
+[2026-04-16 12:50:58] [INFO   ] [src.kramers_kronig] KK test: 60 points, 30 Voigt elements → aceitável (mean ΔRe=2.98%, ΔIm=2.90%)
+[2026-04-16 12:50:58] [WARNING] [src.kramers_kronig] KK test: fewer than 4 points — skipping.
+[2026-04-16 12:50:58] [WARNING] [src.kramers_kronig] KK test: fewer than 4 points — skipping.
+[2026-04-16 12:50:58] [WARNING] [src.kramers_kronig] KK test: fewer than 4 points — skipping.
+[2026-04-16 12:50:58] [INFO   ] [src.kramers_kronig] KK test: 4 points, 2 Voigt elements → suspeito (mean ΔRe=53.26%, ΔIm=37.44%)
+[2026-04-16 12:50:58] [INFO   ] [src.kramers_kronig] KK test: 200 points, 100 Voigt elements → excelente (mean ΔRe=0.00%, ΔIm=0.00%)
+[2026-04-16 12:50:58] [INFO   ] [src.kramers_kronig] KK test: 60 points, 30 Voigt elements → excelente (mean ΔRe=0.00%, ΔIm=0.00%)
+[2026-04-16 12:50:58] [INFO   ] [src.kramers_kronig] KK test: 60 points, 30 Voigt elements → excelente (mean ΔRe=0.00%, ΔIm=0.00%)
+[2026-04-16 12:50:58] [INFO   ] [src.kramers_kronig] KK test: 40 points, 20 Voigt elements → excelente (mean ΔRe=0.07%, ΔIm=0.07%)
+[2026-04-16 12:50:58] [INFO   ] [src.kramers_kronig] KK test: 40 points, 20 Voigt elements → excelente (mean ΔRe=0.07%, ΔIm=0.07%)
+[2026-04-16 12:50:58] [INFO   ] [src.kramers_kronig] KK test: 60 points, 30 Voigt elements → excelente (mean ΔRe=0.00%, ΔIm=0.00%)
+[2026-04-16 12:50:58] [INFO   ] [src.kramers_kronig] KK test: 60 points, 30 Voigt elements → excelente (mean ΔRe=0.00%, ΔIm=0.00%)
+[2026-04-16 12:50:58] [INFO   ] [src.kramers_kronig] KK test: 60 points, 30 Voigt elements → excelente (mean ΔRe=0.00%, ΔIm=0.00%)
+[2026-04-16 12:50:58] [INFO   ] [src.kramers_kronig] KK test: 60 points, 30 Voigt elements → excelente (mean ΔRe=0.00%, ΔIm=0.00%)
+[2026-04-16 12:50:58] [INFO   ] [src.kramers_kronig] KK test: 60 points, 30 Voigt elements → excelente (mean ΔRe=0.00%, ΔIm=0.00%)
+[2026-04-16 12:50:59] [INFO   ] [src.kramers_kronig] KK test: 80 points, 40 Voigt elements → excelente (mean ΔRe=0.00%, ΔIm=0.00%)
+[2026-04-16 12:51:00] [INFO   ] [src.kramers_kronig] KK test: 60 points, 30 Voigt elements → excelente (mean ΔRe=0.05%, ΔIm=0.05%)
+[2026-04-16 12:51:00] [INFO   ] [src.kramers_kronig] KK test: 60 points, 5 Voigt elements → excelente (mean ΔRe=0.14%, ΔIm=0.14%)
+[2026-04-16 12:51:00] [INFO   ] [src.kramers_kronig] KK test: 60 points, 15 Voigt elements → excelente (mean ΔRe=0.67%, ΔIm=0.67%)
+[2026-04-16 12:51:00] [INFO   ] [src.kramers_kronig] KK test: 60 points, 29 Voigt elements → excelente (mean ΔRe=0.00%, ΔIm=0.00%)
+[2026-04-16 12:51:00] [INFO   ] [src.kramers_kronig] KK test: 60 points, 30 Voigt elements → excelente (mean ΔRe=0.00%, ΔIm=0.00%)
+[2026-04-16 12:51:00] [WARNING] [src.ai.llm_adapter] Unknown LLM provider 'anthropic' → falling back to none
+[2026-04-16 12:51:00] [ERROR  ] [src.ai.llm_adapter] OpenAI API error: API limit
+[2026-04-16 12:51:00] [ERROR  ] [src.ai.llm_adapter] Ollama connection error: <urlopen error Connection refused>
+[2026-04-16 12:51:00] [ERROR  ] [src.ai.llm_adapter] Ollama request failed: Expecting value: line 1 column 1 (char 0)
+[2026-04-16 12:51:00] [DEBUG  ] [src.ai.llm_adapter] Ollama server not reachable: <urlopen error Connection refused>
+[2026-04-16 12:51:00] [WARNING] [src.ai.llm_adapter] Unknown LLM provider 'claude' → falling back to none
+[2026-04-16 12:51:00] [WARNING] [src.ai.llm_adapter] LLM literature comparison failed: API down
+[2026-04-16 12:51:00] [WARNING] [src.ai.llm_adapter] LLM experiment suggestions failed: API down
+[2026-04-16 12:51:00] [WARNING] [src.ai.llm_adapter] LLM summary enrichment failed: down
+[2026-04-16 12:51:00] [WARNING] [src.ai.llm_adapter] Unknown LLM provider '' → falling back to none
+[2026-04-16 12:51:00] [WARNING] [src.ai.llm_adapter] Unknown LLM provider '   ' → falling back to none
+[2026-04-16 12:51:00] [WARNING] [src.validation] Validation: Only 5 impedance points — quality check skipped.
+[2026-04-16 12:51:00] [DEBUG  ] [src.drt_analysis] DRT: n_freq=5  n_taus=40  λ=1.00e-03  R_inf=1.0500 Ω  peaks=2
+[2026-04-16 12:51:00] [INFO   ] [main_drt] DRT OK: sample_a.txt                              peaks=2  R_inf=1.0500 Ω
+[2026-04-16 12:51:00] [INFO   ] [main_drt] DRT table saved → outputs\tables\drt_results.csv  (1 rows)
+[2026-04-16 12:51:00] [WARNING] [src.validation] Validation: Only 5 impedance points — quality check skipped.
+[2026-04-16 12:51:00] [DEBUG  ] [src.drt_analysis] DRT: n_freq=5  n_taus=50  λ=1.00e-03  R_inf=1.0500 Ω  peaks=2
+[2026-04-16 12:51:01] [INFO   ] [main_drt] DRT OK: sample_b.txt                              peaks=2  R_inf=1.0500 Ω
+[2026-04-16 12:51:01] [INFO   ] [main_drt] DRT table saved → outputs\tables\drt_results.csv  (1 rows)
+[2026-04-16 12:51:01] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: only 0 valid records (need 30) — falling back to heuristic.
+[2026-04-16 12:51:01] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: only 15 valid records (need 30) — falling back to heuristic.
+[2026-04-16 12:51:01] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: trained on 60 samples, 3 classes (Inductive-CPE, Randles-CPE-W, Two-Arc-CPE).
+[2026-04-16 12:51:01] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: only 1 class(es) — need ≥ 2 for training.
+[2026-04-16 12:51:01] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: trained on 15 samples, 3 classes (Inductive-CPE, Randles-CPE-W, Two-Arc-CPE).
+[2026-04-16 12:51:01] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: trained on 60 samples, 3 classes (Inductive-CPE, Randles-CPE-W, Two-Arc-CPE).
+[2026-04-16 12:51:01] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: trained on 80 samples, 3 classes (Inductive-CPE, Randles-CPE-W, Two-Arc-CPE).
+[2026-04-16 12:51:01] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: trained on 60 samples, 3 classes (Inductive-CPE, Randles-CPE-W, Two-Arc-CPE).
+[2026-04-16 12:51:02] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: trained on 60 samples, 3 classes (Inductive-CPE, Randles-CPE-W, Two-Arc-CPE).
+[2026-04-16 12:51:02] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: trained on 60 samples, 3 classes (Inductive-CPE, Randles-CPE-W, Two-Arc-CPE).
+[2026-04-16 12:51:02] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: trained on 60 samples, 3 classes (Inductive-CPE, Randles-CPE-W, Two-Arc-CPE).
+[2026-04-16 12:51:02] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: trained on 60 samples, 3 classes (Inductive-CPE, Randles-CPE-W, Two-Arc-CPE).
+[2026-04-16 12:51:02] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: trained on 60 samples, 3 classes (Inductive-CPE, Randles-CPE-W, Two-Arc-CPE).
+[2026-04-16 12:51:02] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: trained on 60 samples, 3 classes (Inductive-CPE, Randles-CPE-W, Two-Arc-CPE).
+[2026-04-16 12:51:03] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: trained on 60 samples, 3 classes (Inductive-CPE, Randles-CPE-W, Two-Arc-CPE).
+[2026-04-16 12:51:03] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: trained on 60 samples, 3 classes (Inductive-CPE, Randles-CPE-W, Two-Arc-CPE).
+[2026-04-16 12:51:03] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: trained on 60 samples, 3 classes (Inductive-CPE, Randles-CPE-W, Two-Arc-CPE).
+[2026-04-16 12:51:03] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: trained on 60 samples, 3 classes (Inductive-CPE, Randles-CPE-W, Two-Arc-CPE).
+[2026-04-16 12:51:03] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: trained on 60 samples, 3 classes (Inductive-CPE, Randles-CPE-W, Two-Arc-CPE).
+[2026-04-16 12:51:03] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: trained on 60 samples, 3 classes (Inductive-CPE, Randles-CPE-W, Two-Arc-CPE).
+[2026-04-16 12:51:03] [INFO   ] [src.circuit_fitting] shortlist_circuits: using ML-ranked ['Two-Arc-CPE', 'Randles-CPE-W']
+[2026-04-16 12:51:03] [DEBUG  ] [src.circuit_fitting] shortlist_circuits: ML names not in catalog, falling back to heuristic.
+[2026-04-16 12:51:03] [INFO   ] [src.circuit_fitting] shortlist_circuits: using ML-ranked ['Two-Arc-CPE', 'Randles-CPE-W']
+[2026-04-16 12:51:04] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: trained on 60 samples, 3 classes (Inductive-CPE, Randles-CPE-W, Two-Arc-CPE).
+[2026-04-16 12:51:05] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: trained on 60 samples, 3 classes (Inductive-CPE, Randles-CPE-W, Two-Arc-CPE).
+[2026-04-16 12:51:05] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: trained on 60 samples, 3 classes (Inductive-CPE, Randles-CPE-W, Two-Arc-CPE).
+[2026-04-16 12:51:06] [INFO   ] [src.ai.performance_predictor] PerformancePredictor: ML trained on 50 records.
+[2026-04-16 12:51:09] [INFO   ] [main] PCA skipped: insufficient variance or too few rows.
+[2026-04-16 12:51:10] [INFO   ] [src.ml_circuit_selector] CircuitMLSelector: only 0 valid records (need 30) — falling back to heuristic.
+[2026-04-16 12:51:10] [WARNING] [main] No EIS files found in C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_empty_dir_returns_eis_res0\raw
+[2026-04-16 12:51:10] [WARNING] [src.ai.process_advisor] ProcessAdvisor: no results provided.
+[2026-04-16 12:51:10] [INFO   ] [src.ai.process_advisor] ProcessAdvisor: 1 condition(s) identified: ['H2SO4_1A_GCT']
+[2026-04-16 12:51:10] [INFO   ] [src.ai.process_advisor] ProcessAdvisor: 1 condition(s) identified: ['Li2SO4_0.1A_GC']
+[2026-04-16 12:51:10] [INFO   ] [src.ai.process_advisor] ProcessAdvisor: 1 condition(s) identified: ['H2SO4_1A_GCT']
+[2026-04-16 12:51:10] [INFO   ] [src.ai.process_advisor] ProcessAdvisor: 2 condition(s) identified: ['H2SO4_1A_GCT', 'Li2SO4_1A_GC']
+[2026-04-16 12:51:10] [INFO   ] [src.ai.process_advisor] ProcessAdvisor: 2 condition(s) identified: ['H2SO4_1A_GCT', 'Li2SO4_1A_GC']
+[2026-04-16 12:51:10] [INFO   ] [src.ai.process_advisor] ProcessAdvisor: 2 condition(s) identified: ['H2SO4_1A_GCT', 'Li2SO4_1A_GC']
+[2026-04-16 12:51:10] [INFO   ] [src.ai.process_advisor] ProcessAdvisor: 2 condition(s) identified: ['H2SO4_1A_GCT', 'Li2SO4_1A_GC']
+[2026-04-16 12:51:10] [INFO   ] [src.ai.process_advisor] ProcessAdvisor: 2 condition(s) identified: ['H2SO4_1A_GCT', 'Li2SO4_1A_GC']
+[2026-04-16 12:51:10] [INFO   ] [src.ai.process_advisor] ProcessAdvisor: 2 condition(s) identified: ['H2SO4_1A_GCT', 'Li2SO4_1A_GC']
+[2026-04-16 12:51:10] [INFO   ] [src.ai.process_advisor] ProcessAdvisor: 2 condition(s) identified: ['H2SO4_1A_GCT', 'Li2SO4_1A_GC']
+[2026-04-16 12:51:10] [INFO   ] [src.ai.process_advisor] ProcessAdvisor: 1 condition(s) identified: ['KOH_5A_Plasma']
+[2026-04-16 12:51:10] [INFO   ] [src.ai.process_advisor] ProcessAdvisor: 1 condition(s) identified: ['NaOH_10A_GCT']
+[2026-04-16 12:51:10] [INFO   ] [src.ai.process_advisor] ProcessAdvisor: 1 condition(s) identified: ['H2SO4_1A_GCT']
+[2026-04-16 12:51:10] [INFO   ] [src.ai.process_advisor] ProcessAdvisor: 1 condition(s) identified: ['H2SO4_1A_GCT']
+[2026-04-16 12:51:10] [INFO   ] [src.ai.process_advisor] ProcessAdvisor: 1 condition(s) identified: ['H2SO4_1A_GCT']
+[2026-04-16 12:51:10] [INFO   ] [src.ai.process_advisor] ProcessAdvisor: 1 condition(s) identified: ['H2SO4_1A_GCT']
+[2026-04-16 12:51:10] [INFO   ] [src.ai.process_advisor] ProcessAdvisor: 1 condition(s) identified: ['H2SO4_1A_GCT']
+[2026-04-16 12:51:10] [INFO   ] [src.ai.process_advisor] ProcessAdvisor: 3 condition(s) identified: ['H2SO4_1A_GCT', 'Li2SO4_1A_GCT', 'NaOH_1A_GCT']
+[2026-04-16 12:51:10] [INFO   ] [src.ai.process_advisor] ProcessAdvisor: 2 condition(s) identified: ['H2SO4_1A_GCT', 'Li2SO4_1A_GC']
+[2026-04-16 12:51:13] [WARNING] [src.report_generator] Failed to load report history: Expecting value: line 1 column 1 (char 0)
+[2026-04-16 12:51:13] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_generate_pdf_full0\report.pdf (v1, 6.7 KB, 0.0s)
+[2026-04-16 12:51:13] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_generate_pdf_eis_only0\report.pdf (v1, 4.1 KB, 0.0s)
+[2026-04-16 12:51:13] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_generate_pdf_empty0\report.pdf (v1, 2.3 KB, 0.0s)
+[2026-04-16 12:51:13] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_pdf_sections_disabled0\report.pdf (v1, 1.4 KB, 0.0s)
+[2026-04-16 12:51:13] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_pdf_and_markdown0\report.pdf (v1, 6.2 KB, 0.1s)
+[2026-04-16 12:51:13] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_pdf_and_markdown0\report.md (v1, 2.3 KB, 0.1s)
+[2026-04-16 12:51:13] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_latex_stub0\report.tex (v1, 0.6 KB, 0.0s)
+[2026-04-16 12:51:13] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_docx_stub0\report.docx.txt (v1, 0.2 KB, 0.0s)
+[2026-04-16 12:51:14] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_all_formats0\report.pdf (v1, 6.2 KB, 0.1s)
+[2026-04-16 12:51:14] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_all_formats0\report.md (v1, 2.3 KB, 0.1s)
+[2026-04-16 12:51:14] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_all_formats0\report.tex (v1, 0.6 KB, 0.1s)
+[2026-04-16 12:51:14] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_all_formats0\report.docx.txt (v1, 0.2 KB, 0.1s)
+[2026-04-16 12:51:14] [WARNING] [src.report_generator] Unsupported format: unknown_format
+[2026-04-16 12:51:14] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_unknown_format_ignored0\report.pdf (v1, 6.2 KB, 0.0s)
+[2026-04-16 12:51:14] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_history_recorded_after_ge0\report.pdf (v1, 6.2 KB, 0.0s)
+[2026-04-16 12:51:14] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_history_versions_incremen0\report.pdf (v1, 6.2 KB, 0.0s)
+[2026-04-16 12:51:14] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_history_versions_incremen0\report.pdf (v2, 6.2 KB, 0.0s)
+[2026-04-16 12:51:14] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_history_versions_incremen0\report.pdf (v3, 6.2 KB, 0.1s)
+[2026-04-16 12:51:14] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_multiformat_history0\report.pdf (v1, 6.2 KB, 0.1s)
+[2026-04-16 12:51:14] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_multiformat_history0\report.md (v1, 2.3 KB, 0.1s)
+[2026-04-16 12:51:14] [DEBUG  ] [src.report_generator] AI text enhancement skipped: No LLM module
+[2026-04-16 12:51:14] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_report_ai_enhancement_fla0\report.pdf (v1, 6.7 KB, 0.0s)
+[2026-04-16 12:51:14] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_generate_returns_list0\report.pdf (v1, 6.2 KB, 0.0s)
+[2026-04-16 12:51:14] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_generate_creates_director0\a\b\c\report.pdf (v1, 6.2 KB, 0.0s)
+[2026-04-16 12:51:15] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_large_table_truncation0\report.pdf (v1, 4.1 KB, 0.0s)
+[2026-04-16 12:51:15] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_nan_in_dataframe0\report.pdf (v1, 3.5 KB, 0.0s)
+[2026-04-16 12:51:15] [INFO   ] [src.report_generator] Report generated: C:\Users\eso41\AppData\Local\Temp\pytest-of-eso41\pytest-138\test_unicode_in_summary0\report.pdf (v1, 6.8 KB, 0.0s)
+[2026-04-16 12:51:17] [WARNING] [src.validation] Validation: w
+[2026-04-16 12:51:17] [ERROR  ] [src.validation] Validation: e
