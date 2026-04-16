@@ -48,6 +48,8 @@ from src.gui.widgets import (  # noqa: F401
     LogRedirector as _LogRedirector,
     StyledOptionMenuHelper as _StyledOptionMenuHelper,
 )
+from src.gui.tabs.ai_panel import run_ai_analysis, AIPanelConfig, AIPanelResult
+from src.report_generator import ReportGenerator, ReportConfig
 from src.gui.tabs import (  # noqa: F401
     build_fig_rank as _build_fig_rank_mod,
     build_fig_pca as _build_fig_pca_mod,
@@ -219,12 +221,14 @@ class PipelineApp(ctk.CTk):
 
     def _on_language_change(self, value: str):
         """Switch the application language and persist the preference."""
-        lang = "en" if value == "English" else "pt"
+        lang_map = {"English": "en", "Português": "pt", "Español": "es"}
+        lang = lang_map.get(value, "pt")
         set_language(lang)
         self.gui_settings["language"] = lang
         self._save_gui_settings()
+        label_map = {"en": "English", "pt": "Português", "es": "Español"}
         self._append_log(
-            f"Language set to {'English' if lang == 'en' else 'Português'}. "
+            f"Language set to {label_map.get(lang, value)}. "
             "Restart for full effect."
         )
 
@@ -327,10 +331,11 @@ class PipelineApp(ctk.CTk):
     def _restore_language(self):
         """Restore persisted language preference."""
         lang = self.gui_settings.get("language", "pt")
-        if lang not in ("pt", "en"):
+        if lang not in ("pt", "en", "es"):
             lang = "pt"
         set_language(lang)
-        label = "English" if lang == "en" else "Português"
+        label_map = {"en": "English", "pt": "Português", "es": "Español"}
+        label = label_map.get(lang, "Português")
         with contextlib.suppress(Exception):
             self.language_selector.set(label)
 
@@ -594,6 +599,13 @@ class PipelineApp(ctk.CTk):
             anchor="w",
         ).grid(row=4, column=0, padx=(8, 4), pady=(0, 8), sticky="ew")
 
+        self.btn_report = ctk.CTkButton(
+            sidebar,
+            text="📄 " + tr("Gerar Relatório PDF"),
+            command=self._generate_report_clicked,
+        )
+        self.btn_report.grid(row=10, column=0, padx=16, pady=(0, 8), sticky="ew")
+
         self.status_label = ctk.CTkLabel(
             sidebar, text=tr("Status: pronto"), anchor="w"
         )
@@ -624,7 +636,7 @@ class PipelineApp(ctk.CTk):
         )
         self.language_selector = ctk.CTkSegmentedButton(
             sidebar,
-            values=["Português", "English"],
+            values=["Português", "English", "Español"],
             command=self._on_language_change,
         )
         self.language_selector.grid(
@@ -638,6 +650,42 @@ class PipelineApp(ctk.CTk):
         self.tab_plots = self.tabs.add(tr("Gráficos"))
         self.tab_tables = self.tabs.add(tr("Tabelas"))
         self.tab_logs = self.tabs.add(tr("Logs"))
+        self.tab_ai = self.tabs.add("🤖 " + tr("Análise IA"))
+
+        # ── AI Analysis tab content ──────────────────────────────
+        ai_frame = ctk.CTkFrame(self.tab_ai)
+        ai_frame.pack(fill="both", expand=True, padx=12, pady=12)
+
+        ai_top = ctk.CTkFrame(ai_frame)
+        ai_top.pack(fill="x", padx=8, pady=(8, 4))
+
+        self.ai_scope_eis = ctk.CTkCheckBox(ai_top, text="EIS")
+        self.ai_scope_eis.select()
+        self.ai_scope_eis.pack(side="left", padx=8)
+
+        self.ai_scope_cycling = ctk.CTkCheckBox(ai_top, text=tr("Ciclagem"))
+        self.ai_scope_cycling.select()
+        self.ai_scope_cycling.pack(side="left", padx=8)
+
+        self.ai_scope_drt = ctk.CTkCheckBox(ai_top, text="DRT")
+        self.ai_scope_drt.select()
+        self.ai_scope_drt.pack(side="left", padx=8)
+
+        self.ai_detail_var = ctk.StringVar(value="full")
+        ctk.CTkSegmentedButton(
+            ai_top,
+            values=["summary", "full"],
+            variable=self.ai_detail_var,
+        ).pack(side="left", padx=16)
+
+        ctk.CTkButton(
+            ai_top,
+            text=tr("Executar Análise IA"),
+            command=self._run_ai_analysis_clicked,
+        ).pack(side="right", padx=8)
+
+        self.ai_textbox = ctk.CTkTextbox(ai_frame, wrap="word", font=ctk.CTkFont(size=13))
+        self.ai_textbox.pack(fill="both", expand=True, padx=8, pady=8)
 
         # Plots area
         self.plots_frame = ctk.CTkScrollableFrame(self.tab_plots)
@@ -3747,6 +3795,77 @@ class PipelineApp(ctk.CTk):
         for row in df.itertuples(index=False, name=None):
             tree.insert("", "end", values=list(row))
 
+    # ── v0.2.0 feature handlers ────────────────────────────────────────
+
+    def _run_ai_analysis_clicked(self):
+        """Run AI analysis using current pipeline results."""
+        self._append_log("Iniciando análise IA...")
+        self.tabs.set("🤖 " + tr("Análise IA"))
+
+        def worker():
+            try:
+                from dataclasses import dataclass as _dc
+
+                @_dc
+                class _FakeState:
+                    eis_result: Any = None
+                    cycling_result: Any = None
+                    drt_result: Any = None
+
+                state = _FakeState(
+                    eis_result=getattr(self, "last_eis_result", None),
+                    cycling_result=getattr(self, "last_cycling_result", None),
+                    drt_result=getattr(self, "last_drt_result", None),
+                )
+                cfg = AIPanelConfig(
+                    scope_eis=self.ai_scope_eis.get() == 1,
+                    scope_cycling=self.ai_scope_cycling.get() == 1,
+                    scope_drt=self.ai_scope_drt.get() == 1,
+                    detail=self.ai_detail_var.get(),
+                )
+                result = run_ai_analysis(state, cfg)
+                self.log_queue.put(("ai_result", result.formatted_report))
+            except Exception as exc:
+                self.log_queue.put(("ai_result", f"Erro na análise IA: {exc}"))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _generate_report_clicked(self):
+        """Generate a PDF report from current pipeline results."""
+        out_path = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            filetypes=[("PDF", "*.pdf"), ("Markdown", "*.md")],
+            initialdir="outputs",
+            title=tr("Salvar Relatório"),
+        )
+        if not out_path:
+            return
+
+        self._append_log(f"Gerando relatório: {out_path}")
+
+        def worker():
+            try:
+                gen = ReportGenerator()
+                results: Dict[str, Any] = {}
+                if getattr(self, "last_eis_result", None) is not None:
+                    results["eis"] = self.last_eis_result
+                if getattr(self, "last_cycling_result", None) is not None:
+                    results["cycling"] = self.last_cycling_result
+                if getattr(self, "last_drt_result", None) is not None:
+                    results["drt"] = self.last_drt_result
+
+                if not results:
+                    self.log_queue.put(("log", "Nenhum resultado de pipeline disponível para o relatório."))
+                    return
+
+                fmt = ["pdf"] if out_path.endswith(".pdf") else ["markdown"]
+                paths = gen.generate(out_path, results, formats=fmt)
+                self.log_queue.put(("log", f"Relatório gerado: {', '.join(paths)}"))
+            except Exception as exc:
+                self.log_queue.put(("log", f"Erro ao gerar relatório: {exc}"))
+
+        threading.Thread(target=worker, daemon=True).start()
+
     def _run_eis_clicked(self):
         self._disable_buttons()
         self._set_status("rodando EIS")
@@ -3883,6 +4002,9 @@ class PipelineApp(ctk.CTk):
                     self._handle_both_done(item[1])
                 elif msg_type == "drt_done":
                     self._handle_drt_done(item[1])
+                elif msg_type == "ai_result":
+                    self.ai_textbox.delete("1.0", "end")
+                    self.ai_textbox.insert("1.0", item[1])
             except Exception as exc:
                 # Não deixar o loop quebrar; logar e continuar
                 self._append_log(f"Erro no processamento da fila: {exc}")
@@ -3896,6 +4018,8 @@ class PipelineApp(ctk.CTk):
             self._stop_progress("Erro")
             self._enable_buttons()
             return
+
+        self.last_eis_result = result
 
         cap_df = result.get("cap_energy")
         cap_display = None
@@ -3929,6 +4053,7 @@ class PipelineApp(ctk.CTk):
             self._enable_buttons()
             return
 
+        self.last_cycling_result = result
         self.cic_df = result.get("merged_table")
         self.cic_results = result.get("results") or {}
         self._set_table_data("cic", self.cic_df)
@@ -4007,6 +4132,7 @@ class PipelineApp(ctk.CTk):
             self._enable_buttons()
             return
 
+        self.last_drt_result = result
         self.drt_df = result.get("drt_table")
         self.drt_peaks_df = result.get("drt_peaks_table")
         self.drt_summary_df = result.get("drt_summary_table")
