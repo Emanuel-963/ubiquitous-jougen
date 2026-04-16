@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}AUTO-RELATÓRIOS CIENTÍFICOS - Upload{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Upload de Dados Experimentais</h2>
+    <p>Carregue seus arquivos de metadados e dados para gerar relatórios científicos automaticamente.</p>
+
+    {% if error %}
+    <div class="error">
+        <strong>Erro:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="metadata">Arquivo de Metadados (JSON):</label>
+            <input type="file" id="metadata" name="metadata" accept=".json" required>
+        </div>
+
+        <div class="form-group">
+            <label for="data">Arquivo de Dados (CSV):</label>
+            <input type="file" id="data" name="data" accept=".csv" required>
+        </div>
+
+        <div class="form-group">
+            <label for="template">Template de Saída:</label>
+            <select id="template" name="template" required>
+                <option value="all">Todos os formatos</option>
+                <option value="report">Relatório Científico</option>
+                <option value="article">Artigo Resumido</option>
+                <option value="presentation">Roteiro de Apresentação</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="ai_enhancement">Melhoria de Texto com IA:</label>
+            <select id="ai_enhancement" name="ai_enhancement">
+                <option value="disabled">Desativada</option>
+                <option value="enabled">Ativada (requer chave API)</option>
+            </select>
+            <small>Requer configuração de variáveis de ambiente com chaves API</small>
+        </div>
+
+        <button type="submit">Pré-visualizar e Gerar</button>
+    </form>
+
+    <div class="preview-section">
+        <h3>Instruções:</h3>
+        <ul>
+            <li><strong>Metadados:</strong> Arquivo JSON com informações do experimento (título, autores, objetivos, etc.)</li>
+            <li><strong>Dados:</strong> Arquivo CSV com dados experimentais coletados</li>
+            <li><strong>Templates:</strong> Escolha o formato de saída desejado</li>
+        </ul>
+        <p>Após o upload, você poderá pré-visualizar os dados antes de gerar os relatórios.</p>
+    </div>
+</div>
+{% endblock %}

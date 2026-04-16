@@ -1,0 +1,50 @@
+# AUTO-RELATÓRIOS CIENTÍFICOS - Configuration File
+# Sprint 2 - Advanced Configuration
+
+# Output settings
+output:
+  directory: "output"
+  formats:
+    - "report"
+    - "article"
+    - "presentation"
+  overwrite: true
+
+# Analysis settings
+analysis:
+  enable_statistics: true
+  enable_outlier_detection: true
+  outlier_method: "tukey"  # Options: tukey, zscore, iqr
+  confidence_level: 0.95
+  enable_graphs: true
+  graph_style: "ascii"     # Options: ascii, markdown
+
+# Data processing
+data_processing:
+  validate_headers: true
+  required_columns: ["parameter", "value", "unit", "description"]
+  auto_detect_types: true
+
+# Template settings
+templates:
+  report: "templates/report_template.md"
+  article: "templates/article_template.md"
+  presentation: "templates/presentation_template.md"
+
+# Web interface settings
+web:
+  host: "localhost"
+  port: 5000
+  debug: true
+  max_upload_size_mb: 16
+
+# AI enhancement settings
+ai:
+  enable_ai_layer: false   # Enable AI-powered text enhancement
+  provider: "openai"       # Options: openai, anthropic
+  model: "gpt-4-turbo"     # AI model to use
+  temperature: 0.3         # Creativity level (0.0-1.0)
+
+# Advanced features
+features:
+  enable_database: false   # Placeholder for future database integration

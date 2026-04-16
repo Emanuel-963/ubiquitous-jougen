@@ -1,0 +1,42 @@
+# AUTO-RELATÓRIOS CIENTÍFICOS .gitignore
+
+# Output files
+output/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.coverage
+.coverage.*
+.cache
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*.temp

@@ -1,0 +1,11 @@
+parameter,value,unit,description
+temperature_hot_side,85.2,°C,Temperature at heated end
+temperature_cold_side,35.1,°C,Temperature at cooled end
+heat_flow_rate,45.3,W,Measured heat transfer rate
+sample_length,0.1,m,Length of sample
+sample_area,0.000491,m²,Cross-sectional area
+thermal_conductivity,167,W/m·K,Calculated thermal conductivity
+measurement_time,1800,s,Duration of measurement
+ambient_temperature,25.0,°C,Room temperature
+humidity,45,%,Relative humidity
+pressure,101.3,kPa,Atmospheric pressure

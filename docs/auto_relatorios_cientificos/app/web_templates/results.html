@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}AUTO-RELATÓRIOS CIENTÍFICOS - Resultados{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Relatórios Gerados com Sucesso!</h2>
+
+    {% if error %}
+    <div class="error">
+        <strong>Erro:</strong> {{ error }}
+    </div>
+    {% else %}
+    <div class="success">
+        <strong>Relatórios gerados com sucesso!</strong> Você pode baixar os arquivos abaixo.
+    </div>
+
+    <div class="preview-section">
+        <h3>Arquivos Gerados</h3>
+        <div class="output-links">
+            {% if 'relatorio.md' in filepaths %}
+            <a href="/download/{{ filepaths['relatorio.md'] }}" class="output-link" download>
+                📄 Download Relatório
+            </a>
+            {% endif %}
+
+            {% if 'artigo.md' in filepaths %}
+            <a href="/download/{{ filepaths['artigo.md'] }}" class="output-link" download>
+                📰 Download Artigo
+            </a>
+            {% endif %}
+
+            {% if 'apresentacao.md' in filepaths %}
+            <a href="/download/{{ filepaths['apresentacao.md'] }}" class="output-link" download>
+                🎤 Download Apresentação
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="preview-section">
+        <h3>Novidades da Sprint 2 - Análise Avançada</h3>
+        <p>Seus relatórios agora incluem:</p>
+        <ul>
+            <li><strong>Análise Estatística:</strong> Média, mediana, desvio padrão e outras métricas</li>
+            <li><strong>Detecção de Outliers:</strong> Identificação automática de dados anômalos</li>
+            <li><strong>Visualização de Dados:</strong> Gráficos ASCII integrados</li>
+        </ul>
+        <p><em>Abra os arquivos para ver as análises incorporadas!</em></p>
+    </div>
+
+    <div class="preview-section">
+        <h3>Resumo da Geração</h3>
+        <ul>
+            <li><strong>Template selecionado:</strong> {{ template_choice }}</li>
+            <li><strong>Diretório de saída:</strong> {{ output_dir }}</li>
+            <li><strong>Arquivos gerados:</strong> {{ filepaths|length }}</li>
+        </ul>
+    </div>
+    {% endif %}
+
+    <div style="margin-top: 2rem;">
+        <a href="/" class="output-link">← Gerar Novos Relatórios</a>
+    </div>
+</div>
+{% endblock %}

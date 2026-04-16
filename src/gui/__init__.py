@@ -16,6 +16,18 @@ from src.gui.models import (  # noqa: F401
     PlotItem,
 )
 
+# ── Day 26: keyboard shortcuts + accessibility ──────────────────────
+from src.gui.shortcuts import (  # noqa: F401
+    AccessibilitySettings,
+    DEFAULT_BINDINGS,
+    DEFAULT_TOOLTIPS,
+    ShortcutAction,
+    ShortcutBinding,
+    ShortcutManager,
+    StatusBarState,
+    TooltipRegistry,
+)
+
 # ── Day 14: reusable widget logic ────────────────────────────────────
 from src.gui.widgets import (  # noqa: F401
     ChartExporter,

@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}AUTO-RELATÓRIOS CIENTÍFICOS - Pré-visualização{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Pré-visualização dos Dados</h2>
+
+    {% if error %}
+    <div class="error">
+        <strong>Erro:</strong> {{ error }}
+    </div>
+    {% else %}
+    <div class="success">
+        <strong>Arquivos carregados com sucesso!</strong> Veja abaixo uma prévia dos seus dados.
+    </div>
+
+    <div class="preview-section">
+        <h3>Metadados do Experimento</h3>
+        <div class="metadata-preview">
+            <div class="metadata-item">
+                <strong>Título:</strong> {{ metadata.title or 'Não especificado' }}
+            </div>
+            <div class="metadata-item">
+                <strong>Autores:</strong> {{ metadata.authors|join(', ') or 'Não especificados' }}
+            </div>
+            <div class="metadata-item">
+                <strong>Data:</strong> {{ metadata.date or 'Não especificada' }}
+            </div>
+            <div class="metadata-item">
+                <strong>Objetivo:</strong> {{ metadata.objective or 'Não especificado' }}
+            </div>
+        </div>
+
+        {% if metadata.parameters %}
+        <h4>Parâmetros do Experimento</h4>
+        <ul>
+            {% for key, value in metadata.parameters.items() %}
+            <li><strong>{{ key }}:</strong> {{ value }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+
+    <div class="preview-section">
+        <h3>Dados Experimentais</h3>
+        {% if data %}
+        <p>Total de registros: {{ data|length }}</p>
+        <div class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        {% for header in data[0].keys() %}
+                        <th>{{ header }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in data[:5] %}
+                    <tr>
+                        {% for value in row.values() %}
+                        <td>{{ value }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if data|length > 5 %}
+            <p><em>Mostrando 5 dos {{ data|length }} registros disponíveis.</em></p>
+            {% endif %}
+        </div>
+        {% else %}
+        <p>Nenhum dado experimental encontrado.</p>
+        {% endif %}
+    </div>
+
+    <!-- Análise Estatística (Sprint 2) -->
+    <div class="preview-section">
+        <h3>Análise Estatística Avançada</h3>
+        <p>O sistema está configurado para realizar análises estatísticas avançadas nos seus dados.</p>
+
+        <div class="metadata-preview">
+            <div class="metadata-item">
+                <strong>Estatísticas:</strong> Média, Mediana, Desvio Padrão
+            </div>
+            <div class="metadata-item">
+                <strong>Detecção de Outliers:</strong> Método de Tukey
+            </div>
+            <div class="metadata-item">
+                <strong>Visualização:</strong> Gráficos ASCII integrados
+            </div>
+        </div>
+
+        <p><em>As análises serão incluídas automaticamente nos relatórios gerados.</em></p>
+    </div>
+
+    <div class="preview-section">
+        <h3>Pronto para Gerar Relatórios</h3>
+        <p>Os dados foram validados com sucesso. Selecione as opções abaixo para gerar seus relatórios:</p>
+
+        <form action="/generate" method="post">
+            <input type="hidden" name="metadata_json" value="{{ metadata_json }}">
+            <input type="hidden" name="data_json" value="{{ data_json }}">
+            <input type="hidden" name="template_choice" value="{{ template_choice }}">
+
+            <div class="form-group">
+                <label>Diretório de Saída:</label>
+                <input type="text" name="output_dir" value="output" placeholder="Diretório para salvar os arquivos">
+            </div>
+
+            <button type="submit">Gerar Relatórios com Análise</button>
+        </form>
+    </div>
+    {% endif %}
+
+    <div style="margin-top: 2rem;">
+        <a href="/" class="output-link">← Voltar para Upload</a>
+    </div>
+</div>
+{% endblock %}

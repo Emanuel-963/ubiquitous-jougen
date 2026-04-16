@@ -300,5 +300,5 @@ A comparação das amostras AM3/AM4 antes e após ciclagem revela:
 
 ---
 
-*Relatório gerado pelo IonFlow Pipeline v0.1.0*
+*Relatório para o IonFlow Pipeline v0.1.0*
 *Para detalhes de uso, consulte os tutoriais em `tutoriais/01–08`*

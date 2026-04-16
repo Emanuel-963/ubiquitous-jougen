@@ -1,0 +1,10 @@
+# AUTO-RELATÓRIOS CIENTÍFICOS Requirements
+# Python 3.x standard library only for core functionality
+# Flask required for web interface (Sprint 1 MVP)
+# PyYAML required for configuration (Sprint 2)
+# OpenAI and Anthropic libraries for AI integration (Sprint 3)
+
+Flask>=2.0.0
+PyYAML>=5.4.0
+openai>=1.57.0
+anthropic>=0.39.0

@@ -25,6 +25,16 @@ from src.ai import CyclingPrediction, DegradationMechanism, DegradationPredictio
 from src.ai import ProcessAdvisor, ProcessReport, ProductionRec, RecommendationArea  # noqa: F401
 from src.ai import LLMAdapter, LLMConfig, LLMProvider, NullAdapter, OpenAIAdapter, OllamaAdapter  # noqa: F401
 from src.ai import create_adapter, create_adapter_from_config, enrich_report, enrich_summary  # noqa: F401
+from src.gui.shortcuts import (  # noqa: F401
+    AccessibilitySettings,
+    ShortcutAction,
+    ShortcutBinding,
+    ShortcutManager,
+    StatusBarState,
+    TooltipRegistry,
+    DEFAULT_BINDINGS,
+    DEFAULT_TOOLTIPS,
+)
 from src.batch_processor import (  # noqa: F401
     BatchProcessor,
     BatchProgress,
