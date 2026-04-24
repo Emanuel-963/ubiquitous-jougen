@@ -264,6 +264,26 @@ def _detect_anomalies_eis(ranked_df: pd.DataFrame) -> List[Anomaly]:
                 severity=Severity.CRITICAL,
             ))
 
+    # Rs or Rp suspiciously small (likely stuck at optimizer lower bound)
+    _BOUND_FLOOR = 1e-4  # parameters below this are almost certainly artefacts
+    for param_name in ("Rs_fit", "Rp_fit"):
+        if param_name in ranked_df.columns:
+            vals = pd.to_numeric(ranked_df[param_name], errors="coerce").dropna()
+            tiny = vals[vals.abs() < _BOUND_FLOOR]
+            if len(tiny) > 0:
+                pct = len(tiny) / len(vals) * 100
+                anomalies.append(Anomaly(
+                    parameter=param_name,
+                    value=round(tiny.median(), 8),
+                    description=(
+                        f"{param_name} < {_BOUND_FLOOR} Ω em {len(tiny)}/{len(vals)} amostras ({pct:.0f}%) "
+                        f"— valor provavelmente no limite inferior do optimizer. "
+                        f"Os parâmetros de fitting podem não ser confiáveis. "
+                        f"Considere verificar os dados brutos e/ou ajustar os bounds do circuito."
+                    ),
+                    severity=Severity.WARNING,
+                ))
+
     # n outside [0, 1]
     if "n" in ranked_df.columns:
         bad = ranked_df[(ranked_df["n"] < 0) | (ranked_df["n"] > 1.05)]

@@ -1,5 +1,5 @@
 ╔══════════════════════════════════════════════════════════════╗
-║              IonFlow Pipeline  v0.1.0                       ║
+║              IonFlow Pipeline  v0.2.0                       ║
 ║    Análise de Espectroscopia de Impedância Eletroquímica    ║
 ║                    Linux / macOS                            ║
 ╚══════════════════════════════════════════════════════════════╝

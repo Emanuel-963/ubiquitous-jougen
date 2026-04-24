@@ -284,25 +284,72 @@ def fit_template(template: CircuitTemplate, freq: np.ndarray, z: np.ndarray) -> 
         return np.concatenate([(z_model.real - z.real), (z_model.imag - z.imag)])
 
     p0_base = template.init_fn(omega, z)
-
-    # Multi-seed around initial guess within bounds
-    seeds = [p0_base]
     lb, ub = np.array(template.bounds[0]), np.array(template.bounds[1])
+
+    # ── Adaptive bounds: widen Rs/Rp lower bound based on data ────
+    # Estimate physical Rs from high-freq real intercept
+    z_real_hf = np.nanmin(z.real[-5:]) if len(z) >= 5 else z.real[-1]
+    if z_real_hf > 0:
+        # Set Rs lower bound to 10% of observed high-freq intercept
+        # (prevents optimizer from collapsing to 1e-6)
+        rs_floor = max(float(z_real_hf) * 0.1, 1e-6)
+        if "Rs" in template.param_names:
+            idx_rs = template.param_names.index("Rs")
+            lb[idx_rs] = rs_floor
+
+    # ── Multi-start with diverse seeds ────────────────────────────
+    rng = np.random.RandomState(42)
+    seeds = [p0_base]
+
+    # Scaled perturbations around base
+    for scale in (0.5, 0.8, 1.2, 2.0):
+        p = np.clip(p0_base * scale, lb, ub)
+        seeds.append(p)
+
+    # Log-uniform random seeds within bounds
     if np.all(np.isfinite(lb)) and np.all(np.isfinite(ub)):
-        for scale in (0.8, 1.2):
-            p = np.clip(p0_base * scale, lb, ub)
-            seeds.append(p)
+        safe_lb = np.maximum(lb, 1e-15)
+        safe_ub = np.maximum(ub, 1e-14)
+        for _ in range(5):
+            log_p = rng.uniform(np.log10(safe_lb), np.log10(safe_ub))
+            seeds.append(np.clip(10 ** log_p, lb, ub))
 
     best_res = None
     for p0 in seeds:
-        res = least_squares(
-            residuals,
-            p0,
-            bounds=template.bounds,
-            max_nfev=5000,
-        )
-        if best_res is None or res.cost < best_res.cost:
-            best_res = res
+        try:
+            res = least_squares(
+                residuals,
+                p0,
+                bounds=(lb, ub),
+                max_nfev=8000,
+            )
+            if best_res is None or res.cost < best_res.cost:
+                best_res = res
+        except Exception:
+            continue
+
+    # ── Retry with relaxed bounds if parameters hit limits ────────
+    if best_res is not None:
+        tol = 1e-4
+        hit_lb = np.abs(best_res.x - lb) < tol * (ub - lb + 1e-30)
+        hit_ub = np.abs(best_res.x - ub) < tol * (ub - lb + 1e-30)
+        if np.any(hit_lb) or np.any(hit_ub):
+            lb2 = lb.copy()
+            ub2 = ub.copy()
+            lb2[hit_lb] = lb[hit_lb] / 10.0
+            ub2[hit_ub] = ub[hit_ub] * 10.0
+            for p0 in seeds[:3]:
+                p0_clipped = np.clip(p0, lb2, ub2)
+                try:
+                    res2 = least_squares(
+                        residuals, p0_clipped,
+                        bounds=(lb2, ub2), max_nfev=8000,
+                    )
+                    if res2.cost < best_res.cost:
+                        best_res = res2
+                        lb, ub = lb2, ub2  # use relaxed for bound-hit check
+                except Exception:
+                    continue
 
     res = best_res
     rss = float(np.sum(res.fun**2))

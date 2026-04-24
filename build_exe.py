@@ -10,6 +10,7 @@ The resulting executable will be placed in the ``dist/`` folder.
 """
 
 import argparse
+import importlib
 import subprocess
 import sys
 from pathlib import Path
@@ -21,10 +22,12 @@ MAIN_SCRIPT = ROOT / "gui_app.py"
 APP_NAME = "IonFlow_Pipeline"
 
 # Extra data the app needs at runtime
+_ctk_path = Path(importlib.import_module("customtkinter").__file__).parent
 DATA_ITEMS = [
     (ROOT / "data",   "data"),
     (ROOT / "themes", "themes"),
     (ROOT / "src" / "i18n_strings", "src/i18n_strings"),
+    (_ctk_path, "customtkinter"),           # theme JSONs + assets
 ]
 
 # Modules that PyInstaller may fail to detect automatically
@@ -120,9 +123,9 @@ def build(onefile: bool = False) -> None:
 
     cmd.append(str(MAIN_SCRIPT))
 
-    print("▶ Running:", " ".join(cmd), "\n")
+    print(">> Running:", " ".join(cmd), "\n")
     subprocess.check_call(cmd)
-    print(f"\n✅  Build complete!  → dist/{APP_NAME}/")
+    print(f"\n[OK] Build complete!  -> dist/{APP_NAME}/")
 
 
 if __name__ == "__main__":

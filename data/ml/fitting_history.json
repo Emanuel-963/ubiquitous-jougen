@@ -1,0 +1,2767 @@
+[
+  {
+    "sample_id": "1 Nb2 Novo S316 H2SO4 Am4 Agua.txt",
+    "timestamp": "2026-04-16T21:28:56",
+    "spectral_features": {
+      "logf_slope_low": -0.006961857819947577,
+      "logf_slope_high": -0.12523785660395345,
+      "phase_min": -182.67311857938407,
+      "phase_max": -165.9571832316626,
+      "phase_range": 16.715935347721455,
+      "freq_at_phase_min": 46642.714965691,
+      "mag_range": 696014.2908467096,
+      "zreal_min": -176086.720187537,
+      "zreal_max": 115939.961812311
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.0000000000000002e-06,
+      "Rp": 99999999.9999883,
+      "Q": 0.00017345469193357624,
+      "n": 0.9999999999999999,
+      "Sigma": 646.241683143011
+    },
+    "bic": 3342.2859800953847,
+    "confidence": 0.989830361677594,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T21:28:57",
+    "spectral_features": {
+      "logf_slope_low": -0.07830275306614652,
+      "logf_slope_high": -0.26445469461698745,
+      "phase_min": -51.42311909888881,
+      "phase_max": -0.5511048220013945,
+      "phase_range": 50.87201427688742,
+      "freq_at_phase_min": 31622.7766013657,
+      "mag_range": 858.5437676965751,
+      "zreal_min": 2.62957628082239,
+      "zreal_max": 860.888472589892
+    },
+    "circuit_name": "ZARC-ZARC-W",
+    "params": {
+      "Rs": 0.8022950772555963,
+      "R1": 160.951334805843,
+      "Q1": 0.01022193867114365,
+      "n1": 0.9999999999999342,
+      "R2": 648.209035981224,
+      "Q2": 2.9413948940821823e-05,
+      "n2": 0.8297330085780144,
+      "Sigma": 9.41500558375364
+    },
+    "bic": 741.725702063327,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 S316 Na2SO4 Am2.txt",
+    "timestamp": "2026-04-16T21:28:59",
+    "spectral_features": {
+      "logf_slope_low": -0.895899920865839,
+      "logf_slope_high": -0.17074279462621167,
+      "phase_min": -95.307759296858,
+      "phase_max": -69.36904883945354,
+      "phase_range": 25.938710457404454,
+      "freq_at_phase_min": 0.159371183885885,
+      "mag_range": 328240.3122293749,
+      "zreal_min": -16930.584203097,
+      "zreal_max": 54779.5300566085
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.0000021527139413e-06,
+      "Rp": 99999999.99961941,
+      "Q": 6.124244669443673e-06,
+      "n": 0.9999999999999994,
+      "Sigma": 29770.360132576065
+    },
+    "bic": 2490.901677498428,
+    "confidence": 0.9896632055925929,
+    "user_label": null
+  },
+  {
+    "sample_id": "2 Nb2 Novo S316 H2SO4 Am4 Agua.txt",
+    "timestamp": "2026-04-16T21:29:00",
+    "spectral_features": {
+      "logf_slope_low": -0.0554282643265382,
+      "logf_slope_high": -0.1831165895844597,
+      "phase_min": -70.14135489716965,
+      "phase_max": -46.96193810940915,
+      "phase_range": 23.179416787760502,
+      "freq_at_phase_min": 0.0099998232524934,
+      "mag_range": 476330.8996078268,
+      "zreal_min": -330073.107199128,
+      "zreal_max": 89253.1609775295
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.4502118926903357e-06,
+      "Rp": 1261734.011379616,
+      "Q": 0.0001577544699528669,
+      "n": 0.999989557839212,
+      "Sigma": 19733.340969082663
+    },
+    "bic": 3251.4297106039467,
+    "confidence": 0.7313348867479383,
+    "user_label": null
+  },
+  {
+    "sample_id": "2 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T21:29:02",
+    "spectral_features": {
+      "logf_slope_low": -0.5531113196784145,
+      "logf_slope_high": -0.48335854956185226,
+      "phase_min": -57.16331789558244,
+      "phase_max": -16.40471533003364,
+      "phase_range": 40.7586025655488,
+      "freq_at_phase_min": 79432.8234721399,
+      "mag_range": 112985.81775716647,
+      "zreal_min": 2.67306070853291,
+      "zreal_max": 100077.536938847
+    },
+    "circuit_name": "ZARC-ZARC-W",
+    "params": {
+      "Rs": 1.0000000109430774e-06,
+      "R1": 12120.081158223355,
+      "Q1": 4.044388168914746e-05,
+      "n1": 0.6755530852713576,
+      "R2": 140738.7714282141,
+      "Q2": 5.102833030348245e-05,
+      "n2": 0.8316077359322299,
+      "Sigma": 9.944315055373115e-10
+    },
+    "bic": 1348.8603136112467,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "2.1 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T21:29:03",
+    "spectral_features": {
+      "logf_slope_low": -0.558992197108963,
+      "logf_slope_high": -0.4836806245723309,
+      "phase_min": -54.28510531947005,
+      "phase_max": -16.249130159654847,
+      "phase_range": 38.0359751598152,
+      "freq_at_phase_min": 100000.0,
+      "mag_range": 114062.31213400236,
+      "zreal_min": 2.65979468500601,
+      "zreal_max": 101214.080932413
+    },
+    "circuit_name": "ZARC-ZARC-W",
+    "params": {
+      "Rs": 1.0000933577948448e-06,
+      "R1": 16601.484702162896,
+      "Q1": 4.2147425961133656e-05,
+      "n1": 0.643095750406405,
+      "R2": 131731.42743099295,
+      "Q2": 5.747838639067903e-05,
+      "n2": 0.8606902276659476,
+      "Sigma": 1.0021437118775907e-10
+    },
+    "bic": 1540.0129714287957,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM3 - EIS - antes.txt",
+    "timestamp": "2026-04-16T21:29:04",
+    "spectral_features": {
+      "logf_slope_low": -0.8857273280268904,
+      "logf_slope_high": 0.30682109519756073,
+      "phase_min": -80.03144294897047,
+      "phase_max": -47.625126409236195,
+      "phase_range": 32.40631653973427,
+      "freq_at_phase_min": 0.0999996536104142,
+      "mag_range": 43656.13311430336,
+      "zreal_min": 1.47406447916045,
+      "zreal_max": 7557.46988750567
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 9.513601168083445,
+      "Rcoat": 2245.1847284537084,
+      "Qcoat": 0.00011513543493407121,
+      "ncoat": 0.9999999999999999,
+      "Rct": 287984.0580318995,
+      "Qdl": 4.2668362211182575e-05,
+      "ndl": 0.9999999999999999
+    },
+    "bic": 1959.3861463059495,
+    "confidence": 0.9002647637596978,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM3 EIS pos GCD.txt",
+    "timestamp": "2026-04-16T21:29:06",
+    "spectral_features": {
+      "logf_slope_low": -0.9250703314301191,
+      "logf_slope_high": 0.2791116621064423,
+      "phase_min": -85.78508957183242,
+      "phase_max": -63.47383497994838,
+      "phase_range": 22.311254591884037,
+      "freq_at_phase_min": 25118.8643150248,
+      "mag_range": 23791.48155420232,
+      "zreal_min": 1.44584884382342,
+      "zreal_max": 4162.6186253753
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 2.2757537554452796,
+      "Rcoat": 233.95463538300524,
+      "Qcoat": 0.00044646222113990696,
+      "ncoat": 0.7109849134337592,
+      "Rct": 280640.63593229733,
+      "Qdl": 6.423917050128584e-05,
+      "ndl": 0.9468780632843932
+    },
+    "bic": 1104.62293089165,
+    "confidence": 0.9348980061763273,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM4 - EIS Nb2 H2SO4.txt",
+    "timestamp": "2026-04-16T21:29:07",
+    "spectral_features": {
+      "logf_slope_low": -0.908395701879015,
+      "logf_slope_high": -0.10538330764612099,
+      "phase_min": -84.82997197305873,
+      "phase_max": -62.608084215456785,
+      "phase_range": 22.221887757601948,
+      "freq_at_phase_min": 12589.2541178838,
+      "mag_range": 20286.38662622222,
+      "zreal_min": 1.32439809564647,
+      "zreal_max": 3503.58253216318
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 0.4009150435281042,
+      "Rcoat": 1521.437378608161,
+      "Qcoat": 0.0006779801057754805,
+      "ncoat": 0.7032889823975264,
+      "Rct": 349232.4777003565,
+      "Qdl": 7.859510076158559e-05,
+      "ndl": 0.9519306702283334
+    },
+    "bic": 596.1836414561513,
+    "confidence": 0.5000000022226061,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM4 EIS pos GCD.txt",
+    "timestamp": "2026-04-16T21:29:09",
+    "spectral_features": {
+      "logf_slope_low": -0.9231411038413367,
+      "logf_slope_high": 0.28058249903175264,
+      "phase_min": -83.487269242351,
+      "phase_max": -62.49176492222497,
+      "phase_range": 20.995504320126038,
+      "freq_at_phase_min": 15848.93192441,
+      "mag_range": 23025.83606822045,
+      "zreal_min": 1.32227141585128,
+      "zreal_max": 3383.32051783135
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 2.595112674390438,
+      "Rcoat": 2147.1489797406016,
+      "Qcoat": 0.00037297314594534,
+      "ncoat": 0.7232901321897713,
+      "Rct": 248157.63758170098,
+      "Qdl": 7.180839683071503e-05,
+      "ndl": 0.9999999999999999
+    },
+    "bic": 1103.539743901187,
+    "confidence": 0.9990721578730266,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 Novo S316 H2SO4 Am4 Agua.txt",
+    "timestamp": "2026-04-16T21:35:02",
+    "spectral_features": {
+      "logf_slope_low": -0.006961857819947577,
+      "logf_slope_high": -0.12523785660395345,
+      "phase_min": -182.67311857938407,
+      "phase_max": -165.9571832316626,
+      "phase_range": 16.715935347721455,
+      "freq_at_phase_min": 46642.714965691,
+      "mag_range": 696014.2908467096,
+      "zreal_min": -176086.720187537,
+      "zreal_max": 115939.961812311
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.0000000000000002e-06,
+      "Rp": 99999999.9999883,
+      "Q": 0.00017345469193357624,
+      "n": 0.9999999999999999,
+      "Sigma": 646.241683143011
+    },
+    "bic": 3342.2859800953847,
+    "confidence": 0.989830361677594,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T21:35:03",
+    "spectral_features": {
+      "logf_slope_low": -0.07830275306614652,
+      "logf_slope_high": -0.26445469461698745,
+      "phase_min": -51.42311909888881,
+      "phase_max": -0.5511048220013945,
+      "phase_range": 50.87201427688742,
+      "freq_at_phase_min": 31622.7766013657,
+      "mag_range": 858.5437676965751,
+      "zreal_min": 2.62957628082239,
+      "zreal_max": 860.888472589892
+    },
+    "circuit_name": "ZARC-ZARC-W",
+    "params": {
+      "Rs": 0.8022950772555963,
+      "R1": 160.951334805843,
+      "Q1": 0.01022193867114365,
+      "n1": 0.9999999999999342,
+      "R2": 648.209035981224,
+      "Q2": 2.9413948940821823e-05,
+      "n2": 0.8297330085780144,
+      "Sigma": 9.41500558375364
+    },
+    "bic": 741.725702063327,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 S316 Na2SO4 Am2.txt",
+    "timestamp": "2026-04-16T21:35:05",
+    "spectral_features": {
+      "logf_slope_low": -0.895899920865839,
+      "logf_slope_high": -0.17074279462621167,
+      "phase_min": -95.307759296858,
+      "phase_max": -69.36904883945354,
+      "phase_range": 25.938710457404454,
+      "freq_at_phase_min": 0.159371183885885,
+      "mag_range": 328240.3122293749,
+      "zreal_min": -16930.584203097,
+      "zreal_max": 54779.5300566085
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.0000021527139413e-06,
+      "Rp": 99999999.99961941,
+      "Q": 6.124244669443673e-06,
+      "n": 0.9999999999999994,
+      "Sigma": 29770.360132576065
+    },
+    "bic": 2490.901677498428,
+    "confidence": 0.9896632055925929,
+    "user_label": null
+  },
+  {
+    "sample_id": "2 Nb2 Novo S316 H2SO4 Am4 Agua.txt",
+    "timestamp": "2026-04-16T21:35:06",
+    "spectral_features": {
+      "logf_slope_low": -0.0554282643265382,
+      "logf_slope_high": -0.1831165895844597,
+      "phase_min": -70.14135489716965,
+      "phase_max": -46.96193810940915,
+      "phase_range": 23.179416787760502,
+      "freq_at_phase_min": 0.0099998232524934,
+      "mag_range": 476330.8996078268,
+      "zreal_min": -330073.107199128,
+      "zreal_max": 89253.1609775295
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.4502118926903357e-06,
+      "Rp": 1261734.011379616,
+      "Q": 0.0001577544699528669,
+      "n": 0.999989557839212,
+      "Sigma": 19733.340969082663
+    },
+    "bic": 3251.4297106039467,
+    "confidence": 0.7313348867479383,
+    "user_label": null
+  },
+  {
+    "sample_id": "2 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T21:35:08",
+    "spectral_features": {
+      "logf_slope_low": -0.5531113196784145,
+      "logf_slope_high": -0.48335854956185226,
+      "phase_min": -57.16331789558244,
+      "phase_max": -16.40471533003364,
+      "phase_range": 40.7586025655488,
+      "freq_at_phase_min": 79432.8234721399,
+      "mag_range": 112985.81775716647,
+      "zreal_min": 2.67306070853291,
+      "zreal_max": 100077.536938847
+    },
+    "circuit_name": "ZARC-ZARC-W",
+    "params": {
+      "Rs": 1.0000000109430774e-06,
+      "R1": 12120.081158223355,
+      "Q1": 4.044388168914746e-05,
+      "n1": 0.6755530852713576,
+      "R2": 140738.7714282141,
+      "Q2": 5.102833030348245e-05,
+      "n2": 0.8316077359322299,
+      "Sigma": 9.944315055373115e-10
+    },
+    "bic": 1348.8603136112467,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "2.1 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T21:35:09",
+    "spectral_features": {
+      "logf_slope_low": -0.558992197108963,
+      "logf_slope_high": -0.4836806245723309,
+      "phase_min": -54.28510531947005,
+      "phase_max": -16.249130159654847,
+      "phase_range": 38.0359751598152,
+      "freq_at_phase_min": 100000.0,
+      "mag_range": 114062.31213400236,
+      "zreal_min": 2.65979468500601,
+      "zreal_max": 101214.080932413
+    },
+    "circuit_name": "ZARC-ZARC-W",
+    "params": {
+      "Rs": 1.0000933577948448e-06,
+      "R1": 16601.484702162896,
+      "Q1": 4.2147425961133656e-05,
+      "n1": 0.643095750406405,
+      "R2": 131731.42743099295,
+      "Q2": 5.747838639067903e-05,
+      "n2": 0.8606902276659476,
+      "Sigma": 1.0021437118775907e-10
+    },
+    "bic": 1540.0129714287957,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM3 - EIS - antes.txt",
+    "timestamp": "2026-04-16T21:35:10",
+    "spectral_features": {
+      "logf_slope_low": -0.8857273280268904,
+      "logf_slope_high": 0.30682109519756073,
+      "phase_min": -80.03144294897047,
+      "phase_max": -47.625126409236195,
+      "phase_range": 32.40631653973427,
+      "freq_at_phase_min": 0.0999996536104142,
+      "mag_range": 43656.13311430336,
+      "zreal_min": 1.47406447916045,
+      "zreal_max": 7557.46988750567
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 9.513601168083445,
+      "Rcoat": 2245.1847284537084,
+      "Qcoat": 0.00011513543493407121,
+      "ncoat": 0.9999999999999999,
+      "Rct": 287984.0580318995,
+      "Qdl": 4.2668362211182575e-05,
+      "ndl": 0.9999999999999999
+    },
+    "bic": 1959.3861463059495,
+    "confidence": 0.9002647637596978,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM3 EIS pos GCD.txt",
+    "timestamp": "2026-04-16T21:35:12",
+    "spectral_features": {
+      "logf_slope_low": -0.9250703314301191,
+      "logf_slope_high": 0.2791116621064423,
+      "phase_min": -85.78508957183242,
+      "phase_max": -63.47383497994838,
+      "phase_range": 22.311254591884037,
+      "freq_at_phase_min": 25118.8643150248,
+      "mag_range": 23791.48155420232,
+      "zreal_min": 1.44584884382342,
+      "zreal_max": 4162.6186253753
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 2.2757537554452796,
+      "Rcoat": 233.95463538300524,
+      "Qcoat": 0.00044646222113990696,
+      "ncoat": 0.7109849134337592,
+      "Rct": 280640.63593229733,
+      "Qdl": 6.423917050128584e-05,
+      "ndl": 0.9468780632843932
+    },
+    "bic": 1104.62293089165,
+    "confidence": 0.9348980061763273,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM4 - EIS Nb2 H2SO4.txt",
+    "timestamp": "2026-04-16T21:35:13",
+    "spectral_features": {
+      "logf_slope_low": -0.908395701879015,
+      "logf_slope_high": -0.10538330764612099,
+      "phase_min": -84.82997197305873,
+      "phase_max": -62.608084215456785,
+      "phase_range": 22.221887757601948,
+      "freq_at_phase_min": 12589.2541178838,
+      "mag_range": 20286.38662622222,
+      "zreal_min": 1.32439809564647,
+      "zreal_max": 3503.58253216318
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 0.4009150435281042,
+      "Rcoat": 1521.437378608161,
+      "Qcoat": 0.0006779801057754805,
+      "ncoat": 0.7032889823975264,
+      "Rct": 349232.4777003565,
+      "Qdl": 7.859510076158559e-05,
+      "ndl": 0.9519306702283334
+    },
+    "bic": 596.1836414561513,
+    "confidence": 0.5000000022226061,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM4 EIS pos GCD.txt",
+    "timestamp": "2026-04-16T21:35:15",
+    "spectral_features": {
+      "logf_slope_low": -0.9231411038413367,
+      "logf_slope_high": 0.28058249903175264,
+      "phase_min": -83.487269242351,
+      "phase_max": -62.49176492222497,
+      "phase_range": 20.995504320126038,
+      "freq_at_phase_min": 15848.93192441,
+      "mag_range": 23025.83606822045,
+      "zreal_min": 1.32227141585128,
+      "zreal_max": 3383.32051783135
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 2.595112674390438,
+      "Rcoat": 2147.1489797406016,
+      "Qcoat": 0.00037297314594534,
+      "ncoat": 0.7232901321897713,
+      "Rct": 248157.63758170098,
+      "Qdl": 7.180839683071503e-05,
+      "ndl": 0.9999999999999999
+    },
+    "bic": 1103.539743901187,
+    "confidence": 0.9990721578730266,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 Novo S316 H2SO4 Am4 Agua.txt",
+    "timestamp": "2026-04-16T21:39:33",
+    "spectral_features": {
+      "logf_slope_low": -0.006961857819947577,
+      "logf_slope_high": -0.12523785660395345,
+      "phase_min": -182.67311857938407,
+      "phase_max": -165.9571832316626,
+      "phase_range": 16.715935347721455,
+      "freq_at_phase_min": 46642.714965691,
+      "mag_range": 696014.2908467096,
+      "zreal_min": -176086.720187537,
+      "zreal_max": 115939.961812311
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.0000000000000002e-06,
+      "Rp": 99999999.9999883,
+      "Q": 0.00017345469193357624,
+      "n": 0.9999999999999999,
+      "Sigma": 646.241683143011
+    },
+    "bic": 3342.2859800953847,
+    "confidence": 0.989830361677594,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T21:39:35",
+    "spectral_features": {
+      "logf_slope_low": -0.07830275306614652,
+      "logf_slope_high": -0.26445469461698745,
+      "phase_min": -51.42311909888881,
+      "phase_max": -0.5511048220013945,
+      "phase_range": 50.87201427688742,
+      "freq_at_phase_min": 31622.7766013657,
+      "mag_range": 858.5437676965751,
+      "zreal_min": 2.62957628082239,
+      "zreal_max": 860.888472589892
+    },
+    "circuit_name": "ZARC-ZARC-W",
+    "params": {
+      "Rs": 0.8022950772555963,
+      "R1": 160.951334805843,
+      "Q1": 0.01022193867114365,
+      "n1": 0.9999999999999342,
+      "R2": 648.209035981224,
+      "Q2": 2.9413948940821823e-05,
+      "n2": 0.8297330085780144,
+      "Sigma": 9.41500558375364
+    },
+    "bic": 741.725702063327,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 S316 Na2SO4 Am2.txt",
+    "timestamp": "2026-04-16T21:39:36",
+    "spectral_features": {
+      "logf_slope_low": -0.895899920865839,
+      "logf_slope_high": -0.17074279462621167,
+      "phase_min": -95.307759296858,
+      "phase_max": -69.36904883945354,
+      "phase_range": 25.938710457404454,
+      "freq_at_phase_min": 0.159371183885885,
+      "mag_range": 328240.3122293749,
+      "zreal_min": -16930.584203097,
+      "zreal_max": 54779.5300566085
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.0000021527139413e-06,
+      "Rp": 99999999.99961941,
+      "Q": 6.124244669443673e-06,
+      "n": 0.9999999999999994,
+      "Sigma": 29770.360132576065
+    },
+    "bic": 2490.901677498428,
+    "confidence": 0.9896632055925929,
+    "user_label": null
+  },
+  {
+    "sample_id": "2 Nb2 Novo S316 H2SO4 Am4 Agua.txt",
+    "timestamp": "2026-04-16T21:39:38",
+    "spectral_features": {
+      "logf_slope_low": -0.0554282643265382,
+      "logf_slope_high": -0.1831165895844597,
+      "phase_min": -70.14135489716965,
+      "phase_max": -46.96193810940915,
+      "phase_range": 23.179416787760502,
+      "freq_at_phase_min": 0.0099998232524934,
+      "mag_range": 476330.8996078268,
+      "zreal_min": -330073.107199128,
+      "zreal_max": 89253.1609775295
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.4502118926903357e-06,
+      "Rp": 1261734.011379616,
+      "Q": 0.0001577544699528669,
+      "n": 0.999989557839212,
+      "Sigma": 19733.340969082663
+    },
+    "bic": 3251.4297106039467,
+    "confidence": 0.7313348867479383,
+    "user_label": null
+  },
+  {
+    "sample_id": "2 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T21:39:39",
+    "spectral_features": {
+      "logf_slope_low": -0.5531113196784145,
+      "logf_slope_high": -0.48335854956185226,
+      "phase_min": -57.16331789558244,
+      "phase_max": -16.40471533003364,
+      "phase_range": 40.7586025655488,
+      "freq_at_phase_min": 79432.8234721399,
+      "mag_range": 112985.81775716647,
+      "zreal_min": 2.67306070853291,
+      "zreal_max": 100077.536938847
+    },
+    "circuit_name": "ZARC-ZARC-W",
+    "params": {
+      "Rs": 1.0000000109430774e-06,
+      "R1": 12120.081158223355,
+      "Q1": 4.044388168914746e-05,
+      "n1": 0.6755530852713576,
+      "R2": 140738.7714282141,
+      "Q2": 5.102833030348245e-05,
+      "n2": 0.8316077359322299,
+      "Sigma": 9.944315055373115e-10
+    },
+    "bic": 1348.8603136112467,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "2.1 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T21:39:41",
+    "spectral_features": {
+      "logf_slope_low": -0.558992197108963,
+      "logf_slope_high": -0.4836806245723309,
+      "phase_min": -54.28510531947005,
+      "phase_max": -16.249130159654847,
+      "phase_range": 38.0359751598152,
+      "freq_at_phase_min": 100000.0,
+      "mag_range": 114062.31213400236,
+      "zreal_min": 2.65979468500601,
+      "zreal_max": 101214.080932413
+    },
+    "circuit_name": "ZARC-ZARC-W",
+    "params": {
+      "Rs": 1.0000933577948448e-06,
+      "R1": 16601.484702162896,
+      "Q1": 4.2147425961133656e-05,
+      "n1": 0.643095750406405,
+      "R2": 131731.42743099295,
+      "Q2": 5.747838639067903e-05,
+      "n2": 0.8606902276659476,
+      "Sigma": 1.0021437118775907e-10
+    },
+    "bic": 1540.0129714287957,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM3 - EIS - antes.txt",
+    "timestamp": "2026-04-16T21:39:42",
+    "spectral_features": {
+      "logf_slope_low": -0.8857273280268904,
+      "logf_slope_high": 0.30682109519756073,
+      "phase_min": -80.03144294897047,
+      "phase_max": -47.625126409236195,
+      "phase_range": 32.40631653973427,
+      "freq_at_phase_min": 0.0999996536104142,
+      "mag_range": 43656.13311430336,
+      "zreal_min": 1.47406447916045,
+      "zreal_max": 7557.46988750567
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 9.513601168083445,
+      "Rcoat": 2245.1847284537084,
+      "Qcoat": 0.00011513543493407121,
+      "ncoat": 0.9999999999999999,
+      "Rct": 287984.0580318995,
+      "Qdl": 4.2668362211182575e-05,
+      "ndl": 0.9999999999999999
+    },
+    "bic": 1959.3861463059495,
+    "confidence": 0.9002647637596978,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM3 EIS pos GCD.txt",
+    "timestamp": "2026-04-16T21:39:43",
+    "spectral_features": {
+      "logf_slope_low": -0.9250703314301191,
+      "logf_slope_high": 0.2791116621064423,
+      "phase_min": -85.78508957183242,
+      "phase_max": -63.47383497994838,
+      "phase_range": 22.311254591884037,
+      "freq_at_phase_min": 25118.8643150248,
+      "mag_range": 23791.48155420232,
+      "zreal_min": 1.44584884382342,
+      "zreal_max": 4162.6186253753
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 2.2757537554452796,
+      "Rcoat": 233.95463538300524,
+      "Qcoat": 0.00044646222113990696,
+      "ncoat": 0.7109849134337592,
+      "Rct": 280640.63593229733,
+      "Qdl": 6.423917050128584e-05,
+      "ndl": 0.9468780632843932
+    },
+    "bic": 1104.62293089165,
+    "confidence": 0.9348980061763273,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM4 - EIS Nb2 H2SO4.txt",
+    "timestamp": "2026-04-16T21:39:45",
+    "spectral_features": {
+      "logf_slope_low": -0.908395701879015,
+      "logf_slope_high": -0.10538330764612099,
+      "phase_min": -84.82997197305873,
+      "phase_max": -62.608084215456785,
+      "phase_range": 22.221887757601948,
+      "freq_at_phase_min": 12589.2541178838,
+      "mag_range": 20286.38662622222,
+      "zreal_min": 1.32439809564647,
+      "zreal_max": 3503.58253216318
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 0.4009150435281042,
+      "Rcoat": 1521.437378608161,
+      "Qcoat": 0.0006779801057754805,
+      "ncoat": 0.7032889823975264,
+      "Rct": 349232.4777003565,
+      "Qdl": 7.859510076158559e-05,
+      "ndl": 0.9519306702283334
+    },
+    "bic": 596.1836414561513,
+    "confidence": 0.5000000022226061,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM4 EIS pos GCD.txt",
+    "timestamp": "2026-04-16T21:39:47",
+    "spectral_features": {
+      "logf_slope_low": -0.9231411038413367,
+      "logf_slope_high": 0.28058249903175264,
+      "phase_min": -83.487269242351,
+      "phase_max": -62.49176492222497,
+      "phase_range": 20.995504320126038,
+      "freq_at_phase_min": 15848.93192441,
+      "mag_range": 23025.83606822045,
+      "zreal_min": 1.32227141585128,
+      "zreal_max": 3383.32051783135
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 2.595112674390438,
+      "Rcoat": 2147.1489797406016,
+      "Qcoat": 0.00037297314594534,
+      "ncoat": 0.7232901321897713,
+      "Rct": 248157.63758170098,
+      "Qdl": 7.180839683071503e-05,
+      "ndl": 0.9999999999999999
+    },
+    "bic": 1103.539743901187,
+    "confidence": 0.9990721578730266,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 Novo S316 H2SO4 Am4 Agua.txt",
+    "timestamp": "2026-04-16T21:56:06",
+    "spectral_features": {
+      "logf_slope_low": -0.006961857819947577,
+      "logf_slope_high": -0.12523785660395345,
+      "phase_min": -182.67311857938407,
+      "phase_max": -165.9571832316626,
+      "phase_range": 16.715935347721455,
+      "freq_at_phase_min": 46642.714965691,
+      "mag_range": 696014.2908467096,
+      "zreal_min": -176086.720187537,
+      "zreal_max": 115939.961812311
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.0000000000000002e-06,
+      "Rp": 99999999.9999883,
+      "Q": 0.00017345469193357624,
+      "n": 0.9999999999999999,
+      "Sigma": 646.241683143011
+    },
+    "bic": 3342.2859800953847,
+    "confidence": 0.9918949837767514,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T21:56:08",
+    "spectral_features": {
+      "logf_slope_low": -0.07830275306614652,
+      "logf_slope_high": -0.26445469461698745,
+      "phase_min": -51.42311909888881,
+      "phase_max": -0.5511048220013945,
+      "phase_range": 50.87201427688742,
+      "freq_at_phase_min": 31622.7766013657,
+      "mag_range": 858.5437676965751,
+      "zreal_min": 2.62957628082239,
+      "zreal_max": 860.888472589892
+    },
+    "circuit_name": "ZARC-ZARC-W",
+    "params": {
+      "Rs": 0.8022950772555963,
+      "R1": 160.951334805843,
+      "Q1": 0.01022193867114365,
+      "n1": 0.9999999999999342,
+      "R2": 648.209035981224,
+      "Q2": 2.9413948940821823e-05,
+      "n2": 0.8297330085780144,
+      "Sigma": 9.41500558375364
+    },
+    "bic": 741.725702063327,
+    "confidence": 0.8187881153281124,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 S316 Na2SO4 Am2.txt",
+    "timestamp": "2026-04-16T21:56:10",
+    "spectral_features": {
+      "logf_slope_low": -0.895899920865839,
+      "logf_slope_high": -0.17074279462621167,
+      "phase_min": -95.307759296858,
+      "phase_max": -69.36904883945354,
+      "phase_range": 25.938710457404454,
+      "freq_at_phase_min": 0.159371183885885,
+      "mag_range": 328240.3122293749,
+      "zreal_min": -16930.584203097,
+      "zreal_max": 54779.5300566085
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.0000021527139413e-06,
+      "Rp": 99999999.99961941,
+      "Q": 6.124244669443673e-06,
+      "n": 0.9999999999999994,
+      "Sigma": 29770.360132576065
+    },
+    "bic": 2490.901677498428,
+    "confidence": 0.9901871513094512,
+    "user_label": null
+  },
+  {
+    "sample_id": "2 Nb2 Novo S316 H2SO4 Am4 Agua.txt",
+    "timestamp": "2026-04-16T21:56:11",
+    "spectral_features": {
+      "logf_slope_low": -0.0554282643265382,
+      "logf_slope_high": -0.1831165895844597,
+      "phase_min": -70.14135489716965,
+      "phase_max": -46.96193810940915,
+      "phase_range": 23.179416787760502,
+      "freq_at_phase_min": 0.0099998232524934,
+      "mag_range": 476330.8996078268,
+      "zreal_min": -330073.107199128,
+      "zreal_max": 89253.1609775295
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.4502118926903357e-06,
+      "Rp": 1261734.011379616,
+      "Q": 0.0001577544699528669,
+      "n": 0.999989557839212,
+      "Sigma": 19733.340969082663
+    },
+    "bic": 3251.4297106039467,
+    "confidence": 0.8720148721377327,
+    "user_label": null
+  },
+  {
+    "sample_id": "2 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T21:56:13",
+    "spectral_features": {
+      "logf_slope_low": -0.5531113196784145,
+      "logf_slope_high": -0.48335854956185226,
+      "phase_min": -57.16331789558244,
+      "phase_max": -16.40471533003364,
+      "phase_range": 40.7586025655488,
+      "freq_at_phase_min": 79432.8234721399,
+      "mag_range": 112985.81775716647,
+      "zreal_min": 2.67306070853291,
+      "zreal_max": 100077.536938847
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 1.0000000000000002e-06,
+      "Rcoat": 140738.85298857532,
+      "Qcoat": 5.102826803129398e-05,
+      "ncoat": 0.8316074764354621,
+      "Rct": 12120.029739114261,
+      "Qdl": 4.044382681837159e-05,
+      "ndl": 0.6755536338422125
+    },
+    "bic": 1343.9044865566057,
+    "confidence": 0.9386538020579706,
+    "user_label": null
+  },
+  {
+    "sample_id": "2.1 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T21:56:14",
+    "spectral_features": {
+      "logf_slope_low": -0.558992197108963,
+      "logf_slope_high": -0.4836806245723309,
+      "phase_min": -54.28510531947005,
+      "phase_max": -16.249130159654847,
+      "phase_range": 38.0359751598152,
+      "freq_at_phase_min": 100000.0,
+      "mag_range": 114062.31213400236,
+      "zreal_min": 2.65979468500601,
+      "zreal_max": 101214.080932413
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 1.0000000000000402e-06,
+      "Rcoat": 16601.118706197885,
+      "Qcoat": 4.214723964679364e-05,
+      "ncoat": 0.6430978358115254,
+      "Rct": 131731.91661150884,
+      "Qdl": 5.747794928710415e-05,
+      "ndl": 0.8606888280318908
+    },
+    "bic": 1535.0571442626685,
+    "confidence": 0.9386538052678135,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM3 - EIS - antes.txt",
+    "timestamp": "2026-04-16T21:56:24",
+    "spectral_features": {
+      "logf_slope_low": -0.8857273280268904,
+      "logf_slope_high": 0.30682109519756073,
+      "phase_min": -80.03144294897047,
+      "phase_max": -47.625126409236195,
+      "phase_range": 32.40631653973427,
+      "freq_at_phase_min": 0.0999996536104142,
+      "mag_range": 43656.13311430336,
+      "zreal_min": 1.47406447916045,
+      "zreal_max": 7557.46988750567
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 9.513601168083445,
+      "Rcoat": 2245.1847284537084,
+      "Qcoat": 0.00011513543493407121,
+      "ncoat": 0.9999999999999999,
+      "Rct": 287984.0580318995,
+      "Qdl": 4.2668362211182575e-05,
+      "ndl": 0.9999999999999999
+    },
+    "bic": 1959.3861463059495,
+    "confidence": 0.9913960269676577,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM3 EIS pos GCD.txt",
+    "timestamp": "2026-04-16T21:56:26",
+    "spectral_features": {
+      "logf_slope_low": -0.9250703314301191,
+      "logf_slope_high": 0.2791116621064423,
+      "phase_min": -85.78508957183242,
+      "phase_max": -63.47383497994838,
+      "phase_range": 22.311254591884037,
+      "freq_at_phase_min": 25118.8643150248,
+      "mag_range": 23791.48155420232,
+      "zreal_min": 1.44584884382342,
+      "zreal_max": 4162.6186253753
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 2.2757537554452796,
+      "Rcoat": 233.95463538300524,
+      "Qcoat": 0.00044646222113990696,
+      "ncoat": 0.7109849134337592,
+      "Rct": 280640.63593229733,
+      "Qdl": 6.423917050128584e-05,
+      "ndl": 0.9468780632843932
+    },
+    "bic": 1104.62293089165,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM4 - EIS Nb2 H2SO4.txt",
+    "timestamp": "2026-04-16T21:56:33",
+    "spectral_features": {
+      "logf_slope_low": -0.908395701879015,
+      "logf_slope_high": -0.10538330764612099,
+      "phase_min": -84.82997197305873,
+      "phase_max": -62.608084215456785,
+      "phase_range": 22.221887757601948,
+      "freq_at_phase_min": 12589.2541178838,
+      "mag_range": 20286.38662622222,
+      "zreal_min": 1.32439809564647,
+      "zreal_max": 3503.58253216318
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 0.4009150435281042,
+      "Rcoat": 1521.437378608161,
+      "Qcoat": 0.0006779801057754805,
+      "ncoat": 0.7032889823975264,
+      "Rct": 349232.4777003565,
+      "Qdl": 7.859510076158559e-05,
+      "ndl": 0.9519306702283334
+    },
+    "bic": 596.1836414561513,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM4 EIS pos GCD.txt",
+    "timestamp": "2026-04-16T21:56:35",
+    "spectral_features": {
+      "logf_slope_low": -0.9231411038413367,
+      "logf_slope_high": 0.28058249903175264,
+      "phase_min": -83.487269242351,
+      "phase_max": -62.49176492222497,
+      "phase_range": 20.995504320126038,
+      "freq_at_phase_min": 15848.93192441,
+      "mag_range": 23025.83606822045,
+      "zreal_min": 1.32227141585128,
+      "zreal_max": 3383.32051783135
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 2.595112674390438,
+      "Rcoat": 2147.1489797406016,
+      "Qcoat": 0.00037297314594534,
+      "ncoat": 0.7232901321897713,
+      "Rct": 248157.63758170098,
+      "Qdl": 7.180839683071503e-05,
+      "ndl": 0.9999999999999999
+    },
+    "bic": 1103.539743901187,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 Novo S316 H2SO4 Am4 Agua.txt",
+    "timestamp": "2026-04-16T22:03:31",
+    "spectral_features": {
+      "logf_slope_low": -0.006961857819947577,
+      "logf_slope_high": -0.12523785660395345,
+      "phase_min": -182.67311857938407,
+      "phase_max": -165.9571832316626,
+      "phase_range": 16.715935347721455,
+      "freq_at_phase_min": 46642.714965691,
+      "mag_range": 696014.2908467096,
+      "zreal_min": -176086.720187537,
+      "zreal_max": 115939.961812311
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.0000000000000002e-06,
+      "Rp": 99999999.9999883,
+      "Q": 0.00017345469193357624,
+      "n": 0.9999999999999999,
+      "Sigma": 646.241683143011
+    },
+    "bic": 3342.2859800953847,
+    "confidence": 0.9918949837767514,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T22:03:33",
+    "spectral_features": {
+      "logf_slope_low": -0.07830275306614652,
+      "logf_slope_high": -0.26445469461698745,
+      "phase_min": -51.42311909888881,
+      "phase_max": -0.5511048220013945,
+      "phase_range": 50.87201427688742,
+      "freq_at_phase_min": 31622.7766013657,
+      "mag_range": 858.5437676965751,
+      "zreal_min": 2.62957628082239,
+      "zreal_max": 860.888472589892
+    },
+    "circuit_name": "ZARC-ZARC-W",
+    "params": {
+      "Rs": 0.8022950772555963,
+      "R1": 160.951334805843,
+      "Q1": 0.01022193867114365,
+      "n1": 0.9999999999999342,
+      "R2": 648.209035981224,
+      "Q2": 2.9413948940821823e-05,
+      "n2": 0.8297330085780144,
+      "Sigma": 9.41500558375364
+    },
+    "bic": 741.725702063327,
+    "confidence": 0.8187881153281124,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 S316 Na2SO4 Am2.txt",
+    "timestamp": "2026-04-16T22:03:34",
+    "spectral_features": {
+      "logf_slope_low": -0.895899920865839,
+      "logf_slope_high": -0.17074279462621167,
+      "phase_min": -95.307759296858,
+      "phase_max": -69.36904883945354,
+      "phase_range": 25.938710457404454,
+      "freq_at_phase_min": 0.159371183885885,
+      "mag_range": 328240.3122293749,
+      "zreal_min": -16930.584203097,
+      "zreal_max": 54779.5300566085
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.0000021527139413e-06,
+      "Rp": 99999999.99961941,
+      "Q": 6.124244669443673e-06,
+      "n": 0.9999999999999994,
+      "Sigma": 29770.360132576065
+    },
+    "bic": 2490.901677498428,
+    "confidence": 0.9901871513094512,
+    "user_label": null
+  },
+  {
+    "sample_id": "2 Nb2 Novo S316 H2SO4 Am4 Agua.txt",
+    "timestamp": "2026-04-16T22:03:36",
+    "spectral_features": {
+      "logf_slope_low": -0.0554282643265382,
+      "logf_slope_high": -0.1831165895844597,
+      "phase_min": -70.14135489716965,
+      "phase_max": -46.96193810940915,
+      "phase_range": 23.179416787760502,
+      "freq_at_phase_min": 0.0099998232524934,
+      "mag_range": 476330.8996078268,
+      "zreal_min": -330073.107199128,
+      "zreal_max": 89253.1609775295
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.4502118926903357e-06,
+      "Rp": 1261734.011379616,
+      "Q": 0.0001577544699528669,
+      "n": 0.999989557839212,
+      "Sigma": 19733.340969082663
+    },
+    "bic": 3251.4297106039467,
+    "confidence": 0.8720148721377327,
+    "user_label": null
+  },
+  {
+    "sample_id": "2 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T22:03:37",
+    "spectral_features": {
+      "logf_slope_low": -0.5531113196784145,
+      "logf_slope_high": -0.48335854956185226,
+      "phase_min": -57.16331789558244,
+      "phase_max": -16.40471533003364,
+      "phase_range": 40.7586025655488,
+      "freq_at_phase_min": 79432.8234721399,
+      "mag_range": 112985.81775716647,
+      "zreal_min": 2.67306070853291,
+      "zreal_max": 100077.536938847
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 1.0000000000000002e-06,
+      "Rcoat": 140738.85298857532,
+      "Qcoat": 5.102826803129398e-05,
+      "ncoat": 0.8316074764354621,
+      "Rct": 12120.029739114261,
+      "Qdl": 4.044382681837159e-05,
+      "ndl": 0.6755536338422125
+    },
+    "bic": 1343.9044865566057,
+    "confidence": 0.9386538020579706,
+    "user_label": null
+  },
+  {
+    "sample_id": "2.1 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T22:03:39",
+    "spectral_features": {
+      "logf_slope_low": -0.558992197108963,
+      "logf_slope_high": -0.4836806245723309,
+      "phase_min": -54.28510531947005,
+      "phase_max": -16.249130159654847,
+      "phase_range": 38.0359751598152,
+      "freq_at_phase_min": 100000.0,
+      "mag_range": 114062.31213400236,
+      "zreal_min": 2.65979468500601,
+      "zreal_max": 101214.080932413
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 1.0000000000000402e-06,
+      "Rcoat": 16601.118706197885,
+      "Qcoat": 4.214723964679364e-05,
+      "ncoat": 0.6430978358115254,
+      "Rct": 131731.91661150884,
+      "Qdl": 5.747794928710415e-05,
+      "ndl": 0.8606888280318908
+    },
+    "bic": 1535.0571442626685,
+    "confidence": 0.9386538052678135,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM3 - EIS - antes.txt",
+    "timestamp": "2026-04-16T22:03:48",
+    "spectral_features": {
+      "logf_slope_low": -0.8857273280268904,
+      "logf_slope_high": 0.30682109519756073,
+      "phase_min": -80.03144294897047,
+      "phase_max": -47.625126409236195,
+      "phase_range": 32.40631653973427,
+      "freq_at_phase_min": 0.0999996536104142,
+      "mag_range": 43656.13311430336,
+      "zreal_min": 1.47406447916045,
+      "zreal_max": 7557.46988750567
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 9.513601168083445,
+      "Rcoat": 2245.1847284537084,
+      "Qcoat": 0.00011513543493407121,
+      "ncoat": 0.9999999999999999,
+      "Rct": 287984.0580318995,
+      "Qdl": 4.2668362211182575e-05,
+      "ndl": 0.9999999999999999
+    },
+    "bic": 1959.3861463059495,
+    "confidence": 0.9913960269676577,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM3 EIS pos GCD.txt",
+    "timestamp": "2026-04-16T22:03:50",
+    "spectral_features": {
+      "logf_slope_low": -0.9250703314301191,
+      "logf_slope_high": 0.2791116621064423,
+      "phase_min": -85.78508957183242,
+      "phase_max": -63.47383497994838,
+      "phase_range": 22.311254591884037,
+      "freq_at_phase_min": 25118.8643150248,
+      "mag_range": 23791.48155420232,
+      "zreal_min": 1.44584884382342,
+      "zreal_max": 4162.6186253753
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 2.2757537554452796,
+      "Rcoat": 233.95463538300524,
+      "Qcoat": 0.00044646222113990696,
+      "ncoat": 0.7109849134337592,
+      "Rct": 280640.63593229733,
+      "Qdl": 6.423917050128584e-05,
+      "ndl": 0.9468780632843932
+    },
+    "bic": 1104.62293089165,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM4 - EIS Nb2 H2SO4.txt",
+    "timestamp": "2026-04-16T22:03:57",
+    "spectral_features": {
+      "logf_slope_low": -0.908395701879015,
+      "logf_slope_high": -0.10538330764612099,
+      "phase_min": -84.82997197305873,
+      "phase_max": -62.608084215456785,
+      "phase_range": 22.221887757601948,
+      "freq_at_phase_min": 12589.2541178838,
+      "mag_range": 20286.38662622222,
+      "zreal_min": 1.32439809564647,
+      "zreal_max": 3503.58253216318
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 0.4009150435281042,
+      "Rcoat": 1521.437378608161,
+      "Qcoat": 0.0006779801057754805,
+      "ncoat": 0.7032889823975264,
+      "Rct": 349232.4777003565,
+      "Qdl": 7.859510076158559e-05,
+      "ndl": 0.9519306702283334
+    },
+    "bic": 596.1836414561513,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM4 EIS pos GCD.txt",
+    "timestamp": "2026-04-16T22:03:59",
+    "spectral_features": {
+      "logf_slope_low": -0.9231411038413367,
+      "logf_slope_high": 0.28058249903175264,
+      "phase_min": -83.487269242351,
+      "phase_max": -62.49176492222497,
+      "phase_range": 20.995504320126038,
+      "freq_at_phase_min": 15848.93192441,
+      "mag_range": 23025.83606822045,
+      "zreal_min": 1.32227141585128,
+      "zreal_max": 3383.32051783135
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 2.595112674390438,
+      "Rcoat": 2147.1489797406016,
+      "Qcoat": 0.00037297314594534,
+      "ncoat": 0.7232901321897713,
+      "Rct": 248157.63758170098,
+      "Qdl": 7.180839683071503e-05,
+      "ndl": 0.9999999999999999
+    },
+    "bic": 1103.539743901187,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 Novo S316 H2SO4 Am4 Agua.txt",
+    "timestamp": "2026-04-16T22:09:52",
+    "spectral_features": {
+      "logf_slope_low": -0.006961857819947577,
+      "logf_slope_high": -0.12523785660395345,
+      "phase_min": -182.67311857938407,
+      "phase_max": -165.9571832316626,
+      "phase_range": 16.715935347721455,
+      "freq_at_phase_min": 46642.714965691,
+      "mag_range": 696014.2908467096,
+      "zreal_min": -176086.720187537,
+      "zreal_max": 115939.961812311
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.0000000000000002e-06,
+      "Rp": 99999999.9999883,
+      "Q": 0.00017345469193357624,
+      "n": 0.9999999999999999,
+      "Sigma": 646.241683143011
+    },
+    "bic": 3342.2859800953847,
+    "confidence": 0.9918949837767514,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T22:09:54",
+    "spectral_features": {
+      "logf_slope_low": -0.07830275306614652,
+      "logf_slope_high": -0.26445469461698745,
+      "phase_min": -51.42311909888881,
+      "phase_max": -0.5511048220013945,
+      "phase_range": 50.87201427688742,
+      "freq_at_phase_min": 31622.7766013657,
+      "mag_range": 858.5437676965751,
+      "zreal_min": 2.62957628082239,
+      "zreal_max": 860.888472589892
+    },
+    "circuit_name": "ZARC-ZARC-W",
+    "params": {
+      "Rs": 0.8022950772555963,
+      "R1": 160.951334805843,
+      "Q1": 0.01022193867114365,
+      "n1": 0.9999999999999342,
+      "R2": 648.209035981224,
+      "Q2": 2.9413948940821823e-05,
+      "n2": 0.8297330085780144,
+      "Sigma": 9.41500558375364
+    },
+    "bic": 741.725702063327,
+    "confidence": 0.8187881153281124,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 S316 Na2SO4 Am2.txt",
+    "timestamp": "2026-04-16T22:09:55",
+    "spectral_features": {
+      "logf_slope_low": -0.895899920865839,
+      "logf_slope_high": -0.17074279462621167,
+      "phase_min": -95.307759296858,
+      "phase_max": -69.36904883945354,
+      "phase_range": 25.938710457404454,
+      "freq_at_phase_min": 0.159371183885885,
+      "mag_range": 328240.3122293749,
+      "zreal_min": -16930.584203097,
+      "zreal_max": 54779.5300566085
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.0000021527139413e-06,
+      "Rp": 99999999.99961941,
+      "Q": 6.124244669443673e-06,
+      "n": 0.9999999999999994,
+      "Sigma": 29770.360132576065
+    },
+    "bic": 2490.901677498428,
+    "confidence": 0.9901871513094512,
+    "user_label": null
+  },
+  {
+    "sample_id": "2 Nb2 Novo S316 H2SO4 Am4 Agua.txt",
+    "timestamp": "2026-04-16T22:09:57",
+    "spectral_features": {
+      "logf_slope_low": -0.0554282643265382,
+      "logf_slope_high": -0.1831165895844597,
+      "phase_min": -70.14135489716965,
+      "phase_max": -46.96193810940915,
+      "phase_range": 23.179416787760502,
+      "freq_at_phase_min": 0.0099998232524934,
+      "mag_range": 476330.8996078268,
+      "zreal_min": -330073.107199128,
+      "zreal_max": 89253.1609775295
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.4502118926903357e-06,
+      "Rp": 1261734.011379616,
+      "Q": 0.0001577544699528669,
+      "n": 0.999989557839212,
+      "Sigma": 19733.340969082663
+    },
+    "bic": 3251.4297106039467,
+    "confidence": 0.8720148721377327,
+    "user_label": null
+  },
+  {
+    "sample_id": "2 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T22:09:58",
+    "spectral_features": {
+      "logf_slope_low": -0.5531113196784145,
+      "logf_slope_high": -0.48335854956185226,
+      "phase_min": -57.16331789558244,
+      "phase_max": -16.40471533003364,
+      "phase_range": 40.7586025655488,
+      "freq_at_phase_min": 79432.8234721399,
+      "mag_range": 112985.81775716647,
+      "zreal_min": 2.67306070853291,
+      "zreal_max": 100077.536938847
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 1.0000000000000002e-06,
+      "Rcoat": 140738.85298857532,
+      "Qcoat": 5.102826803129398e-05,
+      "ncoat": 0.8316074764354621,
+      "Rct": 12120.029739114261,
+      "Qdl": 4.044382681837159e-05,
+      "ndl": 0.6755536338422125
+    },
+    "bic": 1343.9044865566057,
+    "confidence": 0.9386538020579706,
+    "user_label": null
+  },
+  {
+    "sample_id": "2.1 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T22:10:00",
+    "spectral_features": {
+      "logf_slope_low": -0.558992197108963,
+      "logf_slope_high": -0.4836806245723309,
+      "phase_min": -54.28510531947005,
+      "phase_max": -16.249130159654847,
+      "phase_range": 38.0359751598152,
+      "freq_at_phase_min": 100000.0,
+      "mag_range": 114062.31213400236,
+      "zreal_min": 2.65979468500601,
+      "zreal_max": 101214.080932413
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 1.0000000000000402e-06,
+      "Rcoat": 16601.118706197885,
+      "Qcoat": 4.214723964679364e-05,
+      "ncoat": 0.6430978358115254,
+      "Rct": 131731.91661150884,
+      "Qdl": 5.747794928710415e-05,
+      "ndl": 0.8606888280318908
+    },
+    "bic": 1535.0571442626685,
+    "confidence": 0.9386538052678135,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM3 - EIS - antes.txt",
+    "timestamp": "2026-04-16T22:10:09",
+    "spectral_features": {
+      "logf_slope_low": -0.8857273280268904,
+      "logf_slope_high": 0.30682109519756073,
+      "phase_min": -80.03144294897047,
+      "phase_max": -47.625126409236195,
+      "phase_range": 32.40631653973427,
+      "freq_at_phase_min": 0.0999996536104142,
+      "mag_range": 43656.13311430336,
+      "zreal_min": 1.47406447916045,
+      "zreal_max": 7557.46988750567
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 9.513601168083445,
+      "Rcoat": 2245.1847284537084,
+      "Qcoat": 0.00011513543493407121,
+      "ncoat": 0.9999999999999999,
+      "Rct": 287984.0580318995,
+      "Qdl": 4.2668362211182575e-05,
+      "ndl": 0.9999999999999999
+    },
+    "bic": 1959.3861463059495,
+    "confidence": 0.9913960269676577,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM3 EIS pos GCD.txt",
+    "timestamp": "2026-04-16T22:10:11",
+    "spectral_features": {
+      "logf_slope_low": -0.9250703314301191,
+      "logf_slope_high": 0.2791116621064423,
+      "phase_min": -85.78508957183242,
+      "phase_max": -63.47383497994838,
+      "phase_range": 22.311254591884037,
+      "freq_at_phase_min": 25118.8643150248,
+      "mag_range": 23791.48155420232,
+      "zreal_min": 1.44584884382342,
+      "zreal_max": 4162.6186253753
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 2.2757537554452796,
+      "Rcoat": 233.95463538300524,
+      "Qcoat": 0.00044646222113990696,
+      "ncoat": 0.7109849134337592,
+      "Rct": 280640.63593229733,
+      "Qdl": 6.423917050128584e-05,
+      "ndl": 0.9468780632843932
+    },
+    "bic": 1104.62293089165,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM4 - EIS Nb2 H2SO4.txt",
+    "timestamp": "2026-04-16T22:10:17",
+    "spectral_features": {
+      "logf_slope_low": -0.908395701879015,
+      "logf_slope_high": -0.10538330764612099,
+      "phase_min": -84.82997197305873,
+      "phase_max": -62.608084215456785,
+      "phase_range": 22.221887757601948,
+      "freq_at_phase_min": 12589.2541178838,
+      "mag_range": 20286.38662622222,
+      "zreal_min": 1.32439809564647,
+      "zreal_max": 3503.58253216318
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 0.4009150435281042,
+      "Rcoat": 1521.437378608161,
+      "Qcoat": 0.0006779801057754805,
+      "ncoat": 0.7032889823975264,
+      "Rct": 349232.4777003565,
+      "Qdl": 7.859510076158559e-05,
+      "ndl": 0.9519306702283334
+    },
+    "bic": 596.1836414561513,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM4 EIS pos GCD.txt",
+    "timestamp": "2026-04-16T22:10:19",
+    "spectral_features": {
+      "logf_slope_low": -0.9231411038413367,
+      "logf_slope_high": 0.28058249903175264,
+      "phase_min": -83.487269242351,
+      "phase_max": -62.49176492222497,
+      "phase_range": 20.995504320126038,
+      "freq_at_phase_min": 15848.93192441,
+      "mag_range": 23025.83606822045,
+      "zreal_min": 1.32227141585128,
+      "zreal_max": 3383.32051783135
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 2.595112674390438,
+      "Rcoat": 2147.1489797406016,
+      "Qcoat": 0.00037297314594534,
+      "ncoat": 0.7232901321897713,
+      "Rct": 248157.63758170098,
+      "Qdl": 7.180839683071503e-05,
+      "ndl": 0.9999999999999999
+    },
+    "bic": 1103.539743901187,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 Novo S316 H2SO4 Am4 Agua.txt",
+    "timestamp": "2026-04-16T22:24:30",
+    "spectral_features": {
+      "logf_slope_low": -0.006961857819947577,
+      "logf_slope_high": -0.12523785660395345,
+      "phase_min": -182.67311857938407,
+      "phase_max": -165.9571832316626,
+      "phase_range": 16.715935347721455,
+      "freq_at_phase_min": 46642.714965691,
+      "mag_range": 696014.2908467096,
+      "zreal_min": -176086.720187537,
+      "zreal_max": 115939.961812311
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.0000000000000002e-06,
+      "Rp": 99999999.9999883,
+      "Q": 0.00017345469193357624,
+      "n": 0.9999999999999999,
+      "Sigma": 646.241683143011
+    },
+    "bic": 3342.2859800953847,
+    "confidence": 0.9918949837767514,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T22:24:32",
+    "spectral_features": {
+      "logf_slope_low": -0.07830275306614652,
+      "logf_slope_high": -0.26445469461698745,
+      "phase_min": -51.42311909888881,
+      "phase_max": -0.5511048220013945,
+      "phase_range": 50.87201427688742,
+      "freq_at_phase_min": 31622.7766013657,
+      "mag_range": 858.5437676965751,
+      "zreal_min": 2.62957628082239,
+      "zreal_max": 860.888472589892
+    },
+    "circuit_name": "ZARC-ZARC-W",
+    "params": {
+      "Rs": 0.8022950772555963,
+      "R1": 160.951334805843,
+      "Q1": 0.01022193867114365,
+      "n1": 0.9999999999999342,
+      "R2": 648.209035981224,
+      "Q2": 2.9413948940821823e-05,
+      "n2": 0.8297330085780144,
+      "Sigma": 9.41500558375364
+    },
+    "bic": 741.725702063327,
+    "confidence": 0.8187881153281124,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 S316 Na2SO4 Am2.txt",
+    "timestamp": "2026-04-16T22:24:33",
+    "spectral_features": {
+      "logf_slope_low": -0.895899920865839,
+      "logf_slope_high": -0.17074279462621167,
+      "phase_min": -95.307759296858,
+      "phase_max": -69.36904883945354,
+      "phase_range": 25.938710457404454,
+      "freq_at_phase_min": 0.159371183885885,
+      "mag_range": 328240.3122293749,
+      "zreal_min": -16930.584203097,
+      "zreal_max": 54779.5300566085
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.0000021527139413e-06,
+      "Rp": 99999999.99961941,
+      "Q": 6.124244669443673e-06,
+      "n": 0.9999999999999994,
+      "Sigma": 29770.360132576065
+    },
+    "bic": 2490.901677498428,
+    "confidence": 0.9901871513094512,
+    "user_label": null
+  },
+  {
+    "sample_id": "2 Nb2 Novo S316 H2SO4 Am4 Agua.txt",
+    "timestamp": "2026-04-16T22:24:35",
+    "spectral_features": {
+      "logf_slope_low": -0.0554282643265382,
+      "logf_slope_high": -0.1831165895844597,
+      "phase_min": -70.14135489716965,
+      "phase_max": -46.96193810940915,
+      "phase_range": 23.179416787760502,
+      "freq_at_phase_min": 0.0099998232524934,
+      "mag_range": 476330.8996078268,
+      "zreal_min": -330073.107199128,
+      "zreal_max": 89253.1609775295
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.4502118926903357e-06,
+      "Rp": 1261734.011379616,
+      "Q": 0.0001577544699528669,
+      "n": 0.999989557839212,
+      "Sigma": 19733.340969082663
+    },
+    "bic": 3251.4297106039467,
+    "confidence": 0.8720148721377327,
+    "user_label": null
+  },
+  {
+    "sample_id": "2 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T22:24:36",
+    "spectral_features": {
+      "logf_slope_low": -0.5531113196784145,
+      "logf_slope_high": -0.48335854956185226,
+      "phase_min": -57.16331789558244,
+      "phase_max": -16.40471533003364,
+      "phase_range": 40.7586025655488,
+      "freq_at_phase_min": 79432.8234721399,
+      "mag_range": 112985.81775716647,
+      "zreal_min": 2.67306070853291,
+      "zreal_max": 100077.536938847
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 1.0000000000000002e-06,
+      "Rcoat": 140738.85298857532,
+      "Qcoat": 5.102826803129398e-05,
+      "ncoat": 0.8316074764354621,
+      "Rct": 12120.029739114261,
+      "Qdl": 4.044382681837159e-05,
+      "ndl": 0.6755536338422125
+    },
+    "bic": 1343.9044865566057,
+    "confidence": 0.9386538020579706,
+    "user_label": null
+  },
+  {
+    "sample_id": "2.1 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T22:24:38",
+    "spectral_features": {
+      "logf_slope_low": -0.558992197108963,
+      "logf_slope_high": -0.4836806245723309,
+      "phase_min": -54.28510531947005,
+      "phase_max": -16.249130159654847,
+      "phase_range": 38.0359751598152,
+      "freq_at_phase_min": 100000.0,
+      "mag_range": 114062.31213400236,
+      "zreal_min": 2.65979468500601,
+      "zreal_max": 101214.080932413
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 1.0000000000000402e-06,
+      "Rcoat": 16601.118706197885,
+      "Qcoat": 4.214723964679364e-05,
+      "ncoat": 0.6430978358115254,
+      "Rct": 131731.91661150884,
+      "Qdl": 5.747794928710415e-05,
+      "ndl": 0.8606888280318908
+    },
+    "bic": 1535.0571442626685,
+    "confidence": 0.9386538052678135,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM3 - EIS - antes.txt",
+    "timestamp": "2026-04-16T22:24:47",
+    "spectral_features": {
+      "logf_slope_low": -0.8857273280268904,
+      "logf_slope_high": 0.30682109519756073,
+      "phase_min": -80.03144294897047,
+      "phase_max": -47.625126409236195,
+      "phase_range": 32.40631653973427,
+      "freq_at_phase_min": 0.0999996536104142,
+      "mag_range": 43656.13311430336,
+      "zreal_min": 1.47406447916045,
+      "zreal_max": 7557.46988750567
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 9.513601168083445,
+      "Rcoat": 2245.1847284537084,
+      "Qcoat": 0.00011513543493407121,
+      "ncoat": 0.9999999999999999,
+      "Rct": 287984.0580318995,
+      "Qdl": 4.2668362211182575e-05,
+      "ndl": 0.9999999999999999
+    },
+    "bic": 1959.3861463059495,
+    "confidence": 0.9913960269676577,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM3 EIS pos GCD.txt",
+    "timestamp": "2026-04-16T22:24:49",
+    "spectral_features": {
+      "logf_slope_low": -0.9250703314301191,
+      "logf_slope_high": 0.2791116621064423,
+      "phase_min": -85.78508957183242,
+      "phase_max": -63.47383497994838,
+      "phase_range": 22.311254591884037,
+      "freq_at_phase_min": 25118.8643150248,
+      "mag_range": 23791.48155420232,
+      "zreal_min": 1.44584884382342,
+      "zreal_max": 4162.6186253753
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 2.2757537554452796,
+      "Rcoat": 233.95463538300524,
+      "Qcoat": 0.00044646222113990696,
+      "ncoat": 0.7109849134337592,
+      "Rct": 280640.63593229733,
+      "Qdl": 6.423917050128584e-05,
+      "ndl": 0.9468780632843932
+    },
+    "bic": 1104.62293089165,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM4 - EIS Nb2 H2SO4.txt",
+    "timestamp": "2026-04-16T22:24:55",
+    "spectral_features": {
+      "logf_slope_low": -0.908395701879015,
+      "logf_slope_high": -0.10538330764612099,
+      "phase_min": -84.82997197305873,
+      "phase_max": -62.608084215456785,
+      "phase_range": 22.221887757601948,
+      "freq_at_phase_min": 12589.2541178838,
+      "mag_range": 20286.38662622222,
+      "zreal_min": 1.32439809564647,
+      "zreal_max": 3503.58253216318
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 0.4009150435281042,
+      "Rcoat": 1521.437378608161,
+      "Qcoat": 0.0006779801057754805,
+      "ncoat": 0.7032889823975264,
+      "Rct": 349232.4777003565,
+      "Qdl": 7.859510076158559e-05,
+      "ndl": 0.9519306702283334
+    },
+    "bic": 596.1836414561513,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM4 EIS pos GCD.txt",
+    "timestamp": "2026-04-16T22:24:58",
+    "spectral_features": {
+      "logf_slope_low": -0.9231411038413367,
+      "logf_slope_high": 0.28058249903175264,
+      "phase_min": -83.487269242351,
+      "phase_max": -62.49176492222497,
+      "phase_range": 20.995504320126038,
+      "freq_at_phase_min": 15848.93192441,
+      "mag_range": 23025.83606822045,
+      "zreal_min": 1.32227141585128,
+      "zreal_max": 3383.32051783135
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 2.595112674390438,
+      "Rcoat": 2147.1489797406016,
+      "Qcoat": 0.00037297314594534,
+      "ncoat": 0.7232901321897713,
+      "Rct": 248157.63758170098,
+      "Qdl": 7.180839683071503e-05,
+      "ndl": 0.9999999999999999
+    },
+    "bic": 1103.539743901187,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 Novo S316 H2SO4 Am4 Agua.txt",
+    "timestamp": "2026-04-16T22:30:05",
+    "spectral_features": {
+      "logf_slope_low": -0.006961857819947577,
+      "logf_slope_high": -0.12523785660395345,
+      "phase_min": -182.67311857938407,
+      "phase_max": -165.9571832316626,
+      "phase_range": 16.715935347721455,
+      "freq_at_phase_min": 46642.714965691,
+      "mag_range": 696014.2908467096,
+      "zreal_min": -176086.720187537,
+      "zreal_max": 115939.961812311
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.0000000000000002e-06,
+      "Rp": 99999999.9999883,
+      "Q": 0.00017345469193357624,
+      "n": 0.9999999999999999,
+      "Sigma": 646.241683143011
+    },
+    "bic": 3342.2859800953847,
+    "confidence": 0.9918949837767514,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T22:30:07",
+    "spectral_features": {
+      "logf_slope_low": -0.07830275306614652,
+      "logf_slope_high": -0.26445469461698745,
+      "phase_min": -51.42311909888881,
+      "phase_max": -0.5511048220013945,
+      "phase_range": 50.87201427688742,
+      "freq_at_phase_min": 31622.7766013657,
+      "mag_range": 858.5437676965751,
+      "zreal_min": 2.62957628082239,
+      "zreal_max": 860.888472589892
+    },
+    "circuit_name": "ZARC-ZARC-W",
+    "params": {
+      "Rs": 0.8022950772555963,
+      "R1": 160.951334805843,
+      "Q1": 0.01022193867114365,
+      "n1": 0.9999999999999342,
+      "R2": 648.209035981224,
+      "Q2": 2.9413948940821823e-05,
+      "n2": 0.8297330085780144,
+      "Sigma": 9.41500558375364
+    },
+    "bic": 741.725702063327,
+    "confidence": 0.8187881153281124,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 S316 Na2SO4 Am2.txt",
+    "timestamp": "2026-04-16T22:30:08",
+    "spectral_features": {
+      "logf_slope_low": -0.895899920865839,
+      "logf_slope_high": -0.17074279462621167,
+      "phase_min": -95.307759296858,
+      "phase_max": -69.36904883945354,
+      "phase_range": 25.938710457404454,
+      "freq_at_phase_min": 0.159371183885885,
+      "mag_range": 328240.3122293749,
+      "zreal_min": -16930.584203097,
+      "zreal_max": 54779.5300566085
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.0000021527139413e-06,
+      "Rp": 99999999.99961941,
+      "Q": 6.124244669443673e-06,
+      "n": 0.9999999999999994,
+      "Sigma": 29770.360132576065
+    },
+    "bic": 2490.901677498428,
+    "confidence": 0.9901871513094512,
+    "user_label": null
+  },
+  {
+    "sample_id": "2 Nb2 Novo S316 H2SO4 Am4 Agua.txt",
+    "timestamp": "2026-04-16T22:30:10",
+    "spectral_features": {
+      "logf_slope_low": -0.0554282643265382,
+      "logf_slope_high": -0.1831165895844597,
+      "phase_min": -70.14135489716965,
+      "phase_max": -46.96193810940915,
+      "phase_range": 23.179416787760502,
+      "freq_at_phase_min": 0.0099998232524934,
+      "mag_range": 476330.8996078268,
+      "zreal_min": -330073.107199128,
+      "zreal_max": 89253.1609775295
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.4502118926903357e-06,
+      "Rp": 1261734.011379616,
+      "Q": 0.0001577544699528669,
+      "n": 0.999989557839212,
+      "Sigma": 19733.340969082663
+    },
+    "bic": 3251.4297106039467,
+    "confidence": 0.8720148721377327,
+    "user_label": null
+  },
+  {
+    "sample_id": "2 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T22:30:11",
+    "spectral_features": {
+      "logf_slope_low": -0.5531113196784145,
+      "logf_slope_high": -0.48335854956185226,
+      "phase_min": -57.16331789558244,
+      "phase_max": -16.40471533003364,
+      "phase_range": 40.7586025655488,
+      "freq_at_phase_min": 79432.8234721399,
+      "mag_range": 112985.81775716647,
+      "zreal_min": 2.67306070853291,
+      "zreal_max": 100077.536938847
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 1.0000000000000002e-06,
+      "Rcoat": 140738.85298857532,
+      "Qcoat": 5.102826803129398e-05,
+      "ncoat": 0.8316074764354621,
+      "Rct": 12120.029739114261,
+      "Qdl": 4.044382681837159e-05,
+      "ndl": 0.6755536338422125
+    },
+    "bic": 1343.9044865566057,
+    "confidence": 0.9386538020579706,
+    "user_label": null
+  },
+  {
+    "sample_id": "2.1 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T22:30:13",
+    "spectral_features": {
+      "logf_slope_low": -0.558992197108963,
+      "logf_slope_high": -0.4836806245723309,
+      "phase_min": -54.28510531947005,
+      "phase_max": -16.249130159654847,
+      "phase_range": 38.0359751598152,
+      "freq_at_phase_min": 100000.0,
+      "mag_range": 114062.31213400236,
+      "zreal_min": 2.65979468500601,
+      "zreal_max": 101214.080932413
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 1.0000000000000402e-06,
+      "Rcoat": 16601.118706197885,
+      "Qcoat": 4.214723964679364e-05,
+      "ncoat": 0.6430978358115254,
+      "Rct": 131731.91661150884,
+      "Qdl": 5.747794928710415e-05,
+      "ndl": 0.8606888280318908
+    },
+    "bic": 1535.0571442626685,
+    "confidence": 0.9386538052678135,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM3 - EIS - antes.txt",
+    "timestamp": "2026-04-16T22:30:22",
+    "spectral_features": {
+      "logf_slope_low": -0.8857273280268904,
+      "logf_slope_high": 0.30682109519756073,
+      "phase_min": -80.03144294897047,
+      "phase_max": -47.625126409236195,
+      "phase_range": 32.40631653973427,
+      "freq_at_phase_min": 0.0999996536104142,
+      "mag_range": 43656.13311430336,
+      "zreal_min": 1.47406447916045,
+      "zreal_max": 7557.46988750567
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 9.513601168083445,
+      "Rcoat": 2245.1847284537084,
+      "Qcoat": 0.00011513543493407121,
+      "ncoat": 0.9999999999999999,
+      "Rct": 287984.0580318995,
+      "Qdl": 4.2668362211182575e-05,
+      "ndl": 0.9999999999999999
+    },
+    "bic": 1959.3861463059495,
+    "confidence": 0.9913960269676577,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM3 EIS pos GCD.txt",
+    "timestamp": "2026-04-16T22:30:24",
+    "spectral_features": {
+      "logf_slope_low": -0.9250703314301191,
+      "logf_slope_high": 0.2791116621064423,
+      "phase_min": -85.78508957183242,
+      "phase_max": -63.47383497994838,
+      "phase_range": 22.311254591884037,
+      "freq_at_phase_min": 25118.8643150248,
+      "mag_range": 23791.48155420232,
+      "zreal_min": 1.44584884382342,
+      "zreal_max": 4162.6186253753
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 2.2757537554452796,
+      "Rcoat": 233.95463538300524,
+      "Qcoat": 0.00044646222113990696,
+      "ncoat": 0.7109849134337592,
+      "Rct": 280640.63593229733,
+      "Qdl": 6.423917050128584e-05,
+      "ndl": 0.9468780632843932
+    },
+    "bic": 1104.62293089165,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM4 - EIS Nb2 H2SO4.txt",
+    "timestamp": "2026-04-16T22:30:30",
+    "spectral_features": {
+      "logf_slope_low": -0.908395701879015,
+      "logf_slope_high": -0.10538330764612099,
+      "phase_min": -84.82997197305873,
+      "phase_max": -62.608084215456785,
+      "phase_range": 22.221887757601948,
+      "freq_at_phase_min": 12589.2541178838,
+      "mag_range": 20286.38662622222,
+      "zreal_min": 1.32439809564647,
+      "zreal_max": 3503.58253216318
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 0.4009150435281042,
+      "Rcoat": 1521.437378608161,
+      "Qcoat": 0.0006779801057754805,
+      "ncoat": 0.7032889823975264,
+      "Rct": 349232.4777003565,
+      "Qdl": 7.859510076158559e-05,
+      "ndl": 0.9519306702283334
+    },
+    "bic": 596.1836414561513,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM4 EIS pos GCD.txt",
+    "timestamp": "2026-04-16T22:30:33",
+    "spectral_features": {
+      "logf_slope_low": -0.9231411038413367,
+      "logf_slope_high": 0.28058249903175264,
+      "phase_min": -83.487269242351,
+      "phase_max": -62.49176492222497,
+      "phase_range": 20.995504320126038,
+      "freq_at_phase_min": 15848.93192441,
+      "mag_range": 23025.83606822045,
+      "zreal_min": 1.32227141585128,
+      "zreal_max": 3383.32051783135
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 2.595112674390438,
+      "Rcoat": 2147.1489797406016,
+      "Qcoat": 0.00037297314594534,
+      "ncoat": 0.7232901321897713,
+      "Rct": 248157.63758170098,
+      "Qdl": 7.180839683071503e-05,
+      "ndl": 0.9999999999999999
+    },
+    "bic": 1103.539743901187,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 Novo S316 H2SO4 Am4 Agua.txt",
+    "timestamp": "2026-04-16T23:04:09",
+    "spectral_features": {
+      "logf_slope_low": -0.006961857819947577,
+      "logf_slope_high": -0.12523785660395345,
+      "phase_min": -182.67311857938407,
+      "phase_max": -165.9571832316626,
+      "phase_range": 16.715935347721455,
+      "freq_at_phase_min": 46642.714965691,
+      "mag_range": 696014.2908467096,
+      "zreal_min": -176086.720187537,
+      "zreal_max": 115939.961812311
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.0000000000000002e-06,
+      "Rp": 99999999.9999883,
+      "Q": 0.00017345469193357624,
+      "n": 0.9999999999999999,
+      "Sigma": 646.241683143011
+    },
+    "bic": 3342.2859800953847,
+    "confidence": 0.9918949837767514,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T23:04:11",
+    "spectral_features": {
+      "logf_slope_low": -0.07830275306614652,
+      "logf_slope_high": -0.26445469461698745,
+      "phase_min": -51.42311909888881,
+      "phase_max": -0.5511048220013945,
+      "phase_range": 50.87201427688742,
+      "freq_at_phase_min": 31622.7766013657,
+      "mag_range": 858.5437676965751,
+      "zreal_min": 2.62957628082239,
+      "zreal_max": 860.888472589892
+    },
+    "circuit_name": "ZARC-ZARC-W",
+    "params": {
+      "Rs": 0.8022950772555963,
+      "R1": 160.951334805843,
+      "Q1": 0.01022193867114365,
+      "n1": 0.9999999999999342,
+      "R2": 648.209035981224,
+      "Q2": 2.9413948940821823e-05,
+      "n2": 0.8297330085780144,
+      "Sigma": 9.41500558375364
+    },
+    "bic": 741.725702063327,
+    "confidence": 0.8187881153281124,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 S316 Na2SO4 Am2.txt",
+    "timestamp": "2026-04-16T23:04:12",
+    "spectral_features": {
+      "logf_slope_low": -0.895899920865839,
+      "logf_slope_high": -0.17074279462621167,
+      "phase_min": -95.307759296858,
+      "phase_max": -69.36904883945354,
+      "phase_range": 25.938710457404454,
+      "freq_at_phase_min": 0.159371183885885,
+      "mag_range": 328240.3122293749,
+      "zreal_min": -16930.584203097,
+      "zreal_max": 54779.5300566085
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.0000021527139413e-06,
+      "Rp": 99999999.99961941,
+      "Q": 6.124244669443673e-06,
+      "n": 0.9999999999999994,
+      "Sigma": 29770.360132576065
+    },
+    "bic": 2490.901677498428,
+    "confidence": 0.9901871513094512,
+    "user_label": null
+  },
+  {
+    "sample_id": "2 Nb2 Novo S316 H2SO4 Am4 Agua.txt",
+    "timestamp": "2026-04-16T23:04:13",
+    "spectral_features": {
+      "logf_slope_low": -0.0554282643265382,
+      "logf_slope_high": -0.1831165895844597,
+      "phase_min": -70.14135489716965,
+      "phase_max": -46.96193810940915,
+      "phase_range": 23.179416787760502,
+      "freq_at_phase_min": 0.0099998232524934,
+      "mag_range": 476330.8996078268,
+      "zreal_min": -330073.107199128,
+      "zreal_max": 89253.1609775295
+    },
+    "circuit_name": "Randles-CPE-W",
+    "params": {
+      "Rs": 1.4502118926903357e-06,
+      "Rp": 1261734.011379616,
+      "Q": 0.0001577544699528669,
+      "n": 0.999989557839212,
+      "Sigma": 19733.340969082663
+    },
+    "bic": 3251.4297106039467,
+    "confidence": 0.8720148721377327,
+    "user_label": null
+  },
+  {
+    "sample_id": "2 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T23:04:15",
+    "spectral_features": {
+      "logf_slope_low": -0.5531113196784145,
+      "logf_slope_high": -0.48335854956185226,
+      "phase_min": -57.16331789558244,
+      "phase_max": -16.40471533003364,
+      "phase_range": 40.7586025655488,
+      "freq_at_phase_min": 79432.8234721399,
+      "mag_range": 112985.81775716647,
+      "zreal_min": 2.67306070853291,
+      "zreal_max": 100077.536938847
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 1.0000000000000002e-06,
+      "Rcoat": 140738.85298857532,
+      "Qcoat": 5.102826803129398e-05,
+      "ncoat": 0.8316074764354621,
+      "Rct": 12120.029739114261,
+      "Qdl": 4.044382681837159e-05,
+      "ndl": 0.6755536338422125
+    },
+    "bic": 1343.9044865566057,
+    "confidence": 0.9386538020579706,
+    "user_label": null
+  },
+  {
+    "sample_id": "2.1 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T23:04:16",
+    "spectral_features": {
+      "logf_slope_low": -0.558992197108963,
+      "logf_slope_high": -0.4836806245723309,
+      "phase_min": -54.28510531947005,
+      "phase_max": -16.249130159654847,
+      "phase_range": 38.0359751598152,
+      "freq_at_phase_min": 100000.0,
+      "mag_range": 114062.31213400236,
+      "zreal_min": 2.65979468500601,
+      "zreal_max": 101214.080932413
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 1.0000000000000402e-06,
+      "Rcoat": 16601.118706197885,
+      "Qcoat": 4.214723964679364e-05,
+      "ncoat": 0.6430978358115254,
+      "Rct": 131731.91661150884,
+      "Qdl": 5.747794928710415e-05,
+      "ndl": 0.8606888280318908
+    },
+    "bic": 1535.0571442626685,
+    "confidence": 0.9386538052678135,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM3 - EIS - antes.txt",
+    "timestamp": "2026-04-16T23:04:25",
+    "spectral_features": {
+      "logf_slope_low": -0.8857273280268904,
+      "logf_slope_high": 0.30682109519756073,
+      "phase_min": -80.03144294897047,
+      "phase_max": -47.625126409236195,
+      "phase_range": 32.40631653973427,
+      "freq_at_phase_min": 0.0999996536104142,
+      "mag_range": 43656.13311430336,
+      "zreal_min": 1.47406447916045,
+      "zreal_max": 7557.46988750567
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 9.513601168083445,
+      "Rcoat": 2245.1847284537084,
+      "Qcoat": 0.00011513543493407121,
+      "ncoat": 0.9999999999999999,
+      "Rct": 287984.0580318995,
+      "Qdl": 4.2668362211182575e-05,
+      "ndl": 0.9999999999999999
+    },
+    "bic": 1959.3861463059495,
+    "confidence": 0.9913960269676577,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM3 EIS pos GCD.txt",
+    "timestamp": "2026-04-16T23:04:27",
+    "spectral_features": {
+      "logf_slope_low": -0.9250703314301191,
+      "logf_slope_high": 0.2791116621064423,
+      "phase_min": -85.78508957183242,
+      "phase_max": -63.47383497994838,
+      "phase_range": 22.311254591884037,
+      "freq_at_phase_min": 25118.8643150248,
+      "mag_range": 23791.48155420232,
+      "zreal_min": 1.44584884382342,
+      "zreal_max": 4162.6186253753
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 2.2757537554452796,
+      "Rcoat": 233.95463538300524,
+      "Qcoat": 0.00044646222113990696,
+      "ncoat": 0.7109849134337592,
+      "Rct": 280640.63593229733,
+      "Qdl": 6.423917050128584e-05,
+      "ndl": 0.9468780632843932
+    },
+    "bic": 1104.62293089165,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM4 - EIS Nb2 H2SO4.txt",
+    "timestamp": "2026-04-16T23:04:33",
+    "spectral_features": {
+      "logf_slope_low": -0.908395701879015,
+      "logf_slope_high": -0.10538330764612099,
+      "phase_min": -84.82997197305873,
+      "phase_max": -62.608084215456785,
+      "phase_range": 22.221887757601948,
+      "freq_at_phase_min": 12589.2541178838,
+      "mag_range": 20286.38662622222,
+      "zreal_min": 1.32439809564647,
+      "zreal_max": 3503.58253216318
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 0.4009150435281042,
+      "Rcoat": 1521.437378608161,
+      "Qcoat": 0.0006779801057754805,
+      "ncoat": 0.7032889823975264,
+      "Rct": 349232.4777003565,
+      "Qdl": 7.859510076158559e-05,
+      "ndl": 0.9519306702283334
+    },
+    "bic": 596.1836414561513,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM4 EIS pos GCD.txt",
+    "timestamp": "2026-04-16T23:04:35",
+    "spectral_features": {
+      "logf_slope_low": -0.9231411038413367,
+      "logf_slope_high": 0.28058249903175264,
+      "phase_min": -83.487269242351,
+      "phase_max": -62.49176492222497,
+      "phase_range": 20.995504320126038,
+      "freq_at_phase_min": 15848.93192441,
+      "mag_range": 23025.83606822045,
+      "zreal_min": 1.32227141585128,
+      "zreal_max": 3383.32051783135
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 2.595112674390438,
+      "Rcoat": 2147.1489797406016,
+      "Qcoat": 0.00037297314594534,
+      "ncoat": 0.7232901321897713,
+      "Rct": 248157.63758170098,
+      "Qdl": 7.180839683071503e-05,
+      "ndl": 0.9999999999999999
+    },
+    "bic": 1103.539743901187,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 Novo S316 H2SO4 Am4 Agua.txt",
+    "timestamp": "2026-04-16T23:15:18",
+    "spectral_features": {
+      "logf_slope_low": -0.006961857819947577,
+      "logf_slope_high": -0.12523785660395345,
+      "phase_min": -182.67311857938407,
+      "phase_max": -165.9571832316626,
+      "phase_range": 16.715935347721455,
+      "freq_at_phase_min": 46642.714965691,
+      "mag_range": 696014.2908467096,
+      "zreal_min": -176086.720187537,
+      "zreal_max": 115939.961812311
+    },
+    "circuit_name": "ZARC-ZARC-W",
+    "params": {
+      "Rs": 31.63542636306408,
+      "R1": 974954.9962411583,
+      "Q1": 0.0020654143502256317,
+      "n1": 1.9166683349754197,
+      "R2": 451.279793722266,
+      "Q2": 0.021601218090419674,
+      "n2": 1.9995990606978644,
+      "Sigma": 500.9962611046378
+    },
+    "bic": 3120.980847454026,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T23:15:22",
+    "spectral_features": {
+      "logf_slope_low": -0.07830275306614652,
+      "logf_slope_high": -0.26445469461698745,
+      "phase_min": -51.42311909888881,
+      "phase_max": -0.5511048220013945,
+      "phase_range": 50.87201427688742,
+      "freq_at_phase_min": 31622.7766013657,
+      "mag_range": 858.5437676965751,
+      "zreal_min": 2.62957628082239,
+      "zreal_max": 860.888472589892
+    },
+    "circuit_name": "ZARC-ZARC-W",
+    "params": {
+      "Rs": 8.055790096771291,
+      "R1": 162.25724721556557,
+      "Q1": 0.009943736698278948,
+      "n1": 0.9999999999962236,
+      "R2": 638.5771858266548,
+      "Q2": 2.848279793406283e-05,
+      "n2": 0.8417426419828082,
+      "Sigma": 9.685900654958333
+    },
+    "bic": 751.4493576128014,
+    "confidence": 0.6670739917045668,
+    "user_label": null
+  },
+  {
+    "sample_id": "1 Nb2 S316 Na2SO4 Am2.txt",
+    "timestamp": "2026-04-16T23:15:39",
+    "spectral_features": {
+      "logf_slope_low": -0.895899920865839,
+      "logf_slope_high": -0.17074279462621167,
+      "phase_min": -95.307759296858,
+      "phase_max": -69.36904883945354,
+      "phase_range": 25.938710457404454,
+      "freq_at_phase_min": 0.159371183885885,
+      "mag_range": 328240.3122293749,
+      "zreal_min": -16930.584203097,
+      "zreal_max": 54779.5300566085
+    },
+    "circuit_name": "ZARC-ZARC-W",
+    "params": {
+      "Rs": 1.0000000092556359e-07,
+      "R1": 1548.4744633348812,
+      "Q1": 0.0016435946216181443,
+      "n1": 2.0038390354888294,
+      "R2": 515263.47855296556,
+      "Q2": 6.751052541449078e-06,
+      "n2": 1.3474395533975974,
+      "Sigma": 85828.03750750594
+    },
+    "bic": 2313.6898634851123,
+    "confidence": 0.9999999987743229,
+    "user_label": null
+  },
+  {
+    "sample_id": "2 Nb2 Novo S316 H2SO4 Am4 Agua.txt",
+    "timestamp": "2026-04-16T23:15:44",
+    "spectral_features": {
+      "logf_slope_low": -0.0554282643265382,
+      "logf_slope_high": -0.1831165895844597,
+      "phase_min": -70.14135489716965,
+      "phase_max": -46.96193810940915,
+      "phase_range": 23.179416787760502,
+      "freq_at_phase_min": 0.0099998232524934,
+      "mag_range": 476330.8996078268,
+      "zreal_min": -330073.107199128,
+      "zreal_max": 89253.1609775295
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 205.84956031950944,
+      "Rcoat": 121.89250428031802,
+      "Qcoat": 0.2028888146206912,
+      "ncoat": 1.9998890628099364,
+      "Rct": 6678519.031417302,
+      "Qdl": 7.429979491320922e-05,
+      "ndl": 0.7982308498272656
+    },
+    "bic": 3100.530977506497,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "2 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T23:15:53",
+    "spectral_features": {
+      "logf_slope_low": -0.5531113196784145,
+      "logf_slope_high": -0.48335854956185226,
+      "phase_min": -57.16331789558244,
+      "phase_max": -16.40471533003364,
+      "phase_range": 40.7586025655488,
+      "freq_at_phase_min": 79432.8234721399,
+      "mag_range": 112985.81775716647,
+      "zreal_min": 2.67306070853291,
+      "zreal_max": 100077.536938847
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 581.1912390337982,
+      "Rcoat": 8821.422255594884,
+      "Qcoat": 3.8178506034904876e-05,
+      "ncoat": 0.7881020440485793,
+      "Rct": 144728.62018565412,
+      "Qdl": 4.808984776350134e-05,
+      "ndl": 0.8200795601111754
+    },
+    "bic": 1685.19143381566,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "2.1 Nb2 S316 H2SO4 Am4 Alcool NF.txt",
+    "timestamp": "2026-04-16T23:16:01",
+    "spectral_features": {
+      "logf_slope_low": -0.558992197108963,
+      "logf_slope_high": -0.4836806245723309,
+      "phase_min": -54.28510531947005,
+      "phase_max": -16.249130159654847,
+      "phase_range": 38.0359751598152,
+      "freq_at_phase_min": 100000.0,
+      "mag_range": 114062.31213400236,
+      "zreal_min": 2.65979468500601,
+      "zreal_max": 101214.080932413
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 576.4103707970493,
+      "Rcoat": 181629.62650751867,
+      "Qcoat": 3.643917374250268e-05,
+      "ncoat": 0.6867398378461471,
+      "Rct": 8086.781906841905,
+      "Qdl": 0.9999999999988388,
+      "ndl": 4.641204701953911
+    },
+    "bic": 1836.5938049002025,
+    "confidence": 0.93865380225344,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM3 - EIS - antes.txt",
+    "timestamp": "2026-04-16T23:16:23",
+    "spectral_features": {
+      "logf_slope_low": -0.8857273280268904,
+      "logf_slope_high": 0.30682109519756073,
+      "phase_min": -80.03144294897047,
+      "phase_max": -47.625126409236195,
+      "phase_range": 32.40631653973427,
+      "freq_at_phase_min": 0.0999996536104142,
+      "mag_range": 43656.13311430336,
+      "zreal_min": 1.47406447916045,
+      "zreal_max": 7557.46988750567
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 13.43520514916064,
+      "Rcoat": 32705.79620683441,
+      "Qcoat": 3.793117181460757e-05,
+      "ncoat": 1.0235242939565146,
+      "Rct": 17753.87472312037,
+      "Qdl": 0.0001752626160669675,
+      "ndl": 1.7512035117320357
+    },
+    "bic": 1852.3125280300756,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM3 EIS pos GCD.txt",
+    "timestamp": "2026-04-16T23:16:28",
+    "spectral_features": {
+      "logf_slope_low": -0.9250703314301191,
+      "logf_slope_high": 0.2791116621064423,
+      "phase_min": -85.78508957183242,
+      "phase_max": -63.47383497994838,
+      "phase_range": 22.311254591884037,
+      "freq_at_phase_min": 25118.8643150248,
+      "mag_range": 23791.48155420232,
+      "zreal_min": 1.44584884382342,
+      "zreal_max": 4162.6186253753
+    },
+    "circuit_name": "ZARC-ZARC-W",
+    "params": {
+      "Rs": 12.889338550344004,
+      "R1": 26583.3743433113,
+      "Q1": 0.00019429698203073497,
+      "n1": 0.9999999999999999,
+      "R2": 99999999.97238211,
+      "Q2": 0.00010282080745875738,
+      "n2": 0.957008156066698,
+      "Sigma": 1009.4522132601734
+    },
+    "bic": 1111.1081109731965,
+    "confidence": 0.8540935085502346,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM4 - EIS Nb2 H2SO4.txt",
+    "timestamp": "2026-04-16T23:16:52",
+    "spectral_features": {
+      "logf_slope_low": -0.908395701879015,
+      "logf_slope_high": -0.10538330764612099,
+      "phase_min": -84.82997197305873,
+      "phase_max": -62.608084215456785,
+      "phase_range": 22.221887757601948,
+      "freq_at_phase_min": 12589.2541178838,
+      "mag_range": 20286.38662622222,
+      "zreal_min": 1.32439809564647,
+      "zreal_max": 3503.58253216318
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 14.089228832262503,
+      "Rcoat": 338.0569382217977,
+      "Qcoat": 0.001137065920098813,
+      "ncoat": 0.7859904915540693,
+      "Rct": 427832.14900319703,
+      "Qdl": 7.591275586140769e-05,
+      "ndl": 0.928454591503916
+    },
+    "bic": 645.0523882342445,
+    "confidence": 1.0,
+    "user_label": null
+  },
+  {
+    "sample_id": "Cópia de AM4 EIS pos GCD.txt",
+    "timestamp": "2026-04-16T23:16:55",
+    "spectral_features": {
+      "logf_slope_low": -0.9231411038413367,
+      "logf_slope_high": 0.28058249903175264,
+      "phase_min": -83.487269242351,
+      "phase_max": -62.49176492222497,
+      "phase_range": 20.995504320126038,
+      "freq_at_phase_min": 15848.93192441,
+      "mag_range": 23025.83606822045,
+      "zreal_min": 1.32227141585128,
+      "zreal_max": 3383.32051783135
+    },
+    "circuit_name": "Coating-CPE",
+    "params": {
+      "Rs": 12.746912147092003,
+      "Rcoat": 32148.184784537698,
+      "Qcoat": 8.166085500515974e-05,
+      "ncoat": 0.8788366236822175,
+      "Rct": 56389.070569338044,
+      "Qdl": 0.00017364788077116347,
+      "ndl": 1.4175949231063754
+    },
+    "bic": 1048.880882336632,
+    "confidence": 1.0,
+    "user_label": null
+  }
+]

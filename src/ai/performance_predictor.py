@@ -33,7 +33,7 @@ from src.config import PipelineConfig
 logger = logging.getLogger(__name__)
 
 # Minimum records needed to switch from heuristic to ML prediction
-_MIN_RECORDS_FOR_ML = 30
+_MIN_RECORDS_FOR_ML = 20
 
 # EIS parameter keys used as regression inputs
 _EIS_FEATURE_KEYS: Tuple[str, ...] = (
@@ -275,6 +275,9 @@ def _heuristic_cycling_prediction(
     - Lower Rs → higher power delivery
     - Lower Rp → faster charge transfer → better retention
     - Higher C_mean → higher energy storage
+
+    Sanity thresholds prevent absurd predictions when fitting parameters
+    sit on optimizer bounds (e.g. Rs ≈ 1e-6 Ω).
     """
     rs = params.get("Rs_fit")
     rp = params.get("Rp_fit")
@@ -283,31 +286,59 @@ def _heuristic_cycling_prediction(
     sigma = params.get("Sigma")
     energy_eis = params.get("Energy_mean")
 
+    # ── Sanity thresholds ────────────────────────────────────────
+    # Values below these are almost certainly fitting artefacts
+    # (parameter stuck at optimizer lower bound).
+    RS_MIN_PHYSICAL = 1e-3   # 1 mΩ — realistic floor for Rs
+    RP_MIN_PHYSICAL = 1e-3   # 1 mΩ — realistic floor for Rp
+    POWER_MAX = 1e6          # 1 W — cap power at reasonable max (µW)
+    ENERGY_MIN = 1e-9        # practical floor for energy (µJ)
+
+    rs_reliable = rs is not None and rs >= RS_MIN_PHYSICAL
+    rp_reliable = rp is not None and rp >= RP_MIN_PHYSICAL
+
     pred = CyclingPrediction(method="heuristic")
     parts: List[str] = []
+    warnings: List[str] = []
+
+    if rs is not None and not rs_reliable:
+        warnings.append(
+            f"⚠ Rs = {rs:.2e} Ω está no limite inferior do optimizer — "
+            "valor provavelmente não-físico. Predição de potência descartada."
+        )
+    if rp is not None and not rp_reliable:
+        warnings.append(
+            f"⚠ Rp = {rp:.2e} Ω está no limite inferior do optimizer — "
+            "valor provavelmente não-físico."
+        )
 
     # Energy estimate: proportional to C_mean
-    if c_mean is not None and c_mean > 0:
+    if c_mean is not None and c_mean > ENERGY_MIN:
         # Rough: E ∝ C × V² / 2, assume V ~ 1V → energy ≈ C_mean in µJ scale
-        pred.energy = round(c_mean * 0.5, 2)
-        parts.append(f"Energia estimada ≈ {pred.energy:.2f} µJ (proporcional a C_mean)")
-    elif energy_eis is not None and energy_eis > 0:
-        pred.energy = round(energy_eis, 2)
-        parts.append(f"Energia estimada ≈ {pred.energy:.2f} µJ (do EIS)")
+        pred.energy = round(c_mean * 0.5, 4)
+        parts.append(f"Energia estimada ≈ {pred.energy:.4f} µJ (proporcional a C_mean)")
+    elif energy_eis is not None and energy_eis > ENERGY_MIN:
+        pred.energy = round(energy_eis, 4)
+        parts.append(f"Energia estimada ≈ {pred.energy:.4f} µJ (do EIS)")
+    else:
+        parts.append("Energia: não foi possível estimar (C_mean muito baixo ou ausente)")
 
-    # Power estimate: inversely proportional to Rs
-    if rs is not None and rs > 0:
+    # Power estimate: inversely proportional to Rs — only if Rs is reliable
+    if rs_reliable:
         # P ∝ V² / (4 × Rs)  for V = 1V → P = 0.25 / Rs (W), convert to µW
-        pred.power = round(250_000 / rs, 2)
+        raw_power = 250_000 / rs
+        pred.power = round(min(raw_power, POWER_MAX), 2)
         parts.append(f"Potência estimada ≈ {pred.power:.2f} µW (inversamente proporcional a Rs)")
+    else:
+        parts.append("Potência: não estimada (Rs não-confiável ou ausente)")
 
     # Retention estimate: based on n and Rp
-    if rp is not None and n is not None:
-        # Higher n (closer to 1) → more ideal → better retention
-        # Lower Rp → less charge transfer resistance → better cycling
+    if n is not None:
         base_ret = 70.0
         n_bonus = max(0, (n - 0.5)) * 40.0  # n=0.5 → 0, n=1.0 → 20
-        rp_penalty = min(20.0, rp * 0.1)  # high Rp reduces retention
+        rp_penalty = 0.0
+        if rp_reliable:
+            rp_penalty = min(20.0, rp * 0.1)  # high Rp reduces retention
         sigma_penalty = 0.0
         if sigma is not None and sigma > 30:
             sigma_penalty = min(10.0, (sigma - 30) * 0.2)
@@ -316,9 +347,14 @@ def _heuristic_cycling_prediction(
         )
         parts.append(f"Retenção estimada ≈ {pred.retention:.1f}%")
 
-    # Confidence: low for heuristic
-    pred.confidence = 0.3
+    # Confidence: lower if parameters are unreliable
+    if rs_reliable and rp_reliable:
+        pred.confidence = 0.3
+    else:
+        pred.confidence = 0.15
     parts.insert(0, "Predição baseada em regras heurísticas (sem histórico ML suficiente).")
+    if warnings:
+        parts.insert(1, " ".join(warnings))
     pred.explanation = " ".join(parts)
 
     return pred

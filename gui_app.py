@@ -11,6 +11,21 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 import customtkinter as ctk
+
+# ── Fix customtkinter theme loading in PyInstaller bundles ───────────
+if getattr(sys, "frozen", False):
+    import pathlib as _pl
+    _ctk_assets = _pl.Path(sys._MEIPASS) / "customtkinter" / "assets"
+    if _ctk_assets.is_dir():
+        # ThemeManager.load_theme uses __file__ to locate assets/themes/.
+        # Point it to the bundled copy so the path math works out.
+        _fake = str(
+            _pl.Path(sys._MEIPASS)
+            / "customtkinter" / "windows" / "widgets" / "theme" / "theme_manager.py"
+        )
+        ctk.windows.widgets.theme.theme_manager.__file__ = _fake
+        ctk.ThemeManager.load_theme("blue")
+
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -96,14 +111,19 @@ class PipelineApp(ctk.CTk):
     REQUIRED_THEME_KEYS = {
         "CTk",
         "CTkButton",
+        "CTkCheckBox",
+        "CTkComboBox",
         "CTkEntry",
         "CTkFrame",
         "CTkLabel",
         "CTkOptionMenu",
         "CTkProgressBar",
+        "CTkRadioButton",
         "CTkScrollableFrame",
         "CTkSegmentedButton",
         "CTkScrollbar",
+        "CTkSlider",
+        "CTkSwitch",
         "CTkTabview",
         "CTkTextbox",
         "CTkToplevel",
@@ -4029,7 +4049,8 @@ class PipelineApp(ctk.CTk):
                         )
                         lines.append(
                             f"{icon} {name}: {result.classification} "
-                            f"(resíduo médio: {result.mean_residual:.4f})"
+                            f"(resíduo médio real: {result.mean_residual_real:.4f}, "
+                            f"imag: {result.mean_residual_imag:.4f})"
                         )
                     except Exception as exc:
                         lines.append(f"⚠️ {name}: erro — {exc}")
@@ -4046,21 +4067,31 @@ class PipelineApp(ctk.CTk):
 
         def worker():
             try:
-                eis_result = getattr(self, "last_eis_result", None)
-                if not eis_result:
+                circuit_table = getattr(self, "circuit_df", None)
+                if circuit_table is None or (hasattr(circuit_table, "empty") and circuit_table.empty):
                     self.log_queue.put(("diag_result", tr("Execute o pipeline EIS primeiro.")))
                     return
                 lines = []
-                circuit_table = eis_result.get("circuit_table")
                 if circuit_table is not None and not circuit_table.empty:
                     for _, row in circuit_table.iterrows():
                         name = row.get("sample", row.get("Arquivo", "?"))
                         best_circuit = row.get("best_circuit", row.get("Circuito", "?"))
                         bic = row.get("bic", row.get("BIC", "?"))
-                        fit_dict = {"circuit_name": best_circuit, "bic": bic, "params": {}}
+                        fit_dict = {
+                            "circuit_name": best_circuit,
+                            "bic": bic,
+                            "rss": row.get("rss", row.get("RSS", float("inf"))),
+                            "n_points": row.get("n_points", row.get("N_points", 50)),
+                            "success": row.get("success", row.get("Sucesso", False)),
+                            "res_autocorr": row.get("res_autocorr", row.get("Res_autocorr", 0.0)),
+                            "res_structured": row.get("res_structured", row.get("Res_estruturado", False)),
+                            "bound_hits": row.get("bound_hits", row.get("Bound_hits", 0)),
+                            "params": row.get("params", row.get("Params", {})),
+                        }
                         qi = assess_quality(fit_dict)
-                        icon = {"green": "🟢", "yellow": "🟡", "red": "🔴"}.get(qi.color, "⚪")
-                        lines.append(f"{icon} {name}: {best_circuit} (BIC={bic}) — {qi.label}")
+                        lines.append(f"{qi.emoji} {name}: {best_circuit} (BIC={bic}) — {qi.label}")
+                        for r in qi.reasons:
+                            lines.append(f"    • {r}")
                 else:
                     lines.append(tr("Sem dados de circuitos."))
                 self.log_queue.put(("diag_result", "\n".join(lines)))
@@ -4076,19 +4107,26 @@ class PipelineApp(ctk.CTk):
 
         def worker():
             try:
-                eis_result = getattr(self, "last_eis_result", None)
-                if not eis_result:
+                circuit_table = getattr(self, "circuit_df", None)
+                if circuit_table is None or (hasattr(circuit_table, "empty") and circuit_table.empty):
                     self.log_queue.put(("fitting_report_result", tr("Execute o pipeline EIS primeiro.")))
                     return
                 gen = FittingReportGenerator()
                 lines = []
-                circuit_table = eis_result.get("circuit_table")
                 if circuit_table is not None and not circuit_table.empty:
                     for _, row in circuit_table.head(10).iterrows():
                         fit_dict = {
                             "circuit_name": row.get("best_circuit", row.get("Circuito", "?")),
                             "bic": row.get("bic", row.get("BIC", None)),
-                            "params": {},
+                            "aic": row.get("aic", row.get("AIC", None)),
+                            "rss": row.get("rss", row.get("RSS", None)),
+                            "n_points": row.get("n_points", row.get("N_points", 50)),
+                            "success": row.get("success", row.get("Sucesso", False)),
+                            "res_autocorr": row.get("res_autocorr", row.get("Res_autocorr", 0.0)),
+                            "res_structured": row.get("res_structured", row.get("Res_estruturado", False)),
+                            "bound_hits": row.get("bound_hits", row.get("Bound_hits", 0)),
+                            "params": row.get("params", row.get("Params", {})),
+                            "params_std": row.get("params_std", row.get("Params_std", {})),
                         }
                         report = gen.generate(fit_result=fit_dict)
                         lines.append(f"═══ {row.get('sample', row.get('Arquivo', '?'))} ═══")
@@ -4164,14 +4202,24 @@ class PipelineApp(ctk.CTk):
 
                 @_dc
                 class _FakeState:
-                    eis_result: Any = None
-                    cycling_result: Any = None
-                    drt_result: Any = None
+                    rank_df: Any = None
+                    eis_df: Any = None
+                    raw_eis: Any = None
+                    cic_df: Any = None
+                    cic_results: Any = None
+                    drt_df: Any = None
+                    drt_peaks_df: Any = None
+                    drt_results: Any = None
 
                 state = _FakeState(
-                    eis_result=getattr(self, "last_eis_result", None),
-                    cycling_result=getattr(self, "last_cycling_result", None),
-                    drt_result=getattr(self, "last_drt_result", None),
+                    rank_df=getattr(self, "rank_df", None),
+                    eis_df=getattr(self, "eis_df", None),
+                    raw_eis=getattr(self, "raw_eis", {}),
+                    cic_df=getattr(self, "cic_df", None),
+                    cic_results=getattr(self, "cic_results", {}),
+                    drt_df=getattr(self, "drt_df", None),
+                    drt_peaks_df=getattr(self, "drt_peaks_df", None),
+                    drt_results=getattr(self, "drt_results", {}),
                 )
                 cfg = AIPanelConfig(
                     scope_eis=self.ai_scope_eis.get() == 1,
