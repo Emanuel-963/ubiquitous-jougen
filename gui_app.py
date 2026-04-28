@@ -8,6 +8,7 @@ import sys
 import threading
 import traceback
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import customtkinter as ctk
@@ -15,33 +16,37 @@ import customtkinter as ctk
 # ── Fix customtkinter theme loading in PyInstaller bundles ───────────
 if getattr(sys, "frozen", False):
     import pathlib as _pl
+
     _ctk_assets = _pl.Path(sys._MEIPASS) / "customtkinter" / "assets"
     if _ctk_assets.is_dir():
         # ThemeManager.load_theme uses __file__ to locate assets/themes/.
         # Point it to the bundled copy so the path math works out.
         _fake = str(
             _pl.Path(sys._MEIPASS)
-            / "customtkinter" / "windows" / "widgets" / "theme" / "theme_manager.py"
+            / "customtkinter"
+            / "windows"
+            / "widgets"
+            / "theme"
+            / "theme_manager.py"
         )
         ctk.windows.widgets.theme.theme_manager.__file__ = _fake
         ctk.ThemeManager.load_theme("blue")
+
+from tkinter import filedialog, ttk
 
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from PIL import Image
-from tkinter import filedialog, ttk
 
 from main import run_eis_pipeline
 from main_cycling import run_ciclagem_pipeline
 from main_drt import run_drt_pipeline
-from src.drt_visualization import (
-    plot_drt_heatmap,
-    plot_drt_overlay,
-    plot_drt_spectrum,
-)
+from src.batch_processor import BatchProcessor, BatchResult
+from src.circuit_composer import CircuitComposer
 from src.cycling_plotter import plot_energy_power_vs_cycle
+from src.drt_visualization import plot_drt_heatmap, plot_drt_overlay, plot_drt_spectrum
 from src.eis_plots import (
     plot_bode,
     plot_boxplot_metrics,
@@ -52,47 +57,83 @@ from src.eis_plots import (
     plot_ragone,
     plot_retention_cycle,
 )
-from src.i18n import get_language, set_language, tr
-from src.updater import check_for_updates
+from src.fitting_diagnostics import FittingDiagnostics, assess_quality
+from src.fitting_report import FittingReport, FittingReportGenerator
 from src.gui import MainWindow as _MVCWindow
+from src.gui.shortcuts import (
+    DEFAULT_BINDINGS,
+    AccessibilitySettings,
+    ShortcutAction,
+    ShortcutManager,
+    StatusBarState,
+)
+from src.gui.tabs import build_fig_corr as _build_fig_corr_mod
+from src.gui.tabs import build_fig_drt_eis as _build_fig_drt_eis_mod
+from src.gui.tabs import build_fig_pca as _build_fig_pca_mod
+from src.gui.tabs import build_fig_pca_metric as _build_fig_pca_metric_mod
+from src.gui.tabs import build_fig_rank as _build_fig_rank_mod  # noqa: F401
+from src.gui.tabs import build_fig_series as _build_fig_series_mod
+from src.gui.tabs import table_column_configs as _table_column_configs
+from src.gui.tabs.ai_panel import AIPanelConfig, AIPanelResult, run_ai_analysis
 
 # ── Day 14 tab-module and widget imports ─────────────────────────────
-from src.gui.widgets import (  # noqa: F401
-    ChartExporter as _ChartExporter,
-    FilterableTableManager as _FilterableTableManager,
-    LogRedirector as _LogRedirector,
-    StyledOptionMenuHelper as _StyledOptionMenuHelper,
-)
-from src.gui.tabs.ai_panel import run_ai_analysis, AIPanelConfig, AIPanelResult
-from src.report_generator import ReportGenerator, ReportConfig
-from src.kramers_kronig import KramersKronigValidator, KKResult
-from src.fitting_diagnostics import FittingDiagnostics, assess_quality
-from src.fitting_report import FittingReportGenerator, FittingReport
-from src.batch_processor import BatchProcessor, BatchResult
-from src.circuit_composer import CircuitComposer
+from src.gui.widgets import ChartExporter as _ChartExporter  # noqa: F401
+from src.gui.widgets import FilterableTableManager as _FilterableTableManager
+from src.gui.widgets import LogRedirector as _LogRedirector
+from src.gui.widgets import StyledOptionMenuHelper as _StyledOptionMenuHelper
+from src.i18n import get_language, set_language, tr
+from src.kramers_kronig import KKResult, KramersKronigValidator
+from src.report_generator import ReportConfig, ReportGenerator
 from src.uncertainty import UncertaintyAnalyzer
-from src.gui.shortcuts import (
-    ShortcutManager,
-    ShortcutAction,
-    DEFAULT_BINDINGS,
-    StatusBarState,
-    AccessibilitySettings,
-)
-from src.gui.tabs import (  # noqa: F401
-    build_fig_rank as _build_fig_rank_mod,
-    build_fig_pca as _build_fig_pca_mod,
-    build_fig_pca_metric as _build_fig_pca_metric_mod,
-    build_fig_corr as _build_fig_corr_mod,
-    build_fig_drt_eis as _build_fig_drt_eis_mod,
-    build_fig_series as _build_fig_series_mod,
-    table_column_configs as _table_column_configs,
-)
+from src.updater import check_for_updates
 
 
 @dataclass
 class PlotItem:
     title: str
     path: str
+
+
+# ---------------------------------------------------------------------------
+# Potentiostat format conversion helper
+# ---------------------------------------------------------------------------
+
+
+def _convert_potentiostat_to_csv(src: Path, target_dir: str) -> Optional[str]:
+    """Parse a potentiostat EIS file and save it as a standard CSV.
+
+    Converts .dta / .mpr / .mpt / .ism / .isc files to a plain semicolon-
+    separated CSV compatible with the existing EIS pipeline.
+
+    Parameters
+    ----------
+    src : Path
+        Source file to convert.
+    target_dir : str
+        Directory where the converted CSV will be written.
+
+    Returns
+    -------
+    str or None
+        Path to the written CSV, or None if conversion failed.
+    """
+    try:
+        from src.parsers import parse_eis_file
+
+        result = parse_eis_file(src)
+        df = result.data[["frequency", "zreal", "zimag"]].copy()
+        df.columns = ["Frequency (Hz)", "Z' (Ohm)", "-Z'' (Ohm)"]
+
+        dest = Path(target_dir) / (src.stem + "_converted.txt")
+        df.to_csv(dest, sep=";", index=False, float_format="%.6f")
+        return str(dest)
+    except Exception as exc:
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "Could not convert %s: %s — falling back to plain copy", src.name, exc
+        )
+        return None
 
 
 class QueueWriter:
@@ -262,12 +303,12 @@ class PipelineApp(ctk.CTk):
         self._save_gui_settings()
         label_map = {"en": "English", "pt": "Português", "es": "Español"}
         self._append_log(
-            f"Language set to {label_map.get(lang, value)}. "
-            "Restart for full effect."
+            f"Language set to {label_map.get(lang, value)}. " "Restart for full effect."
         )
 
     def _check_for_updates_async(self):
         """Run version check in background thread so it never blocks the GUI."""
+
         def _worker():
             result = check_for_updates()
             if result:
@@ -430,9 +471,7 @@ class PipelineApp(ctk.CTk):
             self.drt_ui_prefs = {
                 "sample": sample if isinstance(sample, str) else "",
                 "mode": mode if isinstance(mode, str) else "Espectro",
-                "overlay_text": (
-                    overlay_text if isinstance(overlay_text, str) else ""
-                ),
+                "overlay_text": (overlay_text if isinstance(overlay_text, str) else ""),
             }
 
     def _on_close(self):
@@ -494,6 +533,7 @@ class PipelineApp(ctk.CTk):
             command=lambda: self._import_files(
                 target_dir="data/raw",
                 label="Selecione arquivos EIS",
+                eis_mode=True,
             ),
         )
         self.btn_import_raw.grid(row=3, column=0, padx=16, pady=(0, 8), sticky="ew")
@@ -675,9 +715,7 @@ class PipelineApp(ctk.CTk):
         )
         self.llm_provider_selector.set(tr("Nenhum"))
 
-        self.status_label = ctk.CTkLabel(
-            sidebar, text=tr("Status: pronto"), anchor="w"
-        )
+        self.status_label = ctk.CTkLabel(sidebar, text=tr("Status: pronto"), anchor="w")
         self.status_label.grid(row=11, column=0, padx=16, pady=8, sticky="ew")
 
         self.progress_label = ctk.CTkLabel(sidebar, text=tr("Pronto"), anchor="w")
@@ -756,7 +794,9 @@ class PipelineApp(ctk.CTk):
             command=self._run_ai_analysis_clicked,
         ).pack(side="right", padx=8)
 
-        self.ai_textbox = ctk.CTkTextbox(ai_frame, wrap="word", font=ctk.CTkFont(size=13))
+        self.ai_textbox = ctk.CTkTextbox(
+            ai_frame, wrap="word", font=ctk.CTkFont(size=13)
+        )
         self.ai_textbox.pack(fill="both", expand=True, padx=8, pady=8)
 
         # ── KK Validation tab content ────────────────────────────
@@ -778,7 +818,9 @@ class PipelineApp(ctk.CTk):
             font=ctk.CTkFont(size=11),
         ).pack(side="left", padx=16)
 
-        self.kk_textbox = ctk.CTkTextbox(kk_frame, wrap="word", font=ctk.CTkFont(size=13))
+        self.kk_textbox = ctk.CTkTextbox(
+            kk_frame, wrap="word", font=ctk.CTkFont(size=13)
+        )
         self.kk_textbox.pack(fill="both", expand=True, padx=8, pady=8)
 
         # ── Fitting Diagnostics tab content ──────────────────────
@@ -794,7 +836,9 @@ class PipelineApp(ctk.CTk):
             command=self._run_fitting_diagnostics_clicked,
         ).pack(side="left", padx=8)
 
-        self.diag_textbox = ctk.CTkTextbox(diag_frame, wrap="word", font=ctk.CTkFont(size=13))
+        self.diag_textbox = ctk.CTkTextbox(
+            diag_frame, wrap="word", font=ctk.CTkFont(size=13)
+        )
         self.diag_textbox.pack(fill="both", expand=True, padx=8, pady=8)
 
         # ── Fitting Report tab content ───────────────────────────
@@ -845,10 +889,16 @@ class PipelineApp(ctk.CTk):
 
         # ── Status bar (Day 26) ──────────────────────────────────
         from src import __version__ as _app_version
+
         self._status_bar_state = StatusBarState(version=_app_version)
         self.status_bar_frame = ctk.CTkFrame(self, height=28, corner_radius=0)
         self.status_bar_frame.grid(
-            row=1, column=0, columnspan=2, sticky="ew", padx=0, pady=0,
+            row=1,
+            column=0,
+            columnspan=2,
+            sticky="ew",
+            padx=0,
+            pady=0,
         )
         self.status_bar_label = ctk.CTkLabel(
             self.status_bar_frame,
@@ -1050,9 +1100,7 @@ class PipelineApp(ctk.CTk):
         ctk_img = ctk.CTkImage(img, size=(img.width, img.height))
         self.image_refs.append(ctk_img)
 
-        ctk.CTkLabel(body, image=ctk_img, text="", compound="top").pack(
-            pady=8, padx=8
-        )
+        ctk.CTkLabel(body, image=ctk_img, text="", compound="top").pack(pady=8, padx=8)
 
     def _on_table_row_activate(self, table_key: str):
         state = self.table_states.get(table_key)
@@ -1209,13 +1257,13 @@ class PipelineApp(ctk.CTk):
         if "Arquivo" not in drt_df.columns and "Sample" in drt_df.columns:
             drt_df["Arquivo"] = drt_df["Sample"]
 
-        drt_df["_norm"] = drt_df["Arquivo"].astype(str).apply(
-            self._normalize_sample_name
+        drt_df["_norm"] = (
+            drt_df["Arquivo"].astype(str).apply(self._normalize_sample_name)
         )
 
         rank_df = self.rank_df.copy().reset_index().rename(columns={"index": "Arquivo"})
-        rank_df["_norm"] = rank_df["Arquivo"].astype(str).apply(
-            self._normalize_sample_name
+        rank_df["_norm"] = (
+            rank_df["Arquivo"].astype(str).apply(self._normalize_sample_name)
         )
 
         rank_cols = [
@@ -1273,10 +1321,9 @@ class PipelineApp(ctk.CTk):
                 else pd.Series(0.0, index=merged.index)
             )
 
-            merged["Score_DRT_EIS"] = (
-                0.5 * gamma_norm.fillna(0.0)
-                + 0.5 * retention_norm.fillna(0.0)
-            )
+            merged["Score_DRT_EIS"] = 0.5 * gamma_norm.fillna(
+                0.0
+            ) + 0.5 * retention_norm.fillna(0.0)
             ordered_cols.append("Score_DRT_EIS")
 
         ordered_cols = [c for c in ordered_cols if c in merged.columns]
@@ -1370,9 +1417,13 @@ class PipelineApp(ctk.CTk):
             else:
                 numeric_try = pd.to_numeric(series, errors="coerce")
                 if numeric_try.notna().sum() > 0:
-                    df = df.assign(_sort_col=numeric_try).sort_values(
-                        by="_sort_col", ascending=sort_asc, na_position="last"
-                    ).drop(columns=["_sort_col"])
+                    df = (
+                        df.assign(_sort_col=numeric_try)
+                        .sort_values(
+                            by="_sort_col", ascending=sort_asc, na_position="last"
+                        )
+                        .drop(columns=["_sort_col"])
+                    )
                 else:
                     df = df.sort_values(
                         by=sort_col,
@@ -1555,6 +1606,7 @@ class PipelineApp(ctk.CTk):
                 label = labels[idx] if idx < len(labels) else ""
                 x, y = sel.target
                 sel.annotation.set_text(f"{label}\nRank: {x:.2f}\nRetenção: {y:.2f}%")
+
         except ImportError:
             pass
         fig.tight_layout()
@@ -1622,6 +1674,7 @@ class PipelineApp(ctk.CTk):
                 name = names[idx] if idx < len(names) else ""
                 x, y = sel.target
                 sel.annotation.set_text(f"{name}\nPC1: {x:.2f}\nPC2: {y:.2f}")
+
         except ImportError:
             pass
         fig.tight_layout()
@@ -1702,6 +1755,7 @@ class PipelineApp(ctk.CTk):
                     else ""
                 )
                 sel.annotation.set_text(f"{name}\nPC1: {x:.2f}\nPC2: {y:.2f}{metric}")
+
         except ImportError:
             pass
         fig.tight_layout()
@@ -1735,6 +1789,7 @@ class PipelineApp(ctk.CTk):
                     row = corr.index[i]
                     col = corr.columns[j]
                     sel.annotation.set_text(f"{row} x {col}\nρ = {val:.2f}")
+
         except ImportError:
             pass
         fig.tight_layout()
@@ -1809,6 +1864,7 @@ class PipelineApp(ctk.CTk):
                 sel.annotation.set_text(
                     f"{name}\nγ: {x_val:.3f}\nRetenção: {y_val:.2f}%"
                 )
+
         except ImportError:
             pass
 
@@ -1856,14 +1912,13 @@ class PipelineApp(ctk.CTk):
             def on_add(sel):
                 x, y = sel.target
                 sel.annotation.set_text(f"Prefixo: {x:.2f}\nValor: {y:.2f}")
+
         except ImportError:
             pass
         fig.tight_layout()
         return fig
 
-    def _build_fig_energy_power(
-        self, sample_name: str
-    ) -> Optional[Figure]:
+    def _build_fig_energy_power(self, sample_name: str) -> Optional[Figure]:
         """Gráfico dual-axis Energia × Potência vs Ciclo (embeddable)."""
         if not self.cic_results:
             return None
@@ -1882,8 +1937,12 @@ class PipelineApp(ctk.CTk):
         fig = Figure(figsize=(5.8, 4.4), dpi=100)
         ax = fig.add_subplot(111)
         plot_energy_power_vs_cycle(
-            cycle_df, sample_name,
-            ax=ax, fig=fig, save=False, show=False,
+            cycle_df,
+            sample_name,
+            ax=ax,
+            fig=fig,
+            save=False,
+            show=False,
         )
 
         # mplcursors para as duas linhas
@@ -1898,10 +1957,9 @@ class PipelineApp(ctk.CTk):
                 def on_add(sel, label=lbl):
                     x, y = sel.target
                     sel.annotation.set_text(
-                        f"{label}\n"
-                        f"Ciclo: {x:.0f}\n"
-                        f"Valor: {y:.4f}"
+                        f"{label}\n" f"Ciclo: {x:.0f}\n" f"Valor: {y:.4f}"
                     )
+
         except ImportError:
             pass
 
@@ -1909,9 +1967,7 @@ class PipelineApp(ctk.CTk):
 
     # ---- Nyquist / Bode / Ragone builders --------------------------------
 
-    def _build_fig_nyquist(
-        self, sample_name: str
-    ) -> Optional[Figure]:
+    def _build_fig_nyquist(self, sample_name: str) -> Optional[Figure]:
         """Nyquist embeddable com hover de frequência."""
         if not self.raw_eis:
             return None
@@ -1944,17 +2000,14 @@ class PipelineApp(ctk.CTk):
                     x, y = sel.target
                     f = _f[i] if i < len(_f) else 0
                     sel.annotation.set_text(
-                        f"Z′={x:.2f} Ω\n"
-                        f"−Z″={y:.2f} Ω\n"
-                        f"f={f:.2f} Hz"
+                        f"Z′={x:.2f} Ω\n" f"−Z″={y:.2f} Ω\n" f"f={f:.2f} Hz"
                     )
+
         except ImportError:
             pass
         return fig
 
-    def _build_fig_bode(
-        self, sample_name: str
-    ) -> Optional[Figure]:
+    def _build_fig_bode(self, sample_name: str) -> Optional[Figure]:
         """Bode embeddable com hover."""
         if not self.raw_eis:
             return None
@@ -1978,21 +2031,15 @@ class PipelineApp(ctk.CTk):
 
             d = df.sort_values("frequency")
             freqs = d["frequency"].values
-            z_mag = _np.sqrt(
-                d["zreal"].values ** 2 + d["zimag"].values ** 2
-            )
-            phase = _np.degrees(
-                _np.arctan2(-d["zimag"].values, d["zreal"].values)
-            )
+            z_mag = _np.sqrt(d["zreal"].values ** 2 + d["zimag"].values ** 2)
+            phase = _np.degrees(_np.arctan2(-d["zimag"].values, d["zreal"].values))
 
             for line in ax.lines:
                 lbl = line.get_label()
                 cur = mplcursors.cursor(line, hover=True)
 
                 @cur.connect("add")
-                def on_add(
-                    sel, label=lbl, _f=freqs, _z=z_mag, _p=phase
-                ):
+                def on_add(sel, label=lbl, _f=freqs, _z=z_mag, _p=phase):
                     i = sel.index
                     f = _f[i] if i < len(_f) else 0
                     z = _z[i] if i < len(_z) else 0
@@ -2003,6 +2050,7 @@ class PipelineApp(ctk.CTk):
                         f"|Z|={z:.2f} Ω\n"
                         f"Fase={p:.1f}°"
                     )
+
         except ImportError:
             pass
         return fig
@@ -2025,14 +2073,18 @@ class PipelineApp(ctk.CTk):
             self.cic_results,
             metric=metric,
             highlight_samples=highlight_samples,
-            ax=ax, fig=fig, save=False, show=False,
+            ax=ax,
+            fig=fig,
+            save=False,
+            show=False,
         )
 
         try:
             import mplcursors
 
             lines = [
-                ln for ln in ax.get_lines()
+                ln
+                for ln in ax.get_lines()
                 if ln.get_label() and not ln.get_label().startswith("_")
             ]
             if lines:
@@ -2042,9 +2094,8 @@ class PipelineApp(ctk.CTk):
                 def on_add(sel):
                     nm = sel.artist.get_label()
                     x, y = sel.target
-                    sel.annotation.set_text(
-                        f"{nm}\nCiclo {x:.0f}: {y:.4f}"
-                    )
+                    sel.annotation.set_text(f"{nm}\nCiclo {x:.0f}: {y:.4f}")
+
         except ImportError:
             pass
         return fig
@@ -2060,32 +2111,30 @@ class PipelineApp(ctk.CTk):
         ax = fig.add_subplot(111)
         plot_impedance_heatmap(
             self.raw_eis,
-            ax=ax, fig=fig, save=False, show=False,
+            ax=ax,
+            fig=fig,
+            save=False,
+            show=False,
         )
 
         try:
             import mplcursors
 
-            imgs = [c for c in ax.get_children()
-                    if hasattr(c, "get_array")]
+            imgs = [c for c in ax.get_children() if hasattr(c, "get_array")]
             if imgs:
                 names = sorted(self.raw_eis.keys())
                 cursor = mplcursors.cursor(
-                    imgs, hover=True,
+                    imgs,
+                    hover=True,
                 )
 
                 @cursor.connect("add")
                 def on_add(sel, _names=names):
                     x, y = sel.target
                     row = int(round(y))
-                    nm = (
-                        _names[row]
-                        if 0 <= row < len(_names)
-                        else "?"
-                    )
-                    sel.annotation.set_text(
-                        f"{nm}\nlog₁₀f={x:.2f}"
-                    )
+                    nm = _names[row] if 0 <= row < len(_names) else "?"
+                    sel.annotation.set_text(f"{nm}\nlog₁₀f={x:.2f}")
+
         except ImportError:
             pass
         return fig
@@ -2103,15 +2152,21 @@ class PipelineApp(ctk.CTk):
         result = plot_boxplot_metrics(
             self.eis_df,
             metric=metric,
-            ax=ax, fig=fig, save=False, show=False,
+            ax=ax,
+            fig=fig,
+            save=False,
+            show=False,
         )
         if result is None and ax is not None:
             # plot_boxplot_metrics retornou None → métrica inválida
             ax.text(
-                0.5, 0.5,
+                0.5,
+                0.5,
                 f"Sem dados para '{metric}'",
-                ha="center", va="center",
-                transform=ax.transAxes, fontsize=12,
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+                fontsize=12,
             )
         return fig
 
@@ -2128,14 +2183,20 @@ class PipelineApp(ctk.CTk):
         fig = Figure(figsize=(6.4, 6.4), dpi=100)
         ax = fig.add_subplot(111, polar=True)
         result = plot_radar(
-            self.eis_df, samples,
-            ax=ax, fig=fig, save=False, show=False,
+            self.eis_df,
+            samples,
+            ax=ax,
+            fig=fig,
+            save=False,
+            show=False,
         )
         if result is None:
             ax.text(
-                0, 0,
+                0,
+                0,
                 "Dados insuficientes\npara radar",
-                ha="center", va="center",
+                ha="center",
+                va="center",
                 fontsize=12,
             )
         return fig
@@ -2151,30 +2212,32 @@ class PipelineApp(ctk.CTk):
         ax = fig.add_subplot(111)
         plot_retention_cycle(
             self.cic_results,
-            ax=ax, fig=fig, save=False, show=False,
+            ax=ax,
+            fig=fig,
+            save=False,
+            show=False,
         )
 
         try:
             import mplcursors
 
             lines = [
-                ln for ln in ax.get_lines()
-                if ln.get_label()
-                and not ln.get_label().startswith("_")
+                ln
+                for ln in ax.get_lines()
+                if ln.get_label() and not ln.get_label().startswith("_")
             ]
             if lines:
                 cursor = mplcursors.cursor(
-                    lines, hover=True,
+                    lines,
+                    hover=True,
                 )
 
                 @cursor.connect("add")
                 def on_add(sel):
                     nm = sel.artist.get_label()
                     x, y = sel.target
-                    sel.annotation.set_text(
-                        f"{nm}\n"
-                        f"Ciclo {x:.0f}: {y:.1f}%"
-                    )
+                    sel.annotation.set_text(f"{nm}\n" f"Ciclo {x:.0f}: {y:.1f}%")
+
         except ImportError:
             pass
         return fig
@@ -2191,7 +2254,10 @@ class PipelineApp(ctk.CTk):
         plot_ragone(
             self.cic_results,
             highlight_sample=highlight_sample,
-            ax=ax, fig=fig, save=False, show=False,
+            ax=ax,
+            fig=fig,
+            save=False,
+            show=False,
         )
 
         try:
@@ -2208,10 +2274,9 @@ class PipelineApp(ctk.CTk):
                     x, y = sel.target
                     nm = _n[i] if i < len(_n) else ""
                     sel.annotation.set_text(
-                        f"{nm}\n"
-                        f"Energia: {x:.4f} Wh/kg\n"
-                        f"Potência: {y:.2f} W/kg"
+                        f"{nm}\n" f"Energia: {x:.4f} Wh/kg\n" f"Potência: {y:.2f} W/kg"
                     )
+
         except ImportError:
             pass
         return fig
@@ -2377,9 +2442,7 @@ class PipelineApp(ctk.CTk):
 
         control = ctk.CTkFrame(tab)
         control.pack(fill="x", padx=8, pady=(8, 4))
-        ctk.CTkLabel(control, text="Amostra:").pack(
-            side="left", padx=(0, 6)
-        )
+        ctk.CTkLabel(control, text="Amostra:").pack(side="left", padx=(0, 6))
 
         def _update(sample: str, _tab=tab):
             container = getattr(_tab, "_sel_container", None)
@@ -2501,13 +2564,14 @@ class PipelineApp(ctk.CTk):
                 frame.pack(fill="both", expand=True, padx=8, pady=8)
                 self._render_fig_on_frame(frame, rank_fig)
             else:
-                ctk.CTkLabel(
-                    tab_rank, text="Sem dados para Rank vs Retenção"
-                ).pack(pady=20)
+                ctk.CTkLabel(tab_rank, text="Sem dados para Rank vs Retenção").pack(
+                    pady=20
+                )
 
             # ---- Nyquist com seletor de amostra -------------------------
             self._build_sample_selector_tab(
-                tab_nyquist, self.raw_eis,
+                tab_nyquist,
+                self.raw_eis,
                 builder=self._build_fig_nyquist,
                 empty_msg="Sem dados EIS disponíveis",
                 preferred_sample=preferred_sample,
@@ -2516,7 +2580,8 @@ class PipelineApp(ctk.CTk):
 
             # ---- Bode com seletor de amostra ----------------------------
             self._build_sample_selector_tab(
-                tab_bode, self.raw_eis,
+                tab_bode,
+                self.raw_eis,
                 builder=self._build_fig_bode,
                 empty_msg="Sem dados EIS disponíveis",
                 preferred_sample=preferred_sample,
@@ -2539,9 +2604,9 @@ class PipelineApp(ctk.CTk):
                 frame.pack(fill="both", expand=True, padx=8, pady=8)
                 self._render_fig_on_frame(frame, pca_metric_fig)
             else:
-                ctk.CTkLabel(
-                    tab_pca_metric, text="Sem dados de PCA/Retenção"
-                ).pack(pady=20)
+                ctk.CTkLabel(tab_pca_metric, text="Sem dados de PCA/Retenção").pack(
+                    pady=20
+                )
 
             corr_fig = self._build_fig_corr()
             if corr_fig:
@@ -2569,9 +2634,7 @@ class PipelineApp(ctk.CTk):
                 ep_names = sorted(self.cic_results.keys())
                 initial_ep = ep_names[0]
                 if preferred_sample:
-                    norm_pref = self._normalize_sample_name(
-                        preferred_sample
-                    )
+                    norm_pref = self._normalize_sample_name(preferred_sample)
                     for name in ep_names:
                         if self._normalize_sample_name(name) == norm_pref:
                             initial_ep = name
@@ -2579,9 +2642,7 @@ class PipelineApp(ctk.CTk):
 
                 ep_control = ctk.CTkFrame(tab_ep)
                 ep_control.pack(fill="x", padx=8, pady=(8, 4))
-                ctk.CTkLabel(ep_control, text="Arquivo:").pack(
-                    side="left", padx=(0, 6)
-                )
+                ctk.CTkLabel(ep_control, text="Arquivo:").pack(side="left", padx=(0, 6))
 
                 def _update_ep_plot(
                     sample: str,
@@ -2591,7 +2652,10 @@ class PipelineApp(ctk.CTk):
                     if container is None:
                         container = ctk.CTkFrame(_tab)
                         container.pack(
-                            fill="both", expand=True, padx=8, pady=8,
+                            fill="both",
+                            expand=True,
+                            padx=8,
+                            pady=8,
                         )
                         _tab._ep_container = container
                     fig = self._build_fig_energy_power(sample)
@@ -2631,9 +2695,7 @@ class PipelineApp(ctk.CTk):
                     dest = filedialog.asksaveasfilename(
                         title="Salvar gráfico Energia×Potência",
                         initialfile=f"{sample}_energy_power.png",
-                        initialdir=self._get_initial_dialog_dir(
-                            "plot_save"
-                        ),
+                        initialdir=self._get_initial_dialog_dir("plot_save"),
                         defaultextension=".png",
                         filetypes=[("PNG", "*.png")],
                     )
@@ -2643,12 +2705,12 @@ class PipelineApp(ctk.CTk):
                     fig = self._build_fig_energy_power(sample)
                     if fig:
                         fig.savefig(
-                            dest, dpi=160, bbox_inches="tight",
+                            dest,
+                            dpi=160,
+                            bbox_inches="tight",
                         )
                         plt.close(fig)
-                        self._append_log(
-                            f"Gráfico Energia×Potência salvo em {dest}"
-                        )
+                        self._append_log(f"Gráfico Energia×Potência salvo em {dest}")
 
                 ctk.CTkButton(
                     ep_control,
@@ -2659,7 +2721,10 @@ class PipelineApp(ctk.CTk):
 
                 ep_container = ctk.CTkFrame(tab_ep)
                 ep_container.pack(
-                    fill="both", expand=True, padx=8, pady=8,
+                    fill="both",
+                    expand=True,
+                    padx=8,
+                    pady=8,
                 )
                 tab_ep._ep_container = ep_container
                 _update_ep_plot(initial_ep)
@@ -2671,14 +2736,10 @@ class PipelineApp(ctk.CTk):
 
             # ---- Ragone (Energia vs Potência por amostra) -------------------
             if self.cic_results:
-                ragone_names = ["— nenhum —"] + sorted(
-                    self.cic_results.keys()
-                )
+                ragone_names = ["— nenhum —"] + sorted(self.cic_results.keys())
                 initial_hl = "— nenhum —"
                 if preferred_sample:
-                    norm_pref = self._normalize_sample_name(
-                        preferred_sample
-                    )
+                    norm_pref = self._normalize_sample_name(preferred_sample)
                     for n in ragone_names:
                         if self._normalize_sample_name(n) == norm_pref:
                             initial_hl = n
@@ -2699,7 +2760,10 @@ class PipelineApp(ctk.CTk):
                     if container is None:
                         container = ctk.CTkFrame(_tab)
                         container.pack(
-                            fill="both", expand=True, padx=8, pady=8,
+                            fill="both",
+                            expand=True,
+                            padx=8,
+                            pady=8,
                         )
                         _tab._rag_container = container
                     fig = self._build_fig_ragone(highlight_sample=hl)
@@ -2734,9 +2798,7 @@ class PipelineApp(ctk.CTk):
                     dest = filedialog.asksaveasfilename(
                         title="Salvar gráfico Ragone",
                         initialfile="ragone_plot.png",
-                        initialdir=self._get_initial_dialog_dir(
-                            "plot_save"
-                        ),
+                        initialdir=self._get_initial_dialog_dir("plot_save"),
                         defaultextension=".png",
                         filetypes=[("PNG", "*.png")],
                     )
@@ -2746,12 +2808,12 @@ class PipelineApp(ctk.CTk):
                     fig = self._build_fig_ragone(highlight_sample=hl)
                     if fig:
                         fig.savefig(
-                            dest, dpi=160, bbox_inches="tight",
+                            dest,
+                            dpi=160,
+                            bbox_inches="tight",
                         )
                         plt.close(fig)
-                        self._append_log(
-                            f"Gráfico Ragone salvo em {dest}"
-                        )
+                        self._append_log(f"Gráfico Ragone salvo em {dest}")
 
                 ctk.CTkButton(
                     rag_control,
@@ -2762,7 +2824,10 @@ class PipelineApp(ctk.CTk):
 
                 rag_container = ctk.CTkFrame(tab_ragone)
                 rag_container.pack(
-                    fill="both", expand=True, padx=8, pady=8,
+                    fill="both",
+                    expand=True,
+                    padx=8,
+                    pady=8,
                 )
                 tab_ragone._rag_container = rag_container
                 _update_ragone(initial_hl)
@@ -2777,7 +2842,8 @@ class PipelineApp(ctk.CTk):
                 ecyc_metrics: List[str] = []
                 for _tbl in self.cic_results.values():
                     for c in (
-                        "Energia (Wh/kg)", "Potência (W/kg)",
+                        "Energia (Wh/kg)",
+                        "Potência (W/kg)",
                         "Duração dos Ciclos (s)",
                     ):
                         if c in _tbl.columns and c not in ecyc_metrics:
@@ -2789,21 +2855,26 @@ class PipelineApp(ctk.CTk):
 
                     ecyc_ctrl = ctk.CTkFrame(tab_ecycle)
                     ecyc_ctrl.pack(fill="x", padx=8, pady=(8, 4))
-                    ctk.CTkLabel(
-                        ecyc_ctrl, text="Métrica:"
-                    ).pack(side="left", padx=(0, 6))
+                    ctk.CTkLabel(ecyc_ctrl, text="Métrica:").pack(
+                        side="left", padx=(0, 6)
+                    )
 
                     def _update_ecycle(
-                        metric: str, _tab=tab_ecycle,
+                        metric: str,
+                        _tab=tab_ecycle,
                     ):
                         container = getattr(
-                            _tab, "_ecyc_container", None,
+                            _tab,
+                            "_ecyc_container",
+                            None,
                         )
                         if container is None:
                             container = ctk.CTkFrame(_tab)
                             container.pack(
-                                fill="both", expand=True,
-                                padx=8, pady=8,
+                                fill="both",
+                                expand=True,
+                                padx=8,
+                                pady=8,
                             )
                             _tab._ecyc_container = container
                         fig = self._build_fig_energy_cycle(
@@ -2811,7 +2882,8 @@ class PipelineApp(ctk.CTk):
                         )
                         if fig:
                             self._render_fig_on_frame(
-                                container, fig,
+                                container,
+                                fig,
                             )
 
                     ecyc_menu = ctk.CTkOptionMenu(
@@ -2843,20 +2915,21 @@ class PipelineApp(ctk.CTk):
                         if not dest:
                             return
                         self._remember_dialog_dir(
-                            "plot_save", dest,
+                            "plot_save",
+                            dest,
                         )
                         fig = self._build_fig_energy_cycle(
                             metric=m,
                         )
                         if fig:
                             fig.savefig(
-                                dest, dpi=160,
+                                dest,
+                                dpi=160,
                                 bbox_inches="tight",
                             )
                             plt.close(fig)
                             self._append_log(
-                                f"Gráfico Energia vs Ciclo salvo"
-                                f" em {dest}"
+                                f"Gráfico Energia vs Ciclo salvo" f" em {dest}"
                             )
 
                     ctk.CTkButton(
@@ -2868,7 +2941,10 @@ class PipelineApp(ctk.CTk):
 
                     ec_container = ctk.CTkFrame(tab_ecycle)
                     ec_container.pack(
-                        fill="both", expand=True, padx=8, pady=8,
+                        fill="both",
+                        expand=True,
+                        padx=8,
+                        pady=8,
                     )
                     tab_ecycle._ecyc_container = ec_container
                     _update_ecycle(initial_metric)
@@ -2889,7 +2965,10 @@ class PipelineApp(ctk.CTk):
                 if hm_fig:
                     hm_frame = ctk.CTkFrame(tab_heatmap)
                     hm_frame.pack(
-                        fill="both", expand=True, padx=8, pady=8,
+                        fill="both",
+                        expand=True,
+                        padx=8,
+                        pady=8,
                     )
                     self._render_fig_on_frame(hm_frame, hm_fig)
 
@@ -2906,18 +2985,18 @@ class PipelineApp(ctk.CTk):
                         if not dest:
                             return
                         self._remember_dialog_dir(
-                            "plot_save", dest,
+                            "plot_save",
+                            dest,
                         )
                         fig = self._build_fig_impedance_heatmap()
                         if fig:
                             fig.savefig(
-                                dest, dpi=160,
+                                dest,
+                                dpi=160,
                                 bbox_inches="tight",
                             )
                             plt.close(fig)
-                            self._append_log(
-                                f"Heatmap |Z| salvo em {dest}"
-                            )
+                            self._append_log(f"Heatmap |Z| salvo em {dest}")
 
                     ctk.CTkButton(
                         tab_heatmap,
@@ -2937,44 +3016,42 @@ class PipelineApp(ctk.CTk):
                 ).pack(pady=20)
 
             # ---- Box-plot Comparativo ------------------------------------
-            if (
-                self.eis_df is not None
-                and not self.eis_df.empty
-            ):
+            if self.eis_df is not None and not self.eis_df.empty:
                 from src.eis_plots import _BOXPLOT_COLS
 
-                avail_metrics = [
-                    c for c in _BOXPLOT_COLS
-                    if c in self.eis_df.columns
-                ]
+                avail_metrics = [c for c in _BOXPLOT_COLS if c in self.eis_df.columns]
                 if not avail_metrics:
                     # Fallback: use any numeric column
                     avail_metrics = [
-                        c for c in self.eis_df.columns
-                        if pd.api.types.is_numeric_dtype(
-                            self.eis_df[c]
-                        )
+                        c
+                        for c in self.eis_df.columns
+                        if pd.api.types.is_numeric_dtype(self.eis_df[c])
                     ]
 
                 if avail_metrics:
                     initial_bp = avail_metrics[0]
                     bp_ctrl = ctk.CTkFrame(tab_boxplot)
                     bp_ctrl.pack(fill="x", padx=8, pady=(8, 4))
-                    ctk.CTkLabel(
-                        bp_ctrl, text="Métrica:"
-                    ).pack(side="left", padx=(0, 6))
+                    ctk.CTkLabel(bp_ctrl, text="Métrica:").pack(
+                        side="left", padx=(0, 6)
+                    )
 
                     def _update_boxplot(
-                        metric: str, _tab=tab_boxplot,
+                        metric: str,
+                        _tab=tab_boxplot,
                     ):
                         container = getattr(
-                            _tab, "_bp_container", None,
+                            _tab,
+                            "_bp_container",
+                            None,
                         )
                         if container is None:
                             container = ctk.CTkFrame(_tab)
                             container.pack(
-                                fill="both", expand=True,
-                                padx=8, pady=8,
+                                fill="both",
+                                expand=True,
+                                padx=8,
+                                pady=8,
                             )
                             _tab._bp_container = container
                         fig = self._build_fig_boxplot(
@@ -2982,7 +3059,8 @@ class PipelineApp(ctk.CTk):
                         )
                         if fig:
                             self._render_fig_on_frame(
-                                container, fig,
+                                container,
+                                fig,
                             )
 
                     bp_menu = ctk.CTkOptionMenu(
@@ -3014,20 +3092,20 @@ class PipelineApp(ctk.CTk):
                         if not dest:
                             return
                         self._remember_dialog_dir(
-                            "plot_save", dest,
+                            "plot_save",
+                            dest,
                         )
                         fig = self._build_fig_boxplot(
                             metric=m,
                         )
                         if fig:
                             fig.savefig(
-                                dest, dpi=160,
+                                dest,
+                                dpi=160,
                                 bbox_inches="tight",
                             )
                             plt.close(fig)
-                            self._append_log(
-                                f"Box-plot {m} salvo em {dest}"
-                            )
+                            self._append_log(f"Box-plot {m} salvo em {dest}")
 
                     ctk.CTkButton(
                         bp_ctrl,
@@ -3038,7 +3116,10 @@ class PipelineApp(ctk.CTk):
 
                     bp_container = ctk.CTkFrame(tab_boxplot)
                     bp_container.pack(
-                        fill="both", expand=True, padx=8, pady=8,
+                        fill="both",
+                        expand=True,
+                        padx=8,
+                        pady=8,
                     )
                     tab_boxplot._bp_container = bp_container
                     _update_boxplot(initial_bp)
@@ -3054,24 +3135,22 @@ class PipelineApp(ctk.CTk):
                 ).pack(pady=20)
 
             # ---- Radar / Spider chart ------------------------------------
-            if (
-                self.eis_df is not None
-                and not self.eis_df.empty
-            ):
+            if self.eis_df is not None and not self.eis_df.empty:
                 id_col = None
                 for c in ("Arquivo", "Sample"):
                     if c in self.eis_df.columns:
                         id_col = c
                         break
                 all_names = (
-                    sorted(self.eis_df[id_col].astype(str).unique())
-                    if id_col else []
+                    sorted(self.eis_df[id_col].astype(str).unique()) if id_col else []
                 )
 
                 if len(all_names) >= 2:
                     radar_ctrl = ctk.CTkFrame(tab_radar)
                     radar_ctrl.pack(
-                        fill="x", padx=8, pady=(8, 4),
+                        fill="x",
+                        padx=8,
+                        pady=(8, 4),
                     )
                     ctk.CTkLabel(
                         radar_ctrl,
@@ -3081,14 +3160,18 @@ class PipelineApp(ctk.CTk):
                     # Default: first 3 (or fewer)
                     default_sel = all_names[: min(3, len(all_names))]
                     radar_entry = ctk.CTkEntry(
-                        radar_ctrl, width=400,
+                        radar_ctrl,
+                        width=400,
                     )
                     radar_entry.insert(
-                        0, "; ".join(default_sel),
+                        0,
+                        "; ".join(default_sel),
                     )
                     radar_entry.pack(
-                        side="left", fill="x",
-                        expand=True, padx=(0, 8),
+                        side="left",
+                        fill="x",
+                        expand=True,
+                        padx=(0, 8),
                     )
 
                     def _update_radar(
@@ -3097,18 +3180,19 @@ class PipelineApp(ctk.CTk):
                         _id_col=id_col,
                     ):
                         raw = _entry.get()
-                        chosen = [
-                            s.strip() for s in raw.split(";")
-                            if s.strip()
-                        ]
+                        chosen = [s.strip() for s in raw.split(";") if s.strip()]
                         container = getattr(
-                            _tab, "_radar_container", None,
+                            _tab,
+                            "_radar_container",
+                            None,
                         )
                         if container is None:
                             container = ctk.CTkFrame(_tab)
                             container.pack(
-                                fill="both", expand=True,
-                                padx=8, pady=8,
+                                fill="both",
+                                expand=True,
+                                padx=8,
+                                pady=8,
                             )
                             _tab._radar_container = container
                         fig = self._build_fig_radar(
@@ -3116,7 +3200,8 @@ class PipelineApp(ctk.CTk):
                         )
                         if fig:
                             self._render_fig_on_frame(
-                                container, fig,
+                                container,
+                                fig,
                             )
                         else:
                             for ch in container.winfo_children():
@@ -3138,10 +3223,7 @@ class PipelineApp(ctk.CTk):
 
                     def _save_radar(_tab=tab_radar):
                         raw = radar_entry.get()
-                        chosen = [
-                            s.strip() for s in raw.split(";")
-                            if s.strip()
-                        ]
+                        chosen = [s.strip() for s in raw.split(";") if s.strip()]
                         dest = filedialog.asksaveasfilename(
                             title="Salvar Radar",
                             initialfile="radar_metrics.png",
@@ -3154,20 +3236,20 @@ class PipelineApp(ctk.CTk):
                         if not dest:
                             return
                         self._remember_dialog_dir(
-                            "plot_save", dest,
+                            "plot_save",
+                            dest,
                         )
                         fig = self._build_fig_radar(
                             samples=chosen,
                         )
                         if fig:
                             fig.savefig(
-                                dest, dpi=160,
+                                dest,
+                                dpi=160,
                                 bbox_inches="tight",
                             )
                             plt.close(fig)
-                            self._append_log(
-                                f"Radar salvo em {dest}"
-                            )
+                            self._append_log(f"Radar salvo em {dest}")
 
                     ctk.CTkButton(
                         radar_ctrl,
@@ -3179,8 +3261,10 @@ class PipelineApp(ctk.CTk):
                     # Initial render
                     radar_container = ctk.CTkFrame(tab_radar)
                     radar_container.pack(
-                        fill="both", expand=True,
-                        padx=8, pady=8,
+                        fill="both",
+                        expand=True,
+                        padx=8,
+                        pady=8,
                     )
                     tab_radar._radar_container = radar_container
                     _update_radar()
@@ -3201,11 +3285,14 @@ class PipelineApp(ctk.CTk):
                 if ret_fig:
                     ret_frame = ctk.CTkFrame(tab_retention)
                     ret_frame.pack(
-                        fill="both", expand=True,
-                        padx=8, pady=8,
+                        fill="both",
+                        expand=True,
+                        padx=8,
+                        pady=8,
                     )
                     self._render_fig_on_frame(
-                        ret_frame, ret_fig,
+                        ret_frame,
+                        ret_fig,
                     )
 
                     def _save_retention():
@@ -3221,21 +3308,18 @@ class PipelineApp(ctk.CTk):
                         if not dest:
                             return
                         self._remember_dialog_dir(
-                            "plot_save", dest,
+                            "plot_save",
+                            dest,
                         )
-                        fig = (
-                            self._build_fig_retention_cycle()
-                        )
+                        fig = self._build_fig_retention_cycle()
                         if fig:
                             fig.savefig(
-                                dest, dpi=160,
+                                dest,
+                                dpi=160,
                                 bbox_inches="tight",
                             )
                             plt.close(fig)
-                            self._append_log(
-                                "Retenção vs Ciclo salvo"
-                                f" em {dest}"
-                            )
+                            self._append_log("Retenção vs Ciclo salvo" f" em {dest}")
 
                     ctk.CTkButton(
                         tab_retention,
@@ -3243,7 +3327,9 @@ class PipelineApp(ctk.CTk):
                         width=120,
                         command=_save_retention,
                     ).pack(
-                        anchor="e", padx=8, pady=(0, 4),
+                        anchor="e",
+                        padx=8,
+                        pady=(0, 4),
                     )
                 else:
                     ctk.CTkLabel(
@@ -3281,9 +3367,9 @@ class PipelineApp(ctk.CTk):
                         if b
                     ]
                     if not bases:
-                        ctk.CTkLabel(
-                            tab_series, text="Sem séries identificadas"
-                        ).pack(pady=20)
+                        ctk.CTkLabel(tab_series, text="Sem séries identificadas").pack(
+                            pady=20
+                        )
                     else:
                         initial_col = cols[0]
                         if preferred_series_col in cols:
@@ -3349,18 +3435,16 @@ class PipelineApp(ctk.CTk):
                             series_state["base"],
                         )
             else:
-                ctk.CTkLabel(
-                    tab_series, text="Sem dados de séries disponíveis"
-                ).pack(pady=20)
+                ctk.CTkLabel(tab_series, text="Sem dados de séries disponíveis").pack(
+                    pady=20
+                )
 
             # DRT com seleção de amostra/modo
             if self.drt_results:
                 drt_names = sorted(self.drt_results.keys())
                 mode_values = ["Espectro", "Overlay", "Heatmap"]
                 pref_mode = self.drt_ui_prefs.get("mode", "Espectro")
-                initial_mode = (
-                    pref_mode if pref_mode in mode_values else "Espectro"
-                )
+                initial_mode = pref_mode if pref_mode in mode_values else "Espectro"
 
                 initial_drt = drt_names[0]
                 pref_sample = self.drt_ui_prefs.get("sample", "")
@@ -3421,9 +3505,7 @@ class PipelineApp(ctk.CTk):
                 drt_sample_menu.set(initial_drt)
                 drt_sample_menu.pack(side="left", padx=(0, 12))
 
-                ctk.CTkLabel(drt_control, text="Modo:").pack(
-                    side="left", padx=(0, 6)
-                )
+                ctk.CTkLabel(drt_control, text="Modo:").pack(side="left", padx=(0, 6))
                 drt_mode_menu = ctk.CTkOptionMenu(
                     drt_control,
                     values=mode_values,
@@ -3595,23 +3677,67 @@ class PipelineApp(ctk.CTk):
                 child.destroy()
             ctk.CTkLabel(container, text="Sem dados para esta série").pack(pady=20)
 
-    def _import_files(self, target_dir: str, label: str):
+    def _import_files(self, target_dir: str, label: str, eis_mode: bool = False):
+        # Build file type filter
+        if eis_mode:
+            filetypes = [
+                (
+                    "EIS files",
+                    "*.txt *.csv *.dat *.asc *.dta *.mpr *.mpt *.ism *.isc",
+                ),
+                ("Gamry (.dta)", "*.dta"),
+                ("BioLogic (.mpr .mpt)", "*.mpr *.mpt"),
+                ("Autolab NOVA (.csv)", "*.csv"),
+                ("Zahner (.ism .isc)", "*.ism *.isc"),
+                ("Text/CSV (.txt .csv)", "*.txt *.csv"),
+                ("All files", "*.*"),
+            ]
+        else:
+            filetypes = [("Text/CSV files", "*.txt *.csv"), ("All files", "*.*")]
+
         paths = filedialog.askopenfilenames(
             title=label,
             initialdir=self._get_initial_dialog_dir("import"),
+            filetypes=filetypes,
         )
         if not paths:
             return
         self._remember_dialog_dir("import", paths[0])
         os.makedirs(target_dir, exist_ok=True)
         copied = 0
+        converted = 0
         for src in paths:
+            src_path = Path(src)
             try:
+                # Attempt potentiostat-format auto-conversion for EIS imports
+                if eis_mode and src_path.suffix.lower() in (
+                    ".dta",
+                    ".mpr",
+                    ".mpt",
+                    ".ism",
+                    ".isc",
+                ):
+                    dest = _convert_potentiostat_to_csv(src_path, target_dir)
+                    if dest:
+                        self._append_log(
+                            f"Convertido: {src_path.name} -> {Path(dest).name}"
+                        )
+                        converted += 1
+                        continue
                 shutil.copy(src, target_dir)
                 copied += 1
             except Exception as exc:
-                self._append_log(f"Falha ao copiar {src}: {exc}")
-        self._append_log(f"{copied} arquivo(s) copiado(s) para {target_dir}")
+                self._append_log(f"Falha ao importar {src_path.name}: {exc}")
+        total = copied + converted
+        msg_parts = []
+        if copied:
+            msg_parts.append(f"{copied} copiado(s)")
+        if converted:
+            msg_parts.append(f"{converted} convertido(s) para CSV")
+        self._append_log(
+            f"{total} arquivo(s) importado(s) para {target_dir}"
+            + (f" ({', '.join(msg_parts)})" if msg_parts else "")
+        )
 
     def _open_rank_interactive(self):
         if self.rank_df is None or self.rank_df.empty:
@@ -3648,6 +3774,7 @@ class PipelineApp(ctk.CTk):
                 label = labels[idx] if idx < len(labels) else ""
                 x, y = sel.target
                 sel.annotation.set_text(f"{label}\nRank: {x:.2f}\nRetenção: {y:.2f}%")
+
         except ImportError:
             self._append_log("mplcursors não encontrado; hover desabilitado.")
         fig.tight_layout()
@@ -3690,6 +3817,7 @@ class PipelineApp(ctk.CTk):
                 x, y = sel.target
                 extra = f"\nSubclasse: {lbl}" if lbl else ""
                 sel.annotation.set_text(f"{name}\nPC1: {x:.2f}\nPC2: {y:.2f}{extra}")
+
         except ImportError:
             self._append_log("mplcursors não encontrado; hover desabilitado.")
         fig.tight_layout()
@@ -3737,6 +3865,7 @@ class PipelineApp(ctk.CTk):
                     else ""
                 )
                 sel.annotation.set_text(f"{name}\nPC1: {x:.2f}\nPC2: {y:.2f}{metric}")
+
         except ImportError:
             self._append_log("mplcursors não encontrado; hover desabilitado.")
         fig.tight_layout()
@@ -3772,6 +3901,7 @@ class PipelineApp(ctk.CTk):
                     row = corr.index[i]
                     col = corr.columns[j]
                     sel.annotation.set_text(f"{row} x {col}\nρ = {val:.2f}")
+
         except ImportError:
             self._append_log("mplcursors não encontrado; hover desabilitado.")
         fig.tight_layout()
@@ -3816,7 +3946,7 @@ class PipelineApp(ctk.CTk):
             self._append_log("Sem pontos para esta série.")
             return
         fig, ax = plt.subplots(figsize=(8, 5))
-        line, = ax.plot(grp["_lead"], grp[value_col], "o-", color="#1f77b4")
+        (line,) = ax.plot(grp["_lead"], grp[value_col], "o-", color="#1f77b4")
         ax.set_xlabel("Prefixo numérico")
         ax.set_ylabel(value_col)
         ax.set_title(f"{value_col} - {base_name} (interativo)")
@@ -3830,6 +3960,7 @@ class PipelineApp(ctk.CTk):
             def on_add(sel):
                 x, y = sel.target
                 sel.annotation.set_text(f"Prefixo: {x:.2f}\nValor: {y:.2f}")
+
         except ImportError:
             self._append_log("mplcursors não encontrado; hover desabilitado.")
         fig.tight_layout()
@@ -3896,6 +4027,7 @@ class PipelineApp(ctk.CTk):
 
             inter_cmd = _open_drt_tab
         elif name.startswith("series_"):
+
             def _open_series_plot(p=path):
                 self._open_series_interactive(p)
 
@@ -3944,15 +4076,33 @@ class PipelineApp(ctk.CTk):
     def _setup_shortcuts(self):
         """Bind keyboard shortcuts (Day 26)."""
         self._shortcut_mgr = ShortcutManager()
-        self._shortcut_mgr.register_handler(ShortcutAction.PIPELINE_EIS, self._run_eis_clicked)
-        self._shortcut_mgr.register_handler(ShortcutAction.PIPELINE_CYCLING, self._run_ciclagem_clicked)
-        self._shortcut_mgr.register_handler(ShortcutAction.PIPELINE_DRT, self._run_drt_clicked)
-        self._shortcut_mgr.register_handler(ShortcutAction.AI_ANALYSIS, self._run_ai_analysis_clicked)
-        self._shortcut_mgr.register_handler(ShortcutAction.EXPORT_PDF, self._generate_report_clicked)
-        self._shortcut_mgr.register_handler(ShortcutAction.OPEN_CHARTS, self._open_interactive_window)
-        self._shortcut_mgr.register_handler(ShortcutAction.SAVE_CONFIG, self._save_config_clicked)
-        self._shortcut_mgr.register_handler(ShortcutAction.RERUN_LAST, self._rerun_last_pipeline)
-        self._shortcut_mgr.register_handler(ShortcutAction.CANCEL_PIPELINE, self._cancel_pipeline)
+        self._shortcut_mgr.register_handler(
+            ShortcutAction.PIPELINE_EIS, self._run_eis_clicked
+        )
+        self._shortcut_mgr.register_handler(
+            ShortcutAction.PIPELINE_CYCLING, self._run_ciclagem_clicked
+        )
+        self._shortcut_mgr.register_handler(
+            ShortcutAction.PIPELINE_DRT, self._run_drt_clicked
+        )
+        self._shortcut_mgr.register_handler(
+            ShortcutAction.AI_ANALYSIS, self._run_ai_analysis_clicked
+        )
+        self._shortcut_mgr.register_handler(
+            ShortcutAction.EXPORT_PDF, self._generate_report_clicked
+        )
+        self._shortcut_mgr.register_handler(
+            ShortcutAction.OPEN_CHARTS, self._open_interactive_window
+        )
+        self._shortcut_mgr.register_handler(
+            ShortcutAction.SAVE_CONFIG, self._save_config_clicked
+        )
+        self._shortcut_mgr.register_handler(
+            ShortcutAction.RERUN_LAST, self._rerun_last_pipeline
+        )
+        self._shortcut_mgr.register_handler(
+            ShortcutAction.CANCEL_PIPELINE, self._cancel_pipeline
+        )
 
         for binding in DEFAULT_BINDINGS:
             self.bind_all(
@@ -3967,9 +4117,7 @@ class PipelineApp(ctk.CTk):
             if hasattr(self._status_bar_state, k):
                 setattr(self._status_bar_state, k, v)
         with contextlib.suppress(Exception):
-            self.status_bar_label.configure(
-                text=self._status_bar_state.format_bar()
-            )
+            self.status_bar_label.configure(text=self._status_bar_state.format_bar())
 
     def _rerun_last_pipeline(self):
         """F5 — re-run the last executed pipeline."""
@@ -3982,7 +4130,9 @@ class PipelineApp(ctk.CTk):
         elif self._last_pipeline == "both":
             self._run_both_clicked()
         else:
-            self._append_log(tr("Nenhum pipeline executado anteriormente. Use Ctrl+1/2/3."))
+            self._append_log(
+                tr("Nenhum pipeline executado anteriormente. Use Ctrl+1/2/3.")
+            )
 
     def _cancel_pipeline(self):
         """Escape — cancel running pipeline."""
@@ -4002,6 +4152,7 @@ class PipelineApp(ctk.CTk):
     def _save_config_clicked(self):
         """Ctrl+S — save current config to JSON."""
         from src.config import PipelineConfig
+
         out = filedialog.asksaveasfilename(
             defaultextension=".json",
             filetypes=[("JSON", "*.json")],
@@ -4068,8 +4219,12 @@ class PipelineApp(ctk.CTk):
         def worker():
             try:
                 circuit_table = getattr(self, "circuit_df", None)
-                if circuit_table is None or (hasattr(circuit_table, "empty") and circuit_table.empty):
-                    self.log_queue.put(("diag_result", tr("Execute o pipeline EIS primeiro.")))
+                if circuit_table is None or (
+                    hasattr(circuit_table, "empty") and circuit_table.empty
+                ):
+                    self.log_queue.put(
+                        ("diag_result", tr("Execute o pipeline EIS primeiro."))
+                    )
                     return
                 lines = []
                 if circuit_table is not None and not circuit_table.empty:
@@ -4083,13 +4238,21 @@ class PipelineApp(ctk.CTk):
                             "rss": row.get("rss", row.get("RSS", float("inf"))),
                             "n_points": row.get("n_points", row.get("N_points", 50)),
                             "success": row.get("success", row.get("Sucesso", False)),
-                            "res_autocorr": row.get("res_autocorr", row.get("Res_autocorr", 0.0)),
-                            "res_structured": row.get("res_structured", row.get("Res_estruturado", False)),
-                            "bound_hits": row.get("bound_hits", row.get("Bound_hits", 0)),
+                            "res_autocorr": row.get(
+                                "res_autocorr", row.get("Res_autocorr", 0.0)
+                            ),
+                            "res_structured": row.get(
+                                "res_structured", row.get("Res_estruturado", False)
+                            ),
+                            "bound_hits": row.get(
+                                "bound_hits", row.get("Bound_hits", 0)
+                            ),
                             "params": row.get("params", row.get("Params", {})),
                         }
                         qi = assess_quality(fit_dict)
-                        lines.append(f"{qi.emoji} {name}: {best_circuit} (BIC={bic}) — {qi.label}")
+                        lines.append(
+                            f"{qi.emoji} {name}: {best_circuit} (BIC={bic}) — {qi.label}"
+                        )
                         for r in qi.reasons:
                             lines.append(f"    • {r}")
                 else:
@@ -4108,28 +4271,47 @@ class PipelineApp(ctk.CTk):
         def worker():
             try:
                 circuit_table = getattr(self, "circuit_df", None)
-                if circuit_table is None or (hasattr(circuit_table, "empty") and circuit_table.empty):
-                    self.log_queue.put(("fitting_report_result", tr("Execute o pipeline EIS primeiro.")))
+                if circuit_table is None or (
+                    hasattr(circuit_table, "empty") and circuit_table.empty
+                ):
+                    self.log_queue.put(
+                        (
+                            "fitting_report_result",
+                            tr("Execute o pipeline EIS primeiro."),
+                        )
+                    )
                     return
                 gen = FittingReportGenerator()
                 lines = []
                 if circuit_table is not None and not circuit_table.empty:
                     for _, row in circuit_table.head(10).iterrows():
                         fit_dict = {
-                            "circuit_name": row.get("best_circuit", row.get("Circuito", "?")),
+                            "circuit_name": row.get(
+                                "best_circuit", row.get("Circuito", "?")
+                            ),
                             "bic": row.get("bic", row.get("BIC", None)),
                             "aic": row.get("aic", row.get("AIC", None)),
                             "rss": row.get("rss", row.get("RSS", None)),
                             "n_points": row.get("n_points", row.get("N_points", 50)),
                             "success": row.get("success", row.get("Sucesso", False)),
-                            "res_autocorr": row.get("res_autocorr", row.get("Res_autocorr", 0.0)),
-                            "res_structured": row.get("res_structured", row.get("Res_estruturado", False)),
-                            "bound_hits": row.get("bound_hits", row.get("Bound_hits", 0)),
+                            "res_autocorr": row.get(
+                                "res_autocorr", row.get("Res_autocorr", 0.0)
+                            ),
+                            "res_structured": row.get(
+                                "res_structured", row.get("Res_estruturado", False)
+                            ),
+                            "bound_hits": row.get(
+                                "bound_hits", row.get("Bound_hits", 0)
+                            ),
                             "params": row.get("params", row.get("Params", {})),
-                            "params_std": row.get("params_std", row.get("Params_std", {})),
+                            "params_std": row.get(
+                                "params_std", row.get("Params_std", {})
+                            ),
                         }
                         report = gen.generate(fit_result=fit_dict)
-                        lines.append(f"═══ {row.get('sample', row.get('Arquivo', '?'))} ═══")
+                        lines.append(
+                            f"═══ {row.get('sample', row.get('Arquivo', '?'))} ═══"
+                        )
                         lines.append(report.to_text())
                         lines.append("")
                 else:
@@ -4142,7 +4324,9 @@ class PipelineApp(ctk.CTk):
 
     def _run_batch_clicked(self):
         """Run batch processing on a selected folder."""
-        folder = filedialog.askdirectory(title=tr("Selecionar pasta para batch processing"))
+        folder = filedialog.askdirectory(
+            title=tr("Selecionar pasta para batch processing")
+        )
         if not folder:
             return
         self._append_log(f"Batch processing: {folder}")
@@ -4259,7 +4443,12 @@ class PipelineApp(ctk.CTk):
                     results["drt"] = self.last_drt_result
 
                 if not results:
-                    self.log_queue.put(("log", "Nenhum resultado de pipeline disponível para o relatório."))
+                    self.log_queue.put(
+                        (
+                            "log",
+                            "Nenhum resultado de pipeline disponível para o relatório.",
+                        )
+                    )
                     return
 
                 fmt = ["pdf"] if out_path.endswith(".pdf") else ["markdown"]
@@ -4282,9 +4471,9 @@ class PipelineApp(ctk.CTk):
             qwriter = QueueWriter(self.log_queue)
             try:
                 self.log_queue.put(("stage", "Calculando valores EIS..."))
-                with contextlib.redirect_stdout(
+                with contextlib.redirect_stdout(qwriter), contextlib.redirect_stderr(
                     qwriter
-                ), contextlib.redirect_stderr(qwriter):
+                ):
                     result = run_eis_pipeline()
                 self.log_queue.put(("stage", "Gerando tabelas e gráficos..."))
                 self.log_queue.put(("eis_done", result))
@@ -4307,9 +4496,9 @@ class PipelineApp(ctk.CTk):
             try:
                 scan_rate = float(self.scan_rate_entry.get().strip())
                 self.log_queue.put(("stage", "Calculando valores de energia..."))
-                with contextlib.redirect_stdout(
+                with contextlib.redirect_stdout(qwriter), contextlib.redirect_stderr(
                     qwriter
-                ), contextlib.redirect_stderr(qwriter):
+                ):
                     result = run_ciclagem_pipeline(scan_rate, show_plots=False)
                 self.log_queue.put(("stage", "Gerando gráficos e tabelas..."))
                 self.log_queue.put(("cic_done", result))
@@ -4334,14 +4523,14 @@ class PipelineApp(ctk.CTk):
             try:
                 scan_rate = float(self.scan_rate_entry.get().strip())
                 self.log_queue.put(("stage", "Calculando EIS..."))
-                with contextlib.redirect_stdout(
+                with contextlib.redirect_stdout(qwriter), contextlib.redirect_stderr(
                     qwriter
-                ), contextlib.redirect_stderr(qwriter):
+                ):
                     eis_result = run_eis_pipeline()
                 self.log_queue.put(("stage", "Calculando ciclagem..."))
-                with contextlib.redirect_stdout(
+                with contextlib.redirect_stdout(qwriter), contextlib.redirect_stderr(
                     qwriter
-                ), contextlib.redirect_stderr(qwriter):
+                ):
                     cic_result = run_ciclagem_pipeline(scan_rate, show_plots=False)
                 self.log_queue.put(("stage", "Gerando gráficos e tabelas..."))
             except Exception:
@@ -4377,9 +4566,9 @@ class PipelineApp(ctk.CTk):
                         f"n_taus={n_taus}",
                     )
                 )
-                with contextlib.redirect_stdout(
+                with contextlib.redirect_stdout(qwriter), contextlib.redirect_stderr(
                     qwriter
-                ), contextlib.redirect_stderr(qwriter):
+                ):
                     result = run_drt_pipeline(
                         lambda_reg=lambda_reg,
                         n_taus=n_taus,
@@ -4465,7 +4654,9 @@ class PipelineApp(ctk.CTk):
         self._set_status("EIS concluído")
         self._stop_progress("EIS concluído")
         self._enable_buttons()
-        self._update_status_bar(pipeline_status="idle", samples_loaded=len(self.raw_eis))
+        self._update_status_bar(
+            pipeline_status="idle", samples_loaded=len(self.raw_eis)
+        )
         # Atualiza janela interativa se estiver aberta
         if self.interactive_win is not None and self.interactive_win.winfo_exists():
             self._open_interactive_window()
@@ -4492,17 +4683,12 @@ class PipelineApp(ctk.CTk):
             self._add_plot(f"{filename} - Energia×Potência", path)
 
         n_files = len(self.cic_results)
-        self._append_log(
-            f"Ciclagem: {n_files} arquivo(s) processado(s)."
-        )
+        self._append_log(f"Ciclagem: {n_files} arquivo(s) processado(s).")
 
         self._set_status("Ciclagem concluída")
         self._stop_progress("Ciclagem concluída")
         self._enable_buttons()
-        if (
-            self.interactive_win is not None
-            and self.interactive_win.winfo_exists()
-        ):
+        if self.interactive_win is not None and self.interactive_win.winfo_exists():
             self._open_interactive_window(
                 preferred_tab="Energia × Potência",
             )
@@ -4575,8 +4761,7 @@ class PipelineApp(ctk.CTk):
         run_meta = result.get("run_meta", {}) or {}
         if errors:
             self._append_log(
-                f"DRT concluído com {len(errors)} falha(s): "
-                + ", ".join(errors.keys())
+                f"DRT concluído com {len(errors)} falha(s): " + ", ".join(errors.keys())
             )
 
         if run_meta:
@@ -4626,9 +4811,12 @@ def main():
 
     # Ensure required directories exist (first run / clean install)
     for d in (
-        "data/raw", "data/processed",
-        "outputs/figures", "outputs/tables",
-        "outputs/excel", "outputs/circuit_reports",
+        "data/raw",
+        "data/processed",
+        "outputs/figures",
+        "outputs/tables",
+        "outputs/excel",
+        "outputs/circuit_reports",
     ):
         os.makedirs(d, exist_ok=True)
 
