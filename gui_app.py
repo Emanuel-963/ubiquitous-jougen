@@ -93,7 +93,6 @@ from src.i18n import get_language, set_language, tr
 from src.kramers_kronig import KKResult, KramersKronigValidator
 from src.report_generator import ReportConfig, ReportGenerator
 from src.uncertainty import UncertaintyAnalyzer
-from src.updater import check_for_updates
 
 
 @dataclass
@@ -364,11 +363,12 @@ class PipelineApp(ctk.CTk):
 
     def _check_for_updates_async(self):
         """Run version check in background thread so it never blocks the GUI."""
+        from src.updater import get_latest_release
 
         def _worker():
-            result = check_for_updates()
-            if result:
-                self.log_queue.put(("log", result))
+            info = get_latest_release()
+            if info is not None and info.is_newer_than_local():
+                self.log_queue.put(("update_available", info))
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -832,6 +832,7 @@ class PipelineApp(ctk.CTk):
         self.tab_diag = self.tabs.add("🩺 " + tr("Diagnóstico Fitting"))
         self.tab_report_text = self.tabs.add("📝 " + tr("Relatório Fitting"))
         self.tab_compare = self.tabs.add("🔄 " + tr("Comparar Amostras"))
+        self.tab_settings = self.tabs.add("⚙️ " + tr("Configurações"))
 
         # ── AI Analysis tab content ──────────────────────────────
         ai_frame = ctk.CTkFrame(self.tab_ai)
@@ -932,6 +933,9 @@ class PipelineApp(ctk.CTk):
 
         # ── Compare tab content ──────────────────────────────────
         self._build_compare_tab()
+
+        # ── Settings tab content ─────────────────────────────────
+        self._build_settings_tab()
 
         # Plots area
         self.plots_frame = ctk.CTkScrollableFrame(self.tab_plots)
@@ -4767,6 +4771,16 @@ class PipelineApp(ctk.CTk):
                     self.fitting_report_textbox.insert("1.0", item[1])
                 elif msg_type == "status_update":
                     self._update_status_bar(**item[1])
+                elif msg_type == "update_available":
+                    self._show_update_dialog(item[1])
+                elif msg_type == "_update_msg":
+                    with contextlib.suppress(Exception):
+                        self._update_progress_label.configure(text=item[1])
+                elif msg_type == "_update_done":
+                    dialog, extract_dir, msg = item[1]
+                    with contextlib.suppress(Exception):
+                        self._update_progress_label.configure(text=msg)
+                    self._append_log(f"Atualização extraída: {extract_dir}")
             except Exception as exc:
                 # Não deixar o loop quebrar; logar e continuar
                 self._append_log(f"Erro no processamento da fila: {exc}")
@@ -5097,6 +5111,444 @@ class PipelineApp(ctk.CTk):
 
         # Storage for sample checkboxes
         self.compare_sample_vars: Dict[str, ctk.BooleanVar] = {}
+
+    # ── Settings tab ─────────────────────────────────────────────────
+
+    def _build_settings_tab(self):
+        """Build the ⚙️ Configurações tab with PipelineConfig fields."""
+        self._settings_entries: Dict[str, ctk.CTkEntry] = {}
+
+        outer = ctk.CTkScrollableFrame(self.tab_settings)
+        outer.pack(fill="both", expand=True, padx=8, pady=8)
+        outer.grid_columnconfigure(0, weight=1)
+
+        row_idx = 0
+
+        def _section(label: str) -> int:
+            nonlocal row_idx
+            ctk.CTkLabel(
+                outer,
+                text=label,
+                anchor="w",
+                font=ctk.CTkFont(size=14, weight="bold"),
+            ).grid(
+                row=row_idx, column=0, columnspan=3, sticky="ew", padx=8, pady=(16, 4)
+            )
+            row_idx += 1
+            return row_idx
+
+        def _field(key: str, label: str, default: str = "") -> None:
+            nonlocal row_idx
+            ctk.CTkLabel(outer, text=label, anchor="w").grid(
+                row=row_idx, column=0, sticky="w", padx=(16, 4), pady=2
+            )
+            entry = ctk.CTkEntry(outer, width=300)
+            entry.insert(0, default)
+            entry.grid(row=row_idx, column=1, sticky="ew", padx=(0, 8), pady=2)
+            outer.grid_columnconfigure(1, weight=1)
+            self._settings_entries[key] = entry
+            row_idx += 1
+
+        def _path_field(key: str, label: str, default: str = "") -> None:
+            """Field + Browse button for directory paths."""
+            nonlocal row_idx
+            ctk.CTkLabel(outer, text=label, anchor="w").grid(
+                row=row_idx, column=0, sticky="w", padx=(16, 4), pady=2
+            )
+            entry = ctk.CTkEntry(outer, width=300)
+            entry.insert(0, default)
+            entry.grid(row=row_idx, column=1, sticky="ew", padx=(0, 4), pady=2)
+            outer.grid_columnconfigure(1, weight=1)
+            self._settings_entries[key] = entry
+            _key = key
+
+            def _browse(e=entry, k=_key):
+                path = filedialog.askdirectory(title=tr("Selecionar pasta"))
+                if path:
+                    e.delete(0, "end")
+                    e.insert(0, path)
+
+            ctk.CTkButton(outer, text="📁", width=32, command=_browse).grid(
+                row=row_idx, column=2, padx=(0, 8), pady=2
+            )
+            row_idx += 1
+
+        from src.config import PipelineConfig
+
+        cfg = PipelineConfig.default()
+
+        # ── Diretórios ────────────────────────────────────────────────
+        _section(tr("Diretórios"))
+        _path_field("data_dir", tr("Dados brutos"), cfg.data_dir)
+        _path_field("processed_dir", tr("Dados processados"), cfg.processed_dir)
+        _path_field("output_dir", tr("Saída"), cfg.output_dir)
+
+        # ── Processamento EIS ─────────────────────────────────────────
+        _section(tr("Processamento EIS"))
+        _field("scan_rate", tr("Scan rate (A/g)"), str(cfg.scan_rate))
+        _field("voltage", tr("Voltagem (V)"), str(cfg.voltage))
+        _field("electrode_mass", tr("Massa do eletrodo (g)"), "")
+        _field("electrode_area", tr("Área do eletrodo (cm²)"), "")
+        _field("n_head", tr("Pontos Rs/Rp (n_head)"), str(cfg.n_head))
+
+        # ── Fitting de circuitos ──────────────────────────────────────
+        _section(tr("Fitting de Circuitos"))
+        _field(
+            "circuit_max_nfev",
+            tr("Máx. avaliações (circuit)"),
+            str(cfg.circuit_max_nfev),
+        )
+        _field("cpe_max_nfev", tr("Máx. avaliações (CPE)"), str(cfg.cpe_max_nfev))
+        _field(
+            "circuit_shortlist_top_n",
+            tr("Top N circuitos candidatos"),
+            str(cfg.circuit_shortlist_top_n),
+        )
+
+        # ── DRT ───────────────────────────────────────────────────────
+        _section("DRT")
+        _field("drt_lambda", "λ (regularização)", str(cfg.drt_lambda))
+        _field("drt_n_taus", "N τ (pontos)", str(cfg.drt_n_taus))
+        _field("drt_tau_min", "τ min (s)", str(cfg.drt_tau_min))
+        _field("drt_tau_max", "τ max (s)", str(cfg.drt_tau_max))
+
+        # ── Classificação ─────────────────────────────────────────────
+        _section(tr("Classificação"))
+        _field("kmeans_n_clusters", tr("Clusters K-Means"), str(cfg.kmeans_n_clusters))
+
+        # ── LLM / IA ──────────────────────────────────────────────────
+        _section(tr("LLM / IA"))
+        _field("llm_provider", tr("Provedor"), cfg.llm_provider)
+        _field("llm_model", tr("Modelo"), cfg.llm_model)
+        _field("llm_api_key", "API Key", cfg.llm_api_key)
+        _field("llm_base_url", "Base URL", cfg.llm_base_url)
+        _field("llm_temperature", tr("Temperatura"), str(cfg.llm_temperature))
+        _field("llm_max_tokens", "Max tokens", str(cfg.llm_max_tokens))
+
+        # ── Aparência ─────────────────────────────────────────────────
+        _section(tr("Aparência"))
+        _field("dpi_screen", "DPI tela", str(cfg.dpi_screen))
+        _field("dpi_save", "DPI salvar", str(cfg.dpi_save))
+        _field("dpi_diagnostics", "DPI diagnóstico", str(cfg.dpi_diagnostics))
+
+        # ── Botões ────────────────────────────────────────────────────
+        btn_frame = ctk.CTkFrame(outer)
+        btn_frame.grid(
+            row=row_idx, column=0, columnspan=3, sticky="ew", padx=8, pady=(20, 8)
+        )
+        btn_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
+
+        ctk.CTkButton(
+            btn_frame,
+            text="📂 " + tr("Carregar config"),
+            command=self._load_config_from_json,
+        ).grid(row=0, column=0, padx=6, pady=8, sticky="ew")
+
+        ctk.CTkButton(
+            btn_frame,
+            text="💾 " + tr("Salvar config"),
+            command=self._save_config_from_settings_tab,
+        ).grid(row=0, column=1, padx=6, pady=8, sticky="ew")
+
+        ctk.CTkButton(
+            btn_frame,
+            text="↺ " + tr("Redefinir"),
+            command=self._reset_settings_to_defaults,
+        ).grid(row=0, column=2, padx=6, pady=8, sticky="ew")
+
+        ctk.CTkButton(
+            btn_frame,
+            text="✓ " + tr("Aplicar"),
+            font=ctk.CTkFont(weight="bold"),
+            command=self._apply_settings_from_form,
+        ).grid(row=0, column=3, padx=6, pady=8, sticky="ew")
+
+    def _populate_settings_from_config(self, cfg) -> None:
+        """Fill the Settings tab entries with values from *cfg*."""
+        mapping = {
+            "data_dir": str(cfg.data_dir),
+            "processed_dir": str(cfg.processed_dir),
+            "output_dir": str(cfg.output_dir),
+            "scan_rate": str(cfg.scan_rate),
+            "voltage": str(cfg.voltage),
+            "electrode_mass": str(cfg.electrode_mass)
+            if cfg.electrode_mass is not None
+            else "",
+            "electrode_area": str(cfg.electrode_area)
+            if cfg.electrode_area is not None
+            else "",
+            "n_head": str(cfg.n_head),
+            "circuit_max_nfev": str(cfg.circuit_max_nfev),
+            "cpe_max_nfev": str(cfg.cpe_max_nfev),
+            "circuit_shortlist_top_n": str(cfg.circuit_shortlist_top_n),
+            "drt_lambda": str(cfg.drt_lambda),
+            "drt_n_taus": str(cfg.drt_n_taus),
+            "drt_tau_min": str(cfg.drt_tau_min),
+            "drt_tau_max": str(cfg.drt_tau_max),
+            "kmeans_n_clusters": str(cfg.kmeans_n_clusters),
+            "llm_provider": cfg.llm_provider,
+            "llm_model": cfg.llm_model,
+            "llm_api_key": cfg.llm_api_key,
+            "llm_base_url": cfg.llm_base_url,
+            "llm_temperature": str(cfg.llm_temperature),
+            "llm_max_tokens": str(cfg.llm_max_tokens),
+            "dpi_screen": str(cfg.dpi_screen),
+            "dpi_save": str(cfg.dpi_save),
+            "dpi_diagnostics": str(cfg.dpi_diagnostics),
+        }
+        for key, value in mapping.items():
+            entry = self._settings_entries.get(key)
+            if entry is not None:
+                entry.delete(0, "end")
+                entry.insert(0, value)
+
+    def _read_settings_to_config(self):
+        """Read Settings tab entries and return a populated PipelineConfig."""
+        from src.config import PipelineConfig
+
+        cfg = PipelineConfig.default()
+
+        def _get(key: str, cast=str, fallback=None):
+            entry = self._settings_entries.get(key)
+            if entry is None:
+                return fallback
+            raw = entry.get().strip()
+            if not raw:
+                return fallback
+            try:
+                return cast(raw)
+            except (ValueError, TypeError):
+                return fallback
+
+        cfg.data_dir = _get("data_dir") or cfg.data_dir
+        cfg.processed_dir = _get("processed_dir") or cfg.processed_dir
+        cfg.output_dir = _get("output_dir") or cfg.output_dir
+        cfg.scan_rate = _get("scan_rate", float, cfg.scan_rate)
+        cfg.voltage = _get("voltage", float, cfg.voltage)
+        cfg.electrode_mass = _get("electrode_mass", float, None)
+        cfg.electrode_area = _get("electrode_area", float, None)
+        cfg.n_head = _get("n_head", int, cfg.n_head)
+        cfg.circuit_max_nfev = _get("circuit_max_nfev", int, cfg.circuit_max_nfev)
+        cfg.cpe_max_nfev = _get("cpe_max_nfev", int, cfg.cpe_max_nfev)
+        cfg.circuit_shortlist_top_n = _get(
+            "circuit_shortlist_top_n", int, cfg.circuit_shortlist_top_n
+        )
+        cfg.drt_lambda = _get("drt_lambda", float, cfg.drt_lambda)
+        cfg.drt_n_taus = _get("drt_n_taus", int, cfg.drt_n_taus)
+        cfg.drt_tau_min = _get("drt_tau_min", float, cfg.drt_tau_min)
+        cfg.drt_tau_max = _get("drt_tau_max", float, cfg.drt_tau_max)
+        cfg.kmeans_n_clusters = _get("kmeans_n_clusters", int, cfg.kmeans_n_clusters)
+        cfg.llm_provider = _get("llm_provider") or cfg.llm_provider
+        cfg.llm_model = _get("llm_model") or cfg.llm_model
+        cfg.llm_api_key = _get("llm_api_key") or ""
+        cfg.llm_base_url = _get("llm_base_url") or ""
+        cfg.llm_temperature = _get("llm_temperature", float, cfg.llm_temperature)
+        cfg.llm_max_tokens = _get("llm_max_tokens", int, cfg.llm_max_tokens)
+        cfg.dpi_screen = _get("dpi_screen", int, cfg.dpi_screen)
+        cfg.dpi_save = _get("dpi_save", int, cfg.dpi_save)
+        cfg.dpi_diagnostics = _get("dpi_diagnostics", int, cfg.dpi_diagnostics)
+        return cfg
+
+    def _apply_settings_from_form(self) -> None:
+        """Apply Settings tab entries to sidebar widgets and gui_settings."""
+        cfg = self._read_settings_to_config()
+
+        # Sync sidebar scan_rate entry
+        with contextlib.suppress(Exception):
+            self.scan_rate_entry.delete(0, "end")
+            self.scan_rate_entry.insert(0, str(cfg.scan_rate))
+            self.gui_settings["scan_rate"] = str(cfg.scan_rate)
+
+        # Sync sidebar DRT entries
+        with contextlib.suppress(Exception):
+            self.drt_lambda_entry.delete(0, "end")
+            self.drt_lambda_entry.insert(0, str(cfg.drt_lambda))
+            self.gui_settings["drt_lambda_reg"] = str(cfg.drt_lambda)
+
+        with contextlib.suppress(Exception):
+            self.drt_n_taus_entry.delete(0, "end")
+            self.drt_n_taus_entry.insert(0, str(cfg.drt_n_taus))
+            self.gui_settings["drt_n_taus"] = str(cfg.drt_n_taus)
+
+        # Persist LLM settings
+        self.gui_settings["llm_provider"] = cfg.llm_provider
+        self.gui_settings["llm_model"] = cfg.llm_model
+        self.gui_settings["llm_api_key"] = cfg.llm_api_key
+        self.gui_settings["llm_base_url"] = cfg.llm_base_url
+        self.gui_settings["llm_temperature"] = cfg.llm_temperature
+        self.gui_settings["llm_max_tokens"] = cfg.llm_max_tokens
+
+        self._save_gui_settings()
+        self._append_log(tr("Configurações aplicadas."))
+
+    def _save_config_from_settings_tab(self) -> None:
+        """Save Settings tab values to a JSON file chosen by the user."""
+        out = filedialog.asksaveasfilename(
+            defaultextension=".json",
+            filetypes=[("JSON", "*.json")],
+            initialdir=".",
+            title=tr("Salvar Configuração"),
+        )
+        if not out:
+            return
+        try:
+            cfg = self._read_settings_to_config()
+            cfg.to_json(out)
+            self._append_log(f"{tr('Configuração salva')}: {out}")
+        except Exception as exc:
+            self._append_log(f"{tr('Erro ao salvar configuração')}: {exc}")
+
+    def _load_config_from_json(self) -> None:
+        """Load a JSON config file and populate the Settings tab entries."""
+        from src.config import PipelineConfig
+
+        path = filedialog.askopenfilename(
+            filetypes=[("JSON", "*.json")],
+            initialdir=".",
+            title=tr("Carregar Configuração"),
+        )
+        if not path:
+            return
+        try:
+            cfg = PipelineConfig.from_json(path)
+            self._populate_settings_from_config(cfg)
+            self._append_log(f"{tr('Configuração carregada')}: {path}")
+        except Exception as exc:
+            self._append_log(f"{tr('Erro ao carregar configuração')}: {exc}")
+
+    def _reset_settings_to_defaults(self) -> None:
+        """Reset all Settings tab entries to PipelineConfig defaults."""
+        from src.config import PipelineConfig
+
+        self._populate_settings_from_config(PipelineConfig.default())
+        self._append_log(tr("Configurações redefinidas para padrão."))
+
+    # ── Auto-update dialog ────────────────────────────────────────────
+
+    def _show_update_dialog(self, info) -> None:
+        """Show a modal dialog when a new release is available.
+
+        Parameters
+        ----------
+        info : ReleaseInfo
+            Release metadata returned by ``get_latest_release()``.
+        """
+        from src import __version__ as _local
+
+        dialog = ctk.CTkToplevel(self)
+        dialog.title(tr("Atualização disponível"))
+        dialog.geometry("520x340")
+        dialog.resizable(False, False)
+        dialog.grab_set()
+
+        ctk.CTkLabel(
+            dialog,
+            text=f"🆕 {tr('Nova versão disponível')}: {info.tag}",
+            font=ctk.CTkFont(size=16, weight="bold"),
+        ).pack(pady=(20, 4))
+
+        ctk.CTkLabel(
+            dialog,
+            text=f"{tr('Versão atual')}: v{_local}",
+            font=ctk.CTkFont(size=13),
+        ).pack(pady=(0, 12))
+
+        # Changelog excerpt (first 400 chars)
+        body_excerpt = (info.body or tr("Sem notas de lançamento."))[:400]
+        changelog = ctk.CTkTextbox(
+            dialog, height=100, wrap="word", font=ctk.CTkFont(size=12)
+        )
+        changelog.insert("1.0", body_excerpt)
+        changelog.configure(state="disabled")
+        changelog.pack(fill="x", padx=20, pady=(0, 12))
+
+        self._update_progress_label = ctk.CTkLabel(
+            dialog, text="", font=ctk.CTkFont(size=12)
+        )
+        self._update_progress_label.pack(pady=(0, 8))
+
+        btn_row = ctk.CTkFrame(dialog, fg_color="transparent")
+        btn_row.pack(pady=(0, 16))
+
+        def _on_update():
+            btn_update.configure(state="disabled")
+            btn_later.configure(state="disabled")
+            self._update_progress_label.configure(text=tr("A baixar…"))
+            threading.Thread(
+                target=self._do_download_update,
+                args=(info, dialog),
+                daemon=True,
+            ).start()
+
+        def _open_browser():
+            import webbrowser
+
+            webbrowser.open(info.html_url)
+
+        btn_update = ctk.CTkButton(
+            btn_row,
+            text="⬇ " + tr("Atualizar agora"),
+            font=ctk.CTkFont(weight="bold"),
+            command=_on_update,
+        )
+        btn_update.pack(side="left", padx=8)
+
+        ctk.CTkButton(
+            btn_row,
+            text="🌐 " + tr("Ver no GitHub"),
+            command=_open_browser,
+        ).pack(side="left", padx=8)
+
+        btn_later = ctk.CTkButton(
+            btn_row,
+            text=tr("Mais tarde"),
+            fg_color="gray40",
+            command=dialog.destroy,
+        )
+        btn_later.pack(side="left", padx=8)
+
+    def _do_download_update(self, info, dialog: ctk.CTkToplevel) -> None:
+        """Download the release ZIP in a worker thread and notify the user."""
+        import tempfile
+
+        from src.updater import download_release, extract_release
+
+        try:
+            tmp_dir = Path(tempfile.mkdtemp(prefix="ionflow_update_"))
+            zip_path = tmp_dir / f"ionflow_{info.tag}.zip"
+
+            total_ref: list = [0]
+
+            def _progress(downloaded: int, total: int) -> None:
+                total_ref[0] = total
+                if total > 0:
+                    pct = int(downloaded / total * 100)
+                    msg = f"{tr('A baixar')}… {pct}%"
+                else:
+                    kb = downloaded // 1024
+                    msg = f"{tr('A baixar')}… {kb} KB"
+                self.log_queue.put(("_update_msg", msg))
+
+            download_release(info, zip_path, on_progress=_progress)
+            self.log_queue.put(("_update_msg", tr("A extrair…")))
+
+            extract_dir = extract_release(zip_path, tmp_dir / "extracted")
+            self.log_queue.put(
+                (
+                    "_update_done",
+                    (
+                        dialog,
+                        str(extract_dir),
+                        tr(
+                            "Extração completa.\n"
+                            "Copie os ficheiros para a pasta da aplicação\n"
+                            "e reinicie o programa."
+                        ),
+                    ),
+                )
+            )
+        except Exception as exc:
+            self.log_queue.put(("_update_msg", f"{tr('Erro na atualização')}: {exc}"))
 
     # ── Compare tab helpers ───────────────────────────────────────────
 
