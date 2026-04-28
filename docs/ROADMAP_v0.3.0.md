@@ -1,103 +1,140 @@
 # IonFlow Pipeline — Roadmap v0.3.0
 
-> Criado em 16 de Abril de 2026
-> Baseado nas recomendações pós-release v0.2.0 (prioridade baixa)
+> Revisto em 27 de Abril de 2026 — baseado em análise do código real v0.2.0
+> Substitui a versão original (16 Abril 2026) com re-priorização orientada ao utilizador.
 
 ---
 
 ## 🎯 Visão
 
-Transformar o IonFlow Pipeline numa **plataforma colaborativa e extensível**
-para laboratórios de eletroquímica, com acesso web, base de dados escalável,
-importação nativa de potenciostatos e sistema de plugins.
+Transformar o IonFlow Pipeline numa plataforma de análise eletroquímica **completa e pronta para publicação científica**, com importação nativa de potenciostatos, exportação em formatos de revistas, comparação multi-campanha e IA generativa integrada.
 
 ---
 
-## 📅 Cronograma Estimado
+## 📅 Cronograma Re-priorizado
 
-| Fase | Recs | Duração | Entregável |
-|------|------|---------|------------|
-| **Fase 1** — Fundações | 9, 12 | 2 semanas | SQLite + type safety |
-| **Fase 2** — Importação | 10 | 2 semanas | Parsers Gamry/BioLogic/Autolab/Zahner |
-| **Fase 3** — Qualidade | 11 | 1 semana | Testes de regressão visual |
-| **Fase 4** — Extensibilidade | 13, 14 | 2 semanas | Plugin system + exportação científica |
-| **Fase 5** — Dashboard | 8, 15 | 3 semanas | Interface web + modo comparativo |
+| Fase | Feature | Duração | Entregável |
+|------|---------|---------|------------|
+| **Fase 1** — Quick wins | Relatório LaTeX, pre-commit, PyPI | 1 semana | Débitos técnicos zerados |
+| **Fase 2** — Importação direta | Parsers Gamry/BioLogic/Autolab/Zahner | 2 semanas | 4 novos formatos de entrada |
+| **Fase 3** — Exportação científica | ZView, LaTeX booktabs, Origin CSV | 1 semana | 3 novos formatos de saída |
+| **Fase 4** — Análise comparativa | Aba Comparar + Health Score | 2 semanas | Comparação multi-campanha na GUI |
+| **Fase 5** — IA generativa | LLM adapter + narrativa PDF | 2 semanas | Relatórios com texto auto-gerado |
+| **Fase 6** — Polish | Painel Settings + auto-update | 1 semana | UX melhorado |
+| **Fase 7** — Infraestrutura (opc.) | SQLite + Dashboard Streamlit | 3 semanas | Escalabilidade e acesso web |
 
-**Total estimado: ~10 semanas**
+**Total estimado: ~9 semanas** (Fases 1–6 obrigatórias; Fase 7 opcional)
 
 ---
 
-## 📋 Detalhamento por Feature
+## 📋 Detalhamento por Fase
 
-### Fase 1 — Fundações (Semanas 1-2)
+### Fase 1 — Quick wins (Semana 1) ✅ EM CURSO
 
-#### Rec 9: Base de dados SQLite
-- Migrar `FeatureStore` de JSON → **SQLite**
-- Schema: tabelas `samples`, `eis_results`, `cycling_results`, `drt_results`, `parameters`
-- Manter compatibilidade retroactiva (importar JSON existentes)
-- Suporte a queries SQL para análise histórica
-- **Critério de aceitação**: 1000+ amostras sem degradação de performance
+#### 1a: Relatório LaTeX completo
+- `report_generator.py` tinha 3 TODOs literais no output `.tex`
+- Substituir por conteúdo real: tabelas `booktabs`, resumo executivo, referências BibTeX
+- **Status**: implementado nesta sessão
+- **Critério de aceitação**: `.tex` gerado compila em `pdflatex` sem erros manuais
 
-#### Rec 12: Type checking completo
-- Executar `mypy src/ --strict` e resolver todos os erros
-- Adicionar type hints em funções sem anotação
-- Configurar `mypy` no CI como check obrigatório (não `continue-on-error`)
-- **Critério de aceitação**: `mypy --strict` sem erros
+#### 1b: Pre-commit hook corrigido
+- Black falhava com `PermissionError` no cache → `--no-verify` usado no último commit
+- Fix: adicionar `language: system` aos hooks Black e isort (usa venv local)
+- **Status**: implementado nesta sessão
+- **Critério de aceitação**: `git commit` corre Black/isort sem erros de permissão
 
-### Fase 2 — Importação Directa (Semanas 3-4)
+#### 1c: Publicar no PyPI
+- `pyproject.toml` e `setup.cfg` já estão corretos
+- Passos: `python -m build` → `twine upload dist/*`
+- Dependência: token PyPI configurado
+- **Critério de aceitação**: `pip install ionflow-pipeline` funciona
 
-#### Rec 10: Parsers de potenciostatos
-- **Gamry** (`.dta`) — parser de texto estruturado
-- **BioLogic** (`.mpr`) — parser binário (usar `galvani` como referência)
+---
+
+### Fase 2 — Importação Direta (Semanas 2-3)
+
+#### Parser de potenciostatos (`src/parsers/`)
+- **Gamry** (`.dta`) — texto estruturado com headers `ZCURVE`
+- **BioLogic** (`.mpr`) — binário (usar `galvani` como referência)
 - **Autolab** (`.csv`) — detectar headers NOVA/Metrohm
-- **Zahner** (`.isc`) — parser XML/binário
-- Cada parser implementa interface `PotentiostatParser`
-- Auto-detecção de formato baseada em extensão + magic bytes
-- **Critério de aceitação**: importar ficheiros reais de cada fabricante
+- **Zahner** (`.isc`) — XML/binário proprietário
+- Interface comum `PotentiostatParser` com `parse(path) -> pd.DataFrame`
+- Auto-detecção por extensão + magic bytes
+- Integração na GUI: botão "Importar EIS" aceita estes formatos automaticamente
+- **Critério de aceitação**: importar ficheiro real de cada fabricante sem conversão manual
 
-### Fase 3 — Qualidade Visual (Semana 5)
+---
 
-#### Rec 11: Testes de regressão visual
-- Instalar `pytest-mpl`
-- Gerar imagens baseline para todos os gráficos (Nyquist, Bode, DRT, Ciclagem)
-- Guardar em `tests/baseline_images/`
-- Adicionar step no CI: `pytest --mpl --mpl-generate-summary=basic`
-- Tolerância configurável (default: 2% RMS)
-- **Critério de aceitação**: CI falha se gráfico mudar inesperadamente
+### Fase 3 — Exportação Científica (Semana 4)
 
-### Fase 4 — Extensibilidade (Semanas 6-7)
+#### Exportadores (`src/export/`)
+- **ZView** (`.z`) — formato texto compatível com ZView/ZPlot
+- **LaTeX booktabs** — tabela de parâmetros com incertezas para artigos
+- **Origin** — CSV com metadados em comentários `#`
+- **MEISP** — formato de texto compatível
+- Menu "Exportar como..." na GUI → submenu com todos os formatos
+- **Critério de aceitação**: ficheiro exportado abre no software alvo sem modificação
 
-#### Rec 13: Plugin system
-- Interface: `CircuitRegistry.register_plugin(path)`
-- Formato plugin: módulo Python com função `register(registry)`
-- Pasta de plugins: `~/.ionflow/plugins/` ou `plugins/`
-- Hot-reload na GUI (botão "Recarregar Plugins")
-- Documentação: tutorial `16_criar_plugin_circuito.txt`
-- **Critério de aceitação**: plugin externo aparece no dropdown de circuitos
+---
 
-#### Rec 14: Exportação para formatos científicos
-- **ZView** (`.z`) — formato texto com headers padrão
-- **LaTeX** — tabelas `booktabs` com parâmetros ajustados
-- **Origin** — CSV formatado com metadados em comentários
-- **MEISP** — formato compatível
-- Menu "Exportar como..." na GUI com todos os formatos
-- **Critério de aceitação**: ficheiro exportado abre no software alvo
+### Fase 4 — Análise Comparativa (Semanas 5-6)
 
-### Fase 5 — Dashboard Web (Semanas 8-10)
+#### Aba "Comparar Amostras" na GUI
+- Selecionar N amostras da tabela → overlay Nyquist / Bode
+- `batch_processor.py` já existe — gap é apenas o frontend
+- **Critério de aceitação**: overlay de 5 amostras com legenda automática
 
-#### Rec 8: Dashboard Streamlit
-- Reutilizar funções de visualização existentes (`eis_charts`, `cycling_charts`, `drt_charts`)
+#### Timeline de parâmetros
+- Gráfico R_ct, C_dl, σ_w por ordem cronológica / ciclo
+- Útil para rastrear degradação de eletrodo ao longo do tempo
+- **Critério de aceitação**: eixo X = timestamp de aquisição, eixo Y = parâmetro
+
+#### Electrode Health Score (0–100)
+- Índice composto: Rs, Rp, KK residual, DRT peaks, cycling retention
+- Fórmula normalizada com pesos ajustáveis em `config.py`
+- Mostrado como badge colorido na tabela de resultados
+- **Critério de aceitação**: score correlaciona com avaliação visual do perito
+
+---
+
+### Fase 5 — IA Generativa (Semanas 7-8)
+
+#### Finalizar LLM adapter (`src/ai/llm_adapter.py`)
+- Já existe como módulo experimental; precisа de testes de integração robustos
+- Suporte a: **Ollama** (local, offline), **OpenAI** (online, opcional)
+- Narrativa automática nas secções do PDF: resumo executivo, interpretação EIS
+- Configurável via Settings (modelo, URL, temperatura)
+- **Critério de aceitação**: relatório PDF com parágrafo gerado por LLM quando Ollama está ativo
+
+---
+
+### Fase 6 — Polish e UX (Semana 9)
+
+#### Painel Settings na GUI
+- `PipelineConfig` editado via JSON à mão actualmente
+- Aba "Configurações" com campos para: paths, LLM, fitting bounds, report config
+- Salva em `config.json` via `PipelineConfig.save()`
+- **Critério de aceitação**: utilizador altera limites de fitting sem editar ficheiros
+
+#### Auto-update funcional (`src/updater.py`)
+- Já verifica versão — completar fluxo: download zip → extrai → reinicia GUI
+- Especialmente útil no Linux (sem instalador)
+- **Critério de aceitação**: notificação de nova versão + botão "Atualizar agora"
+
+---
+
+### Fase 7 — Infraestrutura (Opcional, Semanas 10-12)
+
+#### SQLite backend
+- Migrar `FeatureStore` de JSON → SQLite (só vale com dashboard web)
+- Para uso local, JSON é suficiente até ~5000 amostras
+- Schema: `samples`, `eis_results`, `cycling_results`, `drt_results`, `parameters`
+
+#### Dashboard Streamlit
+- Reutilizar funções de visualização existentes
 - Páginas: Upload → Pipeline → Resultados → Histórico → IA
-- Autenticação básica (password)
+- Útil para partilhar com orientador sem instalar Python
 - Deploy: `streamlit run dashboard.py` ou Docker
-- **Critério de aceitação**: pipeline completo executável via browser
-
-#### Rec 15: Modo comparativo multi-projecto
-- Comparar resultados entre campanhas experimentais
-- Timeline de evolução de parâmetros (R_ct, C_dl, σ_w) ao longo do tempo
-- Dashboard com KPIs do laboratório (nº amostras, taxa de sucesso, etc.)
-- Filtros: data, operador, tipo de célula, eletrólito
-- **Critério de aceitação**: gráfico overlay de N amostras seleccionadas
 
 ---
 
@@ -105,56 +142,66 @@ importação nativa de potenciostatos e sistema de plugins.
 
 ```
 src/
-├── db/                    # NOVO — SQLite backend
-│   ├── models.py          # SQLAlchemy/dataclass models
-│   ├── migrations.py      # Schema versioning
-│   └── feature_store_v2.py
-├── parsers/               # NOVO — Potentiostat importers
+├── parsers/               # NOVO (Fase 2) — Potentiostat importers
 │   ├── base.py            # PotentiostatParser interface
 │   ├── gamry.py
 │   ├── biologic.py
 │   ├── autolab.py
 │   └── zahner.py
-├── plugins/               # NOVO — Plugin loader
-│   ├── loader.py
-│   └── examples/
-├── export/                # NOVO — Scientific exporters
+├── export/                # NOVO (Fase 3) — Scientific exporters
 │   ├── zview.py
 │   ├── latex.py
 │   ├── origin.py
 │   └── meisp.py
-├── dashboard/             # NOVO — Streamlit app
+├── db/                    # NOVO (Fase 7, opc.) — SQLite backend
+│   ├── models.py
+│   ├── migrations.py
+│   └── feature_store_v2.py
+├── dashboard/             # NOVO (Fase 7, opc.) — Streamlit app
 │   ├── app.py
-│   ├── pages/
-│   └── components/
-└── (módulos existentes v0.2.0 mantidos)
+│   └── pages/
+└── (35 módulos v0.2.0 mantidos)
 ```
 
 ---
 
-## ✅ Pré-requisitos antes de iniciar
+## ✅ Pré-requisitos e Estado Actual
 
-- [x] v0.2.0 released no GitHub
+- [x] v0.2.0 released no GitHub (commit `7f3a009`)
 - [x] CI a funcionar (Python 3.11/3.12)
-- [x] Cobertura ≥ 95% (1819 testes)
-- [x] Tutoriais v0.2.0 completos
-- [ ] Publicar no PyPI (Rec 5) — **em curso**
+- [x] 1782+ testes automatizados
+- [x] Cobertura ≥ 95%
+- [x] Pre-commit hook corrigido (Fase 1b)
+- [x] Relatório LaTeX sem TODOs (Fase 1a)
+- [ ] Publicar no PyPI (Fase 1c) — pendente token
 - [ ] Tag `v0.3.0-dev` criada
 
 ---
 
 ## 📊 Métricas de Sucesso
 
-| Métrica | v0.2.0 (actual) | v0.3.0 (alvo) |
-|---------|-----------------|----------------|
-| Testes | 1819 | 2500+ |
-| Cobertura | 95% | ≥ 95% |
+| Métrica | v0.2.0 | v0.3.0 (alvo) |
+|---------|--------|----------------|
+| Testes | 1782 | 2500+ |
+| Cobertura | ≥ 95% | ≥ 95% |
 | Formatos importação | CSV, XLSX | + Gamry, BioLogic, Autolab, Zahner |
-| Formatos exportação | PDF, Excel | + ZView, LaTeX, Origin, MEISP |
-| Type errors (mypy) | ~existem | 0 (strict) |
-| Interface | GUI + CLI | + Dashboard web |
+| Formatos exportação | PDF, Excel, MD | + ZView, LaTeX, Origin, MEISP |
+| Health Score | — | 0–100 por eletrodo |
+| Relatórios IA | Heurística | + LLM generativo (Ollama) |
+| Comparação multi-amostra | — | Overlay na GUI |
+
+---
+
+## ❌ Features Removidas / Re-priorizadas
+
+| Feature original | Decisão | Motivo |
+|-----------------|---------|--------|
+| SQLite (Rec 9) | Fase 7 opcional | JSON suficiente para uso local |
+| mypy strict (Rec 12) | Incremental no CI | Zero valor para utilizador final |
+| Testes visuais pytest-mpl (Rec 11) | Backlog | Nenhum utilizador percebe a diferença |
+| Plugin system (Rec 13) | Backlog | Elegante mas sem demanda imediata |
 
 ---
 
 *Repositório: github.com/Emanuel-963/ubiquitous-jougen*
-*Versão actual: v0.2.0 | Próxima: v0.3.0*
+*Versão actual: v0.2.0 | Próxima: v0.3.0 | Roadmap revisto: 2026-04-27*

@@ -37,7 +37,7 @@ import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -74,11 +74,11 @@ class ReportConfig:
     font_size_small: int = 8
 
     # ── Colours (RGB tuples) ─────────────────────────────────────
-    color_primary: Tuple[int, int, int] = (41, 98, 168)   # blue
+    color_primary: Tuple[int, int, int] = (41, 98, 168)  # blue
     color_secondary: Tuple[int, int, int] = (68, 68, 68)  # dark grey
-    color_accent: Tuple[int, int, int] = (0, 150, 80)     # green
-    color_warning: Tuple[int, int, int] = (200, 120, 0)   # orange
-    color_error: Tuple[int, int, int] = (200, 30, 30)     # red
+    color_accent: Tuple[int, int, int] = (0, 150, 80)  # green
+    color_warning: Tuple[int, int, int] = (200, 120, 0)  # orange
+    color_error: Tuple[int, int, int] = (200, 30, 30)  # red
     color_table_header: Tuple[int, int, int] = (41, 98, 168)
     color_table_alt_row: Tuple[int, int, int] = (240, 245, 255)
 
@@ -175,8 +175,7 @@ class GenerationHistory:
         """
         # Calculate version based on same output_path
         same_path = [
-            r for r in self._records
-            if r.get("output_path") == record.output_path
+            r for r in self._records if r.get("output_path") == record.output_path
         ]
         version = len(same_path) + 1
         record.version = version
@@ -271,8 +270,13 @@ def build_eis_section(
     """
     eis = pipeline_results.get("eis")
     if eis is None:
-        return {"text": "EIS analysis was not performed.", "ranking_table": None,
-                "best_circuit": None, "circuit_stats": {}, "image_paths": []}
+        return {
+            "text": "EIS analysis was not performed.",
+            "ranking_table": None,
+            "best_circuit": None,
+            "circuit_stats": {},
+            "image_paths": [],
+        }
 
     ranked = getattr(eis, "ranked_df", None)
     if ranked is None:
@@ -309,9 +313,7 @@ def build_eis_section(
         f"Best-fit equivalent circuit model: **{best_circuit}**.",
     ]
     if ranked is not None and not ranked.empty:
-        text_lines.append(
-            f"Ranked {len(ranked)} samples by composite score."
-        )
+        text_lines.append(f"Ranked {len(ranked)} samples by composite score.")
 
     return {
         "ranking_table": ranked,
@@ -328,8 +330,11 @@ def build_cycling_section(
     """Extract cycling section data."""
     cyc = pipeline_results.get("cycling")
     if cyc is None:
-        return {"text": "Cycling analysis was not performed.",
-                "table": None, "image_paths": []}
+        return {
+            "text": "Cycling analysis was not performed.",
+            "table": None,
+            "image_paths": [],
+        }
 
     merged = getattr(cyc, "merged_table", None)
     if merged is None:
@@ -337,8 +342,7 @@ def build_cycling_section(
 
     # Collect plot paths
     plot_paths = getattr(cyc, "energy_power_paths", []) or []
-    image_paths = [p[1] if isinstance(p, (list, tuple)) else str(p)
-                   for p in plot_paths]
+    image_paths = [p[1] if isinstance(p, (list, tuple)) else str(p) for p in plot_paths]
     image_paths = [p for p in image_paths if p and os.path.exists(p)]
 
     n_files = len(getattr(cyc, "results", {}) or {})
@@ -357,8 +361,12 @@ def build_drt_section(
     """Extract DRT section data."""
     drt = pipeline_results.get("drt")
     if drt is None:
-        return {"text": "DRT analysis was not performed.",
-                "peaks_table": None, "summary_table": None, "image_paths": []}
+        return {
+            "text": "DRT analysis was not performed.",
+            "peaks_table": None,
+            "summary_table": None,
+            "image_paths": [],
+        }
 
     peaks = getattr(drt, "drt_peaks_table", None)
     if peaks is None:
@@ -370,8 +378,7 @@ def build_drt_section(
 
     # Plot paths
     plot_paths = getattr(drt, "plot_paths", []) or []
-    image_paths = [p[1] if isinstance(p, (list, tuple)) else str(p)
-                   for p in plot_paths]
+    image_paths = [p[1] if isinstance(p, (list, tuple)) else str(p) for p in plot_paths]
     image_paths = [p for p in image_paths if p and os.path.exists(p)]
 
     meta = getattr(drt, "run_meta", {}) or {}
@@ -405,14 +412,16 @@ def build_correlation_text(
         return "Not enough numeric columns for correlation."
 
     from scipy.stats import spearmanr
+
     cols = list(numeric.columns)[:12]  # limit
     lines = ["Top Spearman correlations (|ρ| > 0.5):"]
     pairs: List[Tuple[str, str, float]] = []
     for i, c1 in enumerate(cols):
-        for c2 in cols[i + 1:]:
+        for c2 in cols[i + 1 :]:
             try:
                 rho, _ = spearmanr(
-                    numeric[c1].dropna(), numeric[c2].dropna(),
+                    numeric[c1].dropna(),
+                    numeric[c2].dropna(),
                     nan_policy="omit",
                 )
                 if np.isfinite(rho) and abs(rho) > 0.5:
@@ -484,8 +493,11 @@ def generate_markdown(
         if eis_data["ranking_table"] is not None:
             sections.append("### Ranking Table\n")
             df = eis_data["ranking_table"]
-            cols = [c for c in ["Sample", "Rs_fit", "Rp_fit", "Score", "Rank"]
-                    if c in df.columns]
+            cols = [
+                c
+                for c in ["Sample", "Rs_fit", "Rp_fit", "Score", "Rank"]
+                if c in df.columns
+            ]
             if cols:
                 sections.append(
                     df[cols].head(cfg.max_table_rows).to_markdown(index=False)
@@ -512,9 +524,9 @@ def generate_markdown(
         if drt_data.get("summary_table") is not None:
             sections.append("### DRT Summary\n")
             sections.append(
-                drt_data["summary_table"].head(cfg.max_table_rows).to_markdown(
-                    index=False
-                )
+                drt_data["summary_table"]
+                .head(cfg.max_table_rows)
+                .to_markdown(index=False)
             )
             sections.append("")
 
@@ -629,13 +641,30 @@ class _IonFlowPDF:
         # Author / institution / date
         self._set_color(cfg.color_secondary)
         self.pdf.set_font(cfg.font_family, "", cfg.font_size_body + 1)
-        self.pdf.cell(pw, 7, _clean_text(f"Author: {cfg.author}"), align="C", new_x="LMARGIN", new_y="NEXT")
-        if cfg.institution:
-            self.pdf.cell(pw, 7, _clean_text(cfg.institution), align="C", new_x="LMARGIN", new_y="NEXT")
         self.pdf.cell(
-            pw, 7,
+            pw,
+            7,
+            _clean_text(f"Author: {cfg.author}"),
+            align="C",
+            new_x="LMARGIN",
+            new_y="NEXT",
+        )
+        if cfg.institution:
+            self.pdf.cell(
+                pw,
+                7,
+                _clean_text(cfg.institution),
+                align="C",
+                new_x="LMARGIN",
+                new_y="NEXT",
+            )
+        self.pdf.cell(
+            pw,
+            7,
             f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
-            align="C", new_x="LMARGIN", new_y="NEXT",
+            align="C",
+            new_x="LMARGIN",
+            new_y="NEXT",
         )
         self.pdf.ln(10)
 
@@ -851,19 +880,19 @@ def _clean_text(text: str) -> str:
     text = re.sub(r"\*(.*?)\*", r"\1", text)
     # Replace common unicode that fpdf2 Helvetica can't render
     replacements = {
-        "\u2022": "-",   # bullet
-        "\u2013": "-",   # en-dash
+        "\u2022": "-",  # bullet
+        "\u2013": "-",  # en-dash
         "\u2014": "--",  # em-dash
-        "\u2018": "'",   # left single quote
-        "\u2019": "'",   # right single quote
-        "\u201c": '"',   # left double quote
-        "\u201d": '"',   # right double quote
-        "\u2026": "...", # ellipsis
-        "\u00b1": "+/-", # plus-minus
-        "\u03a9": "Ohm", # Omega
-        "\u03c4": "tau", # tau
-        "\u03bb": "lambda", # lambda
-        "\u03b3": "gamma", # gamma
+        "\u2018": "'",  # left single quote
+        "\u2019": "'",  # right single quote
+        "\u201c": '"',  # left double quote
+        "\u201d": '"',  # right double quote
+        "\u2026": "...",  # ellipsis
+        "\u00b1": "+/-",  # plus-minus
+        "\u03a9": "Ohm",  # Omega
+        "\u03c4": "tau",  # tau
+        "\u03bb": "lambda",  # lambda
+        "\u03b3": "gamma",  # gamma
         "\u2192": "->",  # arrow
         "\u2264": "<=",  # less-equal
         "\u2265": ">=",  # greater-equal
@@ -872,15 +901,15 @@ def _clean_text(text: str) -> str:
         "\u2070": "^0",  # superscript 0
         "\u2071": "^i",
         "\u207b": "^-",
-        "\U0001f7e2": "[OK]",    # green circle
+        "\U0001f7e2": "[OK]",  # green circle
         "\U0001f7e1": "[WARN]",  # yellow circle
-        "\U0001f534": "[ERR]",   # red circle
-        "\U0001f916": "[AI]",    # robot
-        "\U0001f4a1": "[TIP]",   # bulb
+        "\U0001f534": "[ERR]",  # red circle
+        "\U0001f916": "[AI]",  # robot
+        "\U0001f4a1": "[TIP]",  # bulb
         "\U0001f52e": "[PRED]",  # crystal ball
-        "\u26a0\ufe0f": "[!]",   # warning
-        "\u2705": "[v]",         # check
-        "\u274c": "[x]",         # cross
+        "\u26a0\ufe0f": "[!]",  # warning
+        "\u2705": "[v]",  # check
+        "\u274c": "[x]",  # cross
     }
     for old, new in replacements.items():
         text = text.replace(old, new)
@@ -962,6 +991,7 @@ class ReportGenerator:
             Paths to generated files.
         """
         import time as _time
+
         t0 = _time.time()
         cfg = self._report_config
         fmts = formats or cfg.output_formats
@@ -985,7 +1015,8 @@ class ReportGenerator:
         # AI enhancement
         if cfg.enable_ai_enhancement and ai_summary and self._pipeline_config:
             ai_summary = _enhance_text(
-                ai_summary, "Executive summary for a scientific report",
+                ai_summary,
+                "Executive summary for a scientific report",
                 self._pipeline_config,
             )
 
@@ -994,19 +1025,25 @@ class ReportGenerator:
             try:
                 if fmt == "pdf":
                     path = self._generate_pdf(
-                        output_path, pipeline_results, ai_summary,
+                        output_path,
+                        pipeline_results,
+                        ai_summary,
                     )
                     generated.append(path)
                 elif fmt == "markdown":
                     base = Path(output_path).with_suffix(".md")
                     md = generate_markdown(
-                        pipeline_results, ai_summary, cfg,
+                        pipeline_results,
+                        ai_summary,
+                        cfg,
                     )
                     base.parent.mkdir(parents=True, exist_ok=True)
                     base.write_text(md, encoding="utf-8")
                     generated.append(str(base))
                 elif fmt == "latex":
-                    path = self._generate_latex_stub(output_path, pipeline_results)
+                    path = self._generate_latex_stub(
+                        output_path, pipeline_results, ai_summary
+                    )
                     generated.append(path)
                 elif fmt == "docx":
                     path = self._generate_docx_stub(output_path)
@@ -1035,7 +1072,10 @@ class ReportGenerator:
             version = self._history.add(record)
             logger.info(
                 "Report generated: %s (v%d, %.1f KB, %.1fs)",
-                path, version, size / 1024, elapsed,
+                path,
+                version,
+                size / 1024,
+                elapsed,
             )
 
         return generated
@@ -1164,44 +1204,206 @@ class ReportGenerator:
         self,
         output_path: str,
         pipeline_results: Dict[str, Any],
+        ai_summary: Optional[str] = None,
     ) -> str:
-        """Generate a LaTeX document stub.
+        """Generate a LaTeX document with real content.
 
-        Sprint 3 placeholder — full LaTeX support will use jinja2 templates.
+        Produces a compilable .tex file using booktabs tables and
+        structured sections populated from the pipeline results.
+        Compile with: pdflatex <file>.tex
         """
         path = str(Path(output_path).with_suffix(".tex"))
         cfg = self._report_config
 
-        sections_list = []
-        if "eis" in pipeline_results:
-            sections_list.append("EIS Analysis")
-        if "cycling" in pipeline_results:
-            sections_list.append("Cycling Analysis")
-        if "drt" in pipeline_results:
-            sections_list.append("DRT Analysis")
+        def _tex_escape(text: str) -> str:
+            """Escape special LaTeX characters in plain text."""
+            replacements = [
+                ("\\", "\\textbackslash{}"),
+                ("&", "\\&"),
+                ("%", "\\%"),
+                ("$", "\\$"),
+                ("#", "\\#"),
+                ("_", "\\_"),
+                ("{", "\\{"),
+                ("}", "\\}"),
+                ("~", "\\textasciitilde{}"),
+                ("^", "\\textasciicircum{}"),
+            ]
+            for old, new in replacements:
+                text = text.replace(old, new)
+            return text
 
-        sections_tex = "\n".join(
-            f"\\section{{{s}}}\n% TODO: Add content for {s}\n" for s in sections_list
+        def _df_to_booktabs(df: "pd.DataFrame", max_rows: int = 20) -> str:
+            """Convert a DataFrame to a LaTeX booktabs table."""
+            if df is None or df.empty:
+                return "No data available.\n"
+            cols = list(df.columns)[:8]  # cap columns
+            df_sub = df[cols].head(max_rows)
+            col_spec = "l" + "r" * (len(cols) - 1)
+            header = " & ".join(_tex_escape(str(c)) for c in cols) + " \\\\"
+            rows = []
+            for _, row in df_sub.iterrows():
+                cells = " & ".join(_tex_escape(_safe_str(row[c])) for c in cols)
+                rows.append(cells + " \\\\")
+            lines = [
+                f"\\begin{{tabular}}{{{col_spec}}}",
+                "\\toprule",
+                header,
+                "\\midrule",
+                "\n".join(rows),
+                "\\bottomrule",
+                "\\end{tabular}",
+            ]
+            return "\n".join(lines)
+
+        # ── Build section content ────────────────────────────────
+        sections_tex: List[str] = []
+
+        if "eis" in pipeline_results:
+            eis_data = build_eis_section(pipeline_results)
+            eis_text = _tex_escape(eis_data.get("text", ""))
+            best_cir = _tex_escape(str(eis_data.get("best_circuit", "N/A")))
+            ranked = eis_data.get("ranking_table")
+            table_tex = _df_to_booktabs(ranked) if ranked is not None else ""
+            sec = (
+                "\\section{EIS Impedance Analysis}\n"
+                f"{eis_text}\n\n"
+                f"Best-fit equivalent circuit: \\textbf{{{best_cir}}}.\n\n"
+            )
+            if table_tex:
+                sec += (
+                    "\\subsection{Sample Ranking}\n"
+                    "\\begin{table}[h!]\n"
+                    "\\centering\n"
+                    "\\caption{EIS parameter ranking by composite score.}\n"
+                    "\\small\n"
+                    f"{table_tex}\n"
+                    "\\end{table}\n"
+                )
+            sections_tex.append(sec)
+
+        if "cycling" in pipeline_results:
+            cyc_data = build_cycling_section(pipeline_results)
+            cyc_text = _tex_escape(cyc_data.get("text", ""))
+            cyc_table = cyc_data.get("table")
+            table_tex = _df_to_booktabs(cyc_table) if cyc_table is not None else ""
+            sec = "\\section{Cycling Analysis}\n" f"{cyc_text}\n\n"
+            if table_tex:
+                sec += (
+                    "\\subsection{Energy and Power Data}\n"
+                    "\\begin{table}[h!]\n"
+                    "\\centering\n"
+                    "\\caption{Cycling energy and power metrics per file.}\n"
+                    "\\small\n"
+                    f"{table_tex}\n"
+                    "\\end{table}\n"
+                )
+            sections_tex.append(sec)
+
+        if "drt" in pipeline_results:
+            drt_data = build_drt_section(pipeline_results)
+            drt_text = _tex_escape(drt_data.get("text", ""))
+            peaks_table = drt_data.get("peaks_table")
+            table_tex = _df_to_booktabs(peaks_table) if peaks_table is not None else ""
+            sec = (
+                "\\section{Distribution of Relaxation Times (DRT)}\n" f"{drt_text}\n\n"
+            )
+            if table_tex:
+                sec += (
+                    "\\subsection{DRT Peak Summary}\n"
+                    "\\begin{table}[h!]\n"
+                    "\\centering\n"
+                    "\\caption{Identified DRT peaks and relaxation times.}\n"
+                    "\\small\n"
+                    f"{table_tex}\n"
+                    "\\end{table}\n"
+                )
+            sections_tex.append(sec)
+
+        # Correlations
+        corr_text = build_correlation_text(pipeline_results)
+        if corr_text and "not performed" not in corr_text:
+            sections_tex.append(
+                "\\section{Parameter Correlations}\n" + _tex_escape(corr_text) + "\n"
+            )
+
+        # ── Abstract (executive summary or auto-generated) ───────
+        if ai_summary:
+            abstract_text = _tex_escape(ai_summary[:600])
+        else:
+            # Auto-generate from available data
+            parts = []
+            if "eis" in pipeline_results:
+                eis_data = build_eis_section(pipeline_results)
+                parts.append(eis_data.get("text", ""))
+            if "cycling" in pipeline_results:
+                cyc_data = build_cycling_section(pipeline_results)
+                parts.append(cyc_data.get("text", ""))
+            if "drt" in pipeline_results:
+                drt_data = build_drt_section(pipeline_results)
+                parts.append(drt_data.get("text", ""))
+            abstract_text = _tex_escape(" ".join(p for p in parts if p))
+            if not abstract_text:
+                abstract_text = (
+                    "This report presents electrochemical impedance spectroscopy "
+                    "results generated by the IonFlow Pipeline."
+                )
+
+        # ── References ───────────────────────────────────────────
+        references_bib = (
+            "\\begin{thebibliography}{9}\n"
+            "\\bibitem{boukamp1995}\n"
+            "  B.A. Boukamp, ``A Linear Kronig-Kramers Transform Test for "
+            "Immittance Data Validation,''\n"
+            "  \\textit{J. Electrochem. Soc.}, vol. 142, no. 6, pp. 1885--1894, 1995.\n\n"
+            "\\bibitem{wan2015}\n"
+            "  T.H. Wan et al., ``Influence of the Discretization Methods on the "
+            "Distribution of Relaxation Times,''\n"
+            "  \\textit{Electrochimica Acta}, vol. 184, pp. 483--499, 2015.\n\n"
+            "\\bibitem{lasia2014}\n"
+            "  A. Lasia, \\textit{Electrochemical Impedance Spectroscopy and its "
+            "Applications}.\n"
+            "  Springer, 2014.\n\n"
+            "\\bibitem{barsoukov2018}\n"
+            "  E. Barsoukov and J.R. Macdonald, \\textit{Impedance Spectroscopy: "
+            "Theory, Experiment, and Applications}.\n"
+            "  Wiley, 2018.\n"
+            "\\end{thebibliography}\n"
         )
+
+        # ── Assemble document ────────────────────────────────────
+        title_tex = _tex_escape(cfg.title)
+        author_tex = _tex_escape(cfg.author)
+        institution_line = (
+            f"\\\\\\textit{{{_tex_escape(cfg.institution)}}}" if cfg.institution else ""
+        )
+        generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
 
         latex = (
             "\\documentclass[12pt,a4paper]{article}\n"
             "\\usepackage[utf8]{inputenc}\n"
+            "\\usepackage[T1]{fontenc}\n"
             "\\usepackage{graphicx}\n"
             "\\usepackage{booktabs}\n"
             "\\usepackage{amsmath}\n"
-            "\\usepackage{hyperref}\n\n"
-            f"\\title{{{cfg.title}}}\n"
-            f"\\author{{{cfg.author}}}\n"
+            "\\usepackage{hyperref}\n"
+            "\\usepackage{geometry}\n"
+            "\\geometry{margin=2.5cm}\n\n"
+            f"\\title{{{title_tex}}}\n"
+            f"\\author{{{author_tex}{institution_line}}}\n"
             "\\date{\\today}\n\n"
             "\\begin{document}\n"
             "\\maketitle\n\n"
             "\\begin{abstract}\n"
-            "% TODO: Add executive summary here\n"
+            f"{abstract_text}\n"
             "\\end{abstract}\n\n"
-            f"{sections_tex}\n"
-            "\\section{References}\n"
-            "% TODO: Use BibTeX for references\n\n"
+            "\\tableofcontents\n"
+            "\\newpage\n\n" + "\n".join(sections_tex) + "\n"
+            "\\section*{References}\n"
+            f"{references_bib}\n"
+            f"\\vfill\n"
+            f"\\noindent\\small{{\\textit{{Generated by IonFlow Pipeline on "
+            f"{generated_at}}}}}\n\n"
             "\\end{document}\n"
         )
 
