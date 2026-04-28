@@ -42,6 +42,9 @@ dev = [
 build = [
     "pyinstaller>=6.0",
 ]
+dashboard = [
+    "streamlit>=1.30",
+]
 
 # Entry-point: `ionflow` command launches the GUI
 [project.gui-scripts]
