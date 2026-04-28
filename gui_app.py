@@ -45,6 +45,14 @@ from main_cycling import run_ciclagem_pipeline
 from main_drt import run_drt_pipeline
 from src.batch_processor import BatchProcessor, BatchResult
 from src.circuit_composer import CircuitComposer
+from src.comparison import (
+    available_timeline_params,
+    compute_health_score,
+    health_score_label,
+    plot_bode_overlay,
+    plot_nyquist_overlay,
+    plot_parameter_timeline,
+)
 from src.cycling_plotter import plot_energy_power_vs_cycle
 from src.drt_visualization import plot_drt_heatmap, plot_drt_overlay, plot_drt_spectrum
 from src.eis_plots import (
@@ -735,6 +743,13 @@ class PipelineApp(ctk.CTk):
         )
         self.btn_export.grid(row=11, column=0, padx=16, pady=(0, 8), sticky="ew")
 
+        self.btn_compare = ctk.CTkButton(
+            sidebar,
+            text="🔄 " + tr("Comparar Amostras"),
+            command=lambda: self.tabs.set("🔄 " + tr("Comparar Amostras")),
+        )
+        self.btn_compare.grid(row=12, column=0, padx=16, pady=(0, 8), sticky="ew")
+
         self.btn_batch = ctk.CTkButton(
             sidebar,
             text="⚡ " + tr("Batch Processing"),
@@ -771,13 +786,13 @@ class PipelineApp(ctk.CTk):
         self.llm_provider_selector.set(tr("Nenhum"))
 
         self.status_label = ctk.CTkLabel(sidebar, text=tr("Status: pronto"), anchor="w")
-        self.status_label.grid(row=11, column=0, padx=16, pady=8, sticky="ew")
+        self.status_label.grid(row=23, column=0, padx=16, pady=8, sticky="ew")
 
         self.progress_label = ctk.CTkLabel(sidebar, text=tr("Pronto"), anchor="w")
-        self.progress_label.grid(row=12, column=0, padx=16, pady=(0, 4), sticky="ew")
+        self.progress_label.grid(row=24, column=0, padx=16, pady=(0, 4), sticky="ew")
 
         self.progress_bar = ctk.CTkProgressBar(sidebar, mode="indeterminate")
-        self.progress_bar.grid(row=13, column=0, padx=16, pady=(0, 12), sticky="ew")
+        self.progress_bar.grid(row=25, column=0, padx=16, pady=(0, 12), sticky="ew")
         self.progress_bar.set(0)
 
         ctk.CTkLabel(sidebar, text=tr("Tema"), anchor="w").grid(
@@ -816,6 +831,7 @@ class PipelineApp(ctk.CTk):
         self.tab_kk = self.tabs.add("🔬 " + tr("Validação KK"))
         self.tab_diag = self.tabs.add("🩺 " + tr("Diagnóstico Fitting"))
         self.tab_report_text = self.tabs.add("📝 " + tr("Relatório Fitting"))
+        self.tab_compare = self.tabs.add("🔄 " + tr("Comparar Amostras"))
 
         # ── AI Analysis tab content ──────────────────────────────
         ai_frame = ctk.CTkFrame(self.tab_ai)
@@ -913,6 +929,9 @@ class PipelineApp(ctk.CTk):
             report_txt_frame, wrap="word", font=ctk.CTkFont(size=13)
         )
         self.fitting_report_textbox.pack(fill="both", expand=True, padx=8, pady=8)
+
+        # ── Compare tab content ──────────────────────────────────
+        self._build_compare_tab()
 
         # Plots area
         self.plots_frame = ctk.CTkScrollableFrame(self.tab_plots)
@@ -4788,6 +4807,7 @@ class PipelineApp(ctk.CTk):
         self._update_status_bar(
             pipeline_status="idle", samples_loaded=len(self.raw_eis)
         )
+        self._refresh_compare_sample_list()
         # Atualiza janela interativa se estiver aberta
         if self.interactive_win is not None and self.interactive_win.winfo_exists():
             self._open_interactive_window()
@@ -4923,6 +4943,302 @@ class PipelineApp(ctk.CTk):
         self._enable_buttons()
         if self.interactive_win is not None and self.interactive_win.winfo_exists():
             self._open_interactive_window(preferred_tab="DRT")
+
+    # =========================================================================
+    # Phase 4 — Comparative Analysis
+    # =========================================================================
+
+    def _build_compare_tab(self):
+        """Build the 'Comparar Amostras' tab with overlay plots and Health Score."""
+        outer = ctk.CTkFrame(self.tab_compare)
+        outer.pack(fill="both", expand=True, padx=8, pady=8)
+        outer.grid_rowconfigure(0, weight=1)
+        outer.grid_columnconfigure(0, weight=0)  # fixed-width sample list
+        outer.grid_columnconfigure(1, weight=1)  # expandable plot area
+
+        # ── Left: sample selector ─────────────────────────────────────────
+        left = ctk.CTkFrame(outer, width=210)
+        left.grid(row=0, column=0, sticky="nsew", padx=(0, 8), pady=0)
+        left.grid_propagate(False)
+        left.grid_rowconfigure(2, weight=1)
+        left.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(
+            left,
+            text=tr("Amostras"),
+            anchor="w",
+            font=ctk.CTkFont(size=13, weight="bold"),
+        ).grid(row=0, column=0, sticky="ew", padx=8, pady=(8, 4))
+
+        btn_row = ctk.CTkFrame(left)
+        btn_row.grid(row=1, column=0, sticky="ew", padx=4, pady=(0, 4))
+        btn_row.grid_columnconfigure(0, weight=1)
+        btn_row.grid_columnconfigure(1, weight=1)
+        ctk.CTkButton(
+            btn_row,
+            text="✓ " + tr("Todos"),
+            height=26,
+            command=self._compare_select_all,
+        ).grid(row=0, column=0, padx=(4, 2), pady=4, sticky="ew")
+        ctk.CTkButton(
+            btn_row,
+            text="✗ " + tr("Limpar"),
+            height=26,
+            command=self._compare_select_none,
+        ).grid(row=0, column=1, padx=(2, 4), pady=4, sticky="ew")
+
+        self.compare_scroll = ctk.CTkScrollableFrame(left)
+        self.compare_scroll.grid(row=2, column=0, sticky="nsew", padx=4, pady=4)
+
+        ctk.CTkButton(
+            left,
+            text="🔄 " + tr("Comparar"),
+            command=self._run_compare_clicked,
+            font=ctk.CTkFont(size=13, weight="bold"),
+        ).grid(row=3, column=0, padx=8, pady=(4, 8), sticky="ew")
+
+        # ── Right: subtabs for Nyquist, Bode, Timeline, Health Score ─────
+        right = ctk.CTkFrame(outer)
+        right.grid(row=0, column=1, sticky="nsew")
+        right.grid_rowconfigure(0, weight=1)
+        right.grid_columnconfigure(0, weight=1)
+
+        self.compare_tabs = ctk.CTkTabview(right)
+        self.compare_tabs.grid(row=0, column=0, sticky="nsew", padx=4, pady=4)
+
+        self.compare_tab_nyquist = self.compare_tabs.add("🟦 Nyquist")
+        self.compare_tab_bode = self.compare_tabs.add("📈 Bode")
+        self.compare_tab_timeline = self.compare_tabs.add("📊 " + tr("Timeline"))
+        self.compare_tab_score = self.compare_tabs.add("💚 Health Score")
+
+        # Nyquist canvas placeholder
+        self.compare_nyquist_frame = ctk.CTkFrame(self.compare_tab_nyquist)
+        self.compare_nyquist_frame.pack(fill="both", expand=True)
+
+        # Bode canvas placeholder
+        self.compare_bode_frame = ctk.CTkFrame(self.compare_tab_bode)
+        self.compare_bode_frame.pack(fill="both", expand=True)
+
+        # Timeline tab: param checkboxes + canvas
+        tl_ctrl = ctk.CTkFrame(self.compare_tab_timeline)
+        tl_ctrl.pack(fill="x", padx=8, pady=(8, 0))
+        ctk.CTkLabel(tl_ctrl, text=tr("Parâmetros") + ":", anchor="w").pack(
+            side="left", padx=(4, 8)
+        )
+        self.compare_tl_vars: Dict[str, ctk.BooleanVar] = {}
+        for col, lbl in [
+            ("Rs_fit", "Rs"),
+            ("Rp_fit", "Rp"),
+            ("C_mean", "C"),
+            ("Energy_mean", "Energia"),
+        ]:
+            var = ctk.BooleanVar(value=True)
+            self.compare_tl_vars[col] = var
+            ctk.CTkCheckBox(tl_ctrl, text=lbl, variable=var, width=85).pack(
+                side="left", padx=4
+            )
+
+        self.compare_timeline_canvas_frame = ctk.CTkFrame(self.compare_tab_timeline)
+        self.compare_timeline_canvas_frame.pack(
+            fill="both", expand=True, padx=8, pady=8
+        )
+
+        # Health Score tab: treeview with colour-coded rows
+        score_frame = ctk.CTkFrame(self.compare_tab_score)
+        score_frame.pack(fill="both", expand=True, padx=8, pady=8)
+        score_frame.grid_rowconfigure(1, weight=1)
+        score_frame.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(
+            score_frame,
+            text="Electrode Health Score — índice composto 0–100",
+            anchor="w",
+            font=ctk.CTkFont(size=12),
+        ).grid(row=0, column=0, sticky="ew", padx=8, pady=(8, 4))
+
+        tree_frame = ctk.CTkFrame(score_frame)
+        tree_frame.grid(row=1, column=0, sticky="nsew", padx=4, pady=4)
+        tree_frame.grid_rowconfigure(0, weight=1)
+        tree_frame.grid_columnconfigure(0, weight=1)
+
+        self.health_score_tree = ttk.Treeview(
+            tree_frame,
+            show="headings",
+            columns=("sample", "score", "label", "Rs", "Rp", "C", "E"),
+        )
+        for col_id, heading, w in [
+            ("sample", tr("Amostra"), 200),
+            ("score", "Health Score", 110),
+            ("label", tr("Categoria"), 100),
+            ("Rs", "Rs (Ω)", 100),
+            ("Rp", "Rp (Ω)", 100),
+            ("C", "C (F)", 100),
+            ("E", "Energia (Wh/kg)", 130),
+        ]:
+            self.health_score_tree.heading(col_id, text=heading)
+            self.health_score_tree.column(col_id, width=w, anchor="center")
+        self.health_score_tree.column("sample", anchor="w")
+
+        self.health_score_tree.tag_configure("excellent", foreground="#16a34a")
+        self.health_score_tree.tag_configure("good", foreground="#ca8a04")
+        self.health_score_tree.tag_configure("regular", foreground="#ea580c")
+        self.health_score_tree.tag_configure("degraded", foreground="#dc2626")
+
+        vsb = ttk.Scrollbar(
+            tree_frame, orient="vertical", command=self.health_score_tree.yview
+        )
+        hsb = ttk.Scrollbar(
+            tree_frame, orient="horizontal", command=self.health_score_tree.xview
+        )
+        self.health_score_tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+        self.health_score_tree.grid(row=0, column=0, sticky="nsew")
+        vsb.grid(row=0, column=1, sticky="ns")
+        hsb.grid(row=1, column=0, sticky="ew")
+
+        # Storage for sample checkboxes
+        self.compare_sample_vars: Dict[str, ctk.BooleanVar] = {}
+
+    # ── Compare tab helpers ───────────────────────────────────────────
+
+    def _refresh_compare_sample_list(self):
+        """Rebuild the sample checklist in the Compare tab from self.raw_eis."""
+        for widget in self.compare_scroll.winfo_children():
+            widget.destroy()
+        self.compare_sample_vars.clear()
+
+        for name in sorted(self.raw_eis.keys()):
+            var = ctk.BooleanVar(value=True)
+            self.compare_sample_vars[name] = var
+            label = name if len(name) <= 28 else f"\u2026{name[-25:]}"
+            ctk.CTkCheckBox(
+                self.compare_scroll,
+                text=label,
+                variable=var,
+                wraplength=180,
+            ).pack(anchor="w", padx=4, pady=2)
+
+    def _compare_select_all(self):
+        for var in self.compare_sample_vars.values():
+            var.set(True)
+
+    def _compare_select_none(self):
+        for var in self.compare_sample_vars.values():
+            var.set(False)
+
+    def _run_compare_clicked(self):
+        """Generate overlay plots and health score for selected samples."""
+        selected = [k for k, v in self.compare_sample_vars.items() if v.get()]
+
+        if not selected:
+            self._append_log(tr("Nenhuma amostra selecionada para comparação."))
+            return
+
+        # Nyquist overlay
+        self._embed_compare_fig(
+            self.compare_nyquist_frame,
+            lambda: plot_nyquist_overlay(self.raw_eis, selected),
+        )
+
+        # Bode overlay
+        self._embed_compare_fig(
+            self.compare_bode_frame,
+            lambda: plot_bode_overlay(self.raw_eis, selected),
+        )
+
+        # Parameter timeline + Health Score (need features_df)
+        last = getattr(self, "last_eis_result", None)
+        features_df = getattr(last, "features_df", None) if last else None
+
+        if features_df is not None and not features_df.empty:
+            # Filter to selected samples; fall back to full df if none match
+            mask = features_df.index.isin(selected)
+            subset = features_df.loc[mask] if mask.any() else features_df
+
+            active_params = [c for c, v in self.compare_tl_vars.items() if v.get()]
+            self._embed_compare_fig(
+                self.compare_timeline_canvas_frame,
+                lambda df=subset, p=active_params: plot_parameter_timeline(
+                    df, params=p
+                ),
+            )
+
+            scores = compute_health_score(subset)
+            self._update_health_score_table(subset, scores)
+        else:
+            self._append_log(
+                tr("Execute o Pipeline EIS primeiro para ver timeline e Health Score.")
+            )
+
+    def _embed_compare_fig(self, frame, plot_fn):
+        """Clear *frame* and embed the matplotlib Figure returned by *plot_fn*."""
+        for widget in frame.winfo_children():
+            widget.destroy()
+        try:
+            fig = plot_fn()
+            canvas = FigureCanvasTkAgg(fig, master=frame)
+            canvas.draw()
+            canvas.get_tk_widget().pack(fill="both", expand=True)
+            plt.close(fig)
+        except Exception as exc:
+            ctk.CTkLabel(
+                frame,
+                text=f"Erro ao gerar gráfico:\n{exc}",
+                wraplength=400,
+                anchor="center",
+            ).pack(expand=True)
+
+    def _update_health_score_table(
+        self, features_df: "pd.DataFrame", scores: "pd.Series"
+    ):
+        """Populate the Health Score treeview."""
+        tree = self.health_score_tree
+        for row_id in tree.get_children():
+            tree.delete(row_id)
+
+        def _fmt(val):
+            try:
+                f = float(val)
+                if abs(f) == 0:
+                    return "0"
+                return f"{f:.4g}"
+            except Exception:
+                return "—"
+
+        tag_map = {
+            "Excelente": "excellent",
+            "Bom": "good",
+            "Regular": "regular",
+            "Degradado": "degraded",
+        }
+
+        for name, score in scores.items():
+            label = health_score_label(float(score))
+            tag = tag_map.get(label, "regular")
+
+            def _get(col):
+                try:
+                    return (
+                        _fmt(features_df.at[name, col])
+                        if col in features_df.columns
+                        else "—"
+                    )
+                except Exception:
+                    return "—"
+
+            tree.insert(
+                "",
+                "end",
+                values=(
+                    name,
+                    score,
+                    label,
+                    _get("Rs_fit"),
+                    _get("Rp_fit"),
+                    _get("C_mean"),
+                    _get("Energy_mean"),
+                ),
+                tags=(tag,),
+            )
 
 
 def main():
