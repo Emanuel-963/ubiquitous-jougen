@@ -30,6 +30,10 @@ build/
 # User-local GUI settings (contains personal paths)
 .ionflow_gui_settings.json
 
+# Runtime logs and ML cache (not version-controlled)
+logs/
+data/ml/
+
 # Large cycling data (download separately or provide your own)
 data/processed/*.txt
 data/organnnn/*GCD*
