@@ -1,0 +1,211 @@
+================================================================================
+      TUTORIAL 21 — ANÁLISE COMPARATIVA MULTI-AMOSTRA (IONFLOW v0.3.0)
+================================================================================
+
+Versão: 0.3.0
+Última atualização: Abril 2026
+
+--------------------------------------------------------------------------------
+O QUE É A ANÁLISE COMPARATIVA?
+--------------------------------------------------------------------------------
+
+A v0.3.0 adiciona uma aba "📊 Comparar" na GUI que permite analisar múltiplas
+amostras lado a lado numa única visualização.
+
+Funcionalidades:
+  ✅ Sobreposição de gráficos Nyquist para N amostras
+  ✅ Sobreposição de gráficos Bode (|Z| e fase)
+  ✅ Health Score automático (0–10) por amostra
+  ✅ Tabela de ranking ordenada por desempenho
+  ✅ PCA (Análise de Componentes Principais) com clustering automático
+  ✅ Diagrama de Ragone comparativo (ciclagem)
+  ✅ Exportar tabela de ranking em CSV / Excel / LaTeX
+
+--------------------------------------------------------------------------------
+1. COMO USAR A ABA COMPARAR
+--------------------------------------------------------------------------------
+
+Pré-requisito: ter executado o pipeline EIS em pelo menos 2 amostras.
+
+  1) Na GUI, clique na aba "📊 Comparar"
+  2) No painel esquerdo, a lista de amostras processadas aparece
+  3) Selecione as amostras a comparar (Ctrl+clique para múltiplas)
+  4) Clique "Comparar" — os gráficos são gerados automaticamente:
+     → Aba "Nyquist": espectros sobrepostos com cor distinta por amostra
+     → Aba "Bode": |Z| e fase sobrepostos
+     → Aba "Ranking": tabela com Health Score e métricas chave
+     → Aba "PCA": projeção 2D das amostras no espaço de features
+  5) Para exportar: clique "Exportar Comparação" e escolha o formato
+
+--------------------------------------------------------------------------------
+2. HEALTH SCORE — O QUE É E COMO É CALCULADO
+--------------------------------------------------------------------------------
+
+O Health Score é um valor de 0 a 10 que resume o desempenho eletroquímico
+de uma amostra com base nos parâmetros EIS.
+
+Componentes do Health Score:
+
+  Componente              Peso   Critério
+  ──────────────────────  ─────  ─────────────────────────────────────────
+  Rs (resistência série)  25%    Menor Rs → maior pontuação
+  Rp (resist. polariz.)   25%    Maior Rp → maior pontuação (menor perda)
+  BIC do ajuste           20%    BIC mais negativo → melhor ajuste
+  Confiança do circuito   15%    Maior confiança ML → maior pontuação
+  Validação Kramers-Kronig 15%   Menor resíduo KK → maior pontuação
+
+Escala:
+  9–10  → Excelente — interface eletroquímica ideal
+  7–8   → Bom       — desempenho acima da média
+  5–6   → Médio     — parâmetros típicos
+  3–4   → Fraco     — interface degradada ou geometria problemática
+  0–2   → Crítico   — dados inconsistentes ou amostra danificada
+
+NOTA: O Health Score é uma métrica comparativa — é mais útil para ordenar
+amostras entre si do que como valor absoluto.
+
+--------------------------------------------------------------------------------
+3. ANÁLISE PCA
+--------------------------------------------------------------------------------
+
+O PCA projeta todas as amostras num espaço 2D baseado nas suas features
+espectrais, permitindo identificar clusters de comportamento similar.
+
+Features usadas no PCA:
+  • logf_slope_low    (inclinação log|Z| a baixa frequência)
+  • logf_slope_high   (inclinação log|Z| a alta frequência)
+  • phase_min         (fase mínima)
+  • phase_range       (amplitude do ângulo de fase)
+  • mag_range         (amplitude de |Z|)
+  • zreal_min         (Rs efetivo)
+  • freq_at_phase_min (frequência do pico de fase)
+
+Interpretação do gráfico PCA:
+  • Amostras próximas → comportamento eletroquímico similar
+  • Amostras afastadas → diferenças significativas no mecanismo
+  • Clusters coloridos → agrupamentos automáticos (k-means, k=3)
+
+Para adicionar etiquetas no gráfico PCA:
+  Clique com o botão direito num ponto → "Mostrar etiqueta"
+
+--------------------------------------------------------------------------------
+4. VIA PYTHON — COMPARAÇÃO PROGRAMÁTICA
+--------------------------------------------------------------------------------
+
+  from src.comparison import ComparisonEngine, compare_eis_samples
+
+  # Forma simples — comparar dois DataFrames EIS
+  df1 = ...  # EIS da amostra 1
+  df2 = ...  # EIS da amostra 2
+
+  fig, summary = compare_eis_samples(
+      {"AM1": df1, "AM2": df2},
+      plot_type="nyquist"  # "nyquist", "bode", "both"
+  )
+  fig.savefig("comparacao.png", dpi=300)
+
+  # Forma completa — motor de comparação
+  engine = ComparisonEngine()
+  engine.add_sample("AM1", df_eis_1, df_params_1)
+  engine.add_sample("AM2", df_eis_2, df_params_2)
+  engine.add_sample("AM3", df_eis_3, df_params_3)
+
+  # Gráfico Nyquist sobreposto
+  fig_ny = engine.nyquist_overlay()
+  fig_ny.savefig("nyquist_comparativo.png", dpi=300)
+
+  # Gráfico Bode sobreposto
+  fig_bode = engine.bode_overlay()
+
+  # Tabela de ranking
+  df_rank = engine.ranking_table()
+  print(df_rank[["sample", "health_score", "rs", "rp", "rank"]])
+
+  # PCA
+  fig_pca, pca_coords = engine.pca_plot()
+
+  # Health Score individual
+  score = engine.health_score("AM1")
+  print(f"AM1 Health Score: {score:.1f}/10")
+
+  # Exportar ranking em LaTeX
+  from src.export import export_to_latex_table
+  export_to_latex_table(df_rank, "ranking.tex",
+                        caption="Ranking de desempenho EIS",
+                        label="tab:ranking")
+
+--------------------------------------------------------------------------------
+5. COMPARAÇÃO DE CICLAGEM
+--------------------------------------------------------------------------------
+
+Para comparar múltiplas amostras de ciclagem:
+
+  from src.comparison import compare_cycling_samples
+
+  resultados = {
+      "AM1": df_cycling_1,
+      "AM2": df_cycling_2,
+      "AM3": df_cycling_3,
+  }
+
+  # Diagrama de Ragone comparativo
+  fig_ragone = compare_cycling_samples(resultados, plot="ragone")
+  fig_ragone.savefig("ragone_comparativo.png", dpi=300)
+
+  # Curvas de retenção sobrepostas
+  fig_ret = compare_cycling_samples(resultados, plot="retention")
+
+  # Tabela de métricas (energia máxima, potência máxima, ciclo de 80%)
+  df_metrics = compare_cycling_samples(resultados, plot=None, return_table=True)
+  print(df_metrics)
+
+--------------------------------------------------------------------------------
+6. RELATÓRIO COMPARATIVO PDF
+--------------------------------------------------------------------------------
+
+  # CLI — gerar relatório com todas as comparações
+  ionflow-cli analyze --all --compare --export-pdf relatorio_comparativo.pdf
+
+  # Python
+  from src.report_generator import generate_comparison_report
+
+  engine = ComparisonEngine()
+  # ... adicionar amostras ...
+
+  generate_comparison_report(
+      engine,
+      output="relatorio_comparativo.pdf",
+      title="Comparação de Amostras — Projeto MXene Abril 2026",
+      author="Emanuel",
+      include_pca=True,
+      include_ragone=True,
+  )
+
+O relatório PDF inclui automaticamente:
+  • Secção de Nyquist / Bode comparativo
+  • Tabela de parâmetros com Health Score e ranking
+  • Gráfico PCA com clustering
+  • Diagrama de Ragone (se dados de ciclagem disponíveis)
+  • Narrativa IA (se LLM configurado)
+
+--------------------------------------------------------------------------------
+7. DICAS DE INTERPRETAÇÃO
+--------------------------------------------------------------------------------
+
+NYQUIST COMPARATIVO:
+  • Semicírculos maiores → maior resistência de polarização (menos condutivo)
+  • Desvio vertical a baixa frequência → comportamento capacitivo puro (bom
+    para supercapacitores)
+  • Semicírculos sobrepostos → amostras com comportamento similar
+
+BODE COMPARATIVO:
+  • Patamar a alta frequência → Rs (deve ser mínimo e igual entre amostras)
+  • Inclinação -1 da log|Z| vs log(f) → comportamento capacitivo puro
+  • Pico de fase próximo de -90° → supercapacitor ideal
+
+PCA:
+  • Amostra isolada dos clusters → comportamento anómalo (verificar dados)
+  • Cluster denso → reprodutibilidade boa entre réplicas da mesma condição
+  • Separação clara entre clusters → diferença real de material / tratamento
+
+================================================================================

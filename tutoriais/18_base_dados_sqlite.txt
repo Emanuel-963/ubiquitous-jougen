@@ -1,0 +1,270 @@
+================================================================================
+      TUTORIAL 18 — BASE DE DADOS SQLite (IONFLOW v0.3.0)
+================================================================================
+
+Versão: 0.3.0
+Última atualização: Abril 2026
+
+--------------------------------------------------------------------------------
+O QUE É A BASE DE DADOS SQLITE?
+--------------------------------------------------------------------------------
+
+A partir da v0.3.0, todos os resultados do IonFlow Pipeline são guardados
+automaticamente numa base de dados SQLite local (data/ionflow.db).
+
+Vantagens:
+  • Histórico persistente — análises de sessões anteriores ficam disponíveis
+  • Rastreabilidade — cada resultado está associado a uma amostra e data/hora
+  • Acesso programático — consulte e exporte dados com Python simples
+  • Sem servidor — é um único ficheiro .db portátil
+  • Dashboard web — visualize os dados sem executar o pipeline (ver Tutorial 17)
+
+--------------------------------------------------------------------------------
+1. ESTRUTURA DA BASE DE DADOS
+--------------------------------------------------------------------------------
+
+Tabelas principais:
+
+  ┌──────────────────┬────────────────────────────────────────────────────┐
+  │ Tabela           │ Conteúdo                                           │
+  ├──────────────────┼────────────────────────────────────────────────────┤
+  │ samples          │ Catálogo de amostras (nome, tipo, ficheiro, data)  │
+  │ eis_results      │ Parâmetros de circuit fitting por amostra          │
+  │ cycling_results  │ Métricas de ciclagem (energia, potência, retenção) │
+  │ drt_results      │ Picos τ/γ da análise DRT                          │
+  │ parameters       │ Parâmetros individuais nomeados (chave-valor)      │
+  │ fitting_history  │ Histórico completo de tentativas de fitting (ML)   │
+  │ _migrations      │ Controlo de versão do schema da BD (interno)       │
+  └──────────────────┴────────────────────────────────────────────────────┘
+
+Relações: todas as tabelas de resultados têm FK → samples (ON DELETE CASCADE)
+  Se apagar uma amostra, todos os resultados associados são apagados também.
+
+Localização padrão: data/ionflow.db (relativa à pasta do projeto)
+Alterar: variável de ambiente IONFLOW_DB=caminho/personalizado.db
+
+--------------------------------------------------------------------------------
+2. IonFlowRepository — CRUD COMPLETO
+--------------------------------------------------------------------------------
+
+A classe principal para interagir com a BD programaticamente.
+
+  from src.db import IonFlowRepository
+
+  repo = IonFlowRepository("data/ionflow.db")  # cria a BD se não existir
+
+  # ── Amostras ──────────────────────────────────────────────────────────
+  # Adicionar uma amostra
+  sample_id = repo.add_sample(
+      name="Nb2CTx_AM1",
+      type_="eis",                      # "eis", "cycling", "drt", "mixed"
+      file_path="data/raw/AM1.dta",     # opcional
+      meta={"campanha": "Abril 2026"}   # dict de metadados, opcional
+  )
+  print(f"Amostra criada com ID={sample_id}")
+
+  # Listar todas as amostras
+  df = repo.get_all_samples()
+  print(df[["id", "name", "type", "created_at"]])
+
+  # Obter uma amostra específica
+  rec = repo.get_sample_by_id(sample_id)
+  print(rec["name"], rec["file_path"])
+
+  # Apagar (cascata para todos os resultados)
+  repo.delete_sample(sample_id)
+
+  # ── Resultados EIS ────────────────────────────────────────────────────
+  import pandas as pd
+
+  eis_df = pd.DataFrame([{
+      "Rs_fit": 1.2, "Rp_fit": 45.0,
+      "circuit_name": "Randles-CPE",
+      "BIC": -110.0, "confidence": 0.85,
+      "Score": 0.72, "Rank": 1,
+      "category": "Interface eficiente"
+  }], index=["AM1"])
+
+  repo.save_eis_results(sample_id, eis_df)
+
+  # Obter todos os resultados EIS
+  df = repo.get_eis_results()
+  # Filtrar por amostra
+  df = repo.get_eis_results(sample_id=sample_id)
+
+  # ── Resultados de Ciclagem ────────────────────────────────────────────
+  cyc_df = pd.DataFrame({
+      "cycle": [1, 2, 3, 4, 5],
+      "Energy_Wh_kg": [52.1, 51.8, 51.5, 51.0, 50.6],
+      "Power_W_kg":   [200.0] * 5,
+      "retention":    [100.0, 99.4, 98.8, 97.9, 97.1]
+  })
+  repo.save_cycling_results(sample_id, cyc_df)
+  df = repo.get_cycling_results()
+
+  # ── Resultados DRT ────────────────────────────────────────────────────
+  drt_df = pd.DataFrame([{
+      "tau_peak_1": 2e-4, "gamma_peak_1": 0.82,
+      "tau_peak_2": 5e-2, "gamma_peak_2": 0.31
+  }], index=["AM1"])
+  repo.save_drt_results(sample_id, drt_df)
+  df = repo.get_drt_results()
+
+  # ── Parâmetros avulsos ────────────────────────────────────────────────
+  repo.save_parameter(sample_id, "Rs_mean", 1.5, unit="Ω")
+  repo.save_parameter(sample_id, "area_BET", 1250.0, unit="m²/g")
+  df = repo.get_parameters(sample_id)
+
+  # ── Estatísticas gerais ───────────────────────────────────────────────
+  stats = repo.stats()
+  # → {"samples": 5, "eis_results": 12, "cycling_results": 60,
+  #    "drt_results": 5, "parameters": 10, "fitting_history": 234}
+
+  repo.close()
+
+--------------------------------------------------------------------------------
+3. FeatureStoreV2 — HISTÓRICO DE MACHINE LEARNING
+--------------------------------------------------------------------------------
+
+O FeatureStoreV2 guarda o histórico de todas as tentativas de circuit fitting
+executadas pelo motor de ML. É usado internamente pelo pipeline, mas pode
+ser consultado diretamente.
+
+  from src.db import FeatureStoreV2
+
+  store = FeatureStoreV2("data/ionflow.db")
+
+  # Adicionar um registo manualmente
+  store.add_record({
+      "sample_id": "AM1",
+      "circuit_name": "Randles-CPE",
+      "bic": -115.0,
+      "confidence": 0.88,
+      "logf_slope_low": -0.42,
+      "logf_slope_high": -1.8,
+      "phase_min": -82.0,
+      "phase_max": -5.0,
+  })
+
+  # Consultar
+  todos = store.records                          # lista de dicionários
+  por_circuito = store.query(circuit_name="RC")
+  por_amostra  = store.query(sample_id="AM1")
+
+  # Circuitos únicos e amostras únicas
+  print(store.unique_circuits())  # ["RC", "Randles", "Randles-CPE"]
+  print(store.unique_samples())   # ["AM1", "AM2", "AM3"]
+
+  # Estatísticas por circuito
+  stats = store.circuit_stats()
+  # → {"RC": {"count": 3, "mean_bic": -90.0, "mean_confidence": 0.7, "pct": 30.0},
+  #    "Randles-CPE": {...}}
+
+  # Encontrar amostras semelhantes (distância euclidiana em spectral features)
+  features = {"logf_slope_low": -0.4, "phase_min": -80.0}
+  vizinhos = store.similar_samples(features, n=3)
+
+  # Melhor circuito para um conjunto de features
+  best = store.best_circuit_for_features(features, n=10)
+  print(f"Circuito recomendado: {best}")
+
+  # Resumo em texto
+  print(store.summary_text())
+  # → "O FeatureStore contém 45 registos. Circuito mais frequente: Randles-CPE
+  #    (62.2%). BIC médio: -98.4. Confiança média: 0.82."
+
+  # Limpar histórico
+  store.clear()
+
+  store.close()
+
+--------------------------------------------------------------------------------
+4. CONSULTAR A BD DIRETAMENTE COM SQLite
+--------------------------------------------------------------------------------
+
+Para utilizadores avançados, pode abrir o ficheiro .db com qualquer cliente SQLite.
+
+Opções gratuitas:
+  • DB Browser for SQLite (https://sqlitebrowser.org) — interface gráfica
+  • DBeaver Community — multi-BD com suporte SQLite
+  • SQLiteOnline.com — no browser (carregue o ficheiro .db)
+
+Queries úteis:
+
+  -- Listar todas as amostras
+  SELECT id, name, type, created_at FROM samples ORDER BY created_at DESC;
+
+  -- Melhores resultados EIS por score
+  SELECT s.name, e.circuit_name, e.rs_fit, e.rp_fit, e.score, e.rank
+  FROM eis_results e
+  JOIN samples s ON s.id = e.sample_id
+  ORDER BY e.score DESC;
+
+  -- Retenção de capacidade por amostra
+  SELECT s.name, c.cycle_number, c.energy_wh_kg, c.retention_pct
+  FROM cycling_results c
+  JOIN samples s ON s.id = c.sample_id
+  ORDER BY s.name, c.cycle_number;
+
+  -- Circuitos mais usados no histórico
+  SELECT circuit_name, COUNT(*) as n, AVG(bic) as bic_medio
+  FROM fitting_history
+  GROUP BY circuit_name
+  ORDER BY n DESC;
+
+  -- Picos DRT por amostra
+  SELECT s.name, d.tau_peak1, d.gamma_peak1, d.tau_peak2, d.gamma_peak2
+  FROM drt_results d
+  JOIN samples s ON s.id = d.sample_id;
+
+--------------------------------------------------------------------------------
+5. LOCALIZAÇÃO E BACKUP
+--------------------------------------------------------------------------------
+
+Localização padrão:
+  Windows: eis_analytics\data\ionflow.db
+  Linux:   eis_analytics/data/ionflow.db
+
+Fazer backup:
+  # PowerShell
+  Copy-Item data\ionflow.db "backup_$(Get-Date -Format yyyyMMdd).db"
+
+  # Linux / macOS
+  cp data/ionflow.db "backup_$(date +%Y%m%d).db"
+
+Mover a BD para outra pasta:
+  $env:IONFLOW_DB = "D:\projetos\minha_bd.db"
+  python gui_app.py
+
+IMPORTANTE: o ficheiro .db não é sincronizado pelo Git automaticamente.
+O ficheiro data/ionflow.db está no .gitignore por defeito para não enviar
+dados de investigação para repositórios públicos.
+
+--------------------------------------------------------------------------------
+6. INTEGRAÇÃO COM O PIPELINE GUI
+--------------------------------------------------------------------------------
+
+A GUI guarda automaticamente na BD quando:
+  ✅ Executa pipeline EIS → guarda em eis_results
+  ✅ Executa pipeline Ciclagem → guarda em cycling_results
+  ✅ Executa pipeline DRT → guarda em drt_results
+  ✅ Executa circuit fitting → guarda em fitting_history (FeatureStoreV2)
+
+Não é necessária nenhuma ação manual — tudo é transparente.
+
+--------------------------------------------------------------------------------
+7. MIGRAÇÕES DE SCHEMA
+--------------------------------------------------------------------------------
+
+O schema da BD é versionado internamente. Quando instalar uma versão futura
+do IonFlow que altere o schema, as migrações são aplicadas automaticamente
+na próxima vez que abrir a GUI ou o Dashboard.
+
+Verificar versão do schema:
+  from src.db.migrations import run_migrations
+  from src.db.schema import init_db
+  conn = init_db("data/ionflow.db")
+  applied = run_migrations(conn)
+  print(f"Migrações aplicadas: {applied}")
+
+================================================================================

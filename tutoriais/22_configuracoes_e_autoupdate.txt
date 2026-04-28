@@ -1,0 +1,294 @@
+================================================================================
+    TUTORIAL 22 — PAINEL DE CONFIGURAÇÕES E AUTO-UPDATE (IONFLOW v0.3.0)
+================================================================================
+
+Versão: 0.3.0
+Última atualização: Abril 2026
+
+--------------------------------------------------------------------------------
+O QUE HÁ DE NOVO?
+--------------------------------------------------------------------------------
+
+Na v0.3.0 todas as configurações do pipeline são persistidas entre sessões
+num ficheiro JSON. Além disso, a GUI verifica automaticamente se há novas
+versões disponíveis e permite descarregá-las com um clique.
+
+  ✅ Aba "⚙️ Configurações" na GUI com todos os parâmetros editáveis
+  ✅ Guardar / Carregar configurações de ficheiro JSON
+  ✅ Repor valores padrão
+  ✅ Auto-update: verificação automática no arranque
+  ✅ Download e extração da nova versão sem sair da GUI
+
+--------------------------------------------------------------------------------
+1. ABRIR O PAINEL DE CONFIGURAÇÕES
+--------------------------------------------------------------------------------
+
+  1) Inicie a GUI: python gui_app.py
+  2) Clique na aba "⚙️ Configurações" (última aba, à direita)
+
+O painel está dividido em secções:
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  ⚙️ Configurações                                                        │
+  │  ─────────────────────────────────────────────────────────────────────  │
+  │  📁 Diretórios          — pastas de dados, saída, relatórios            │
+  │  📡 EIS                 — parâmetros de aquisição                       │
+  │  🔧 Fitting             — opções de ajuste de circuito                  │
+  │  🌀 DRT                 — parâmetros de regularização                   │
+  │  🤖 Classificação       — limites de Health Score                       │
+  │  🧠 LLM / IA            — provedor, modelo, chave API                   │
+  │  🎨 Aparência           — tema, idioma, DPI                             │
+  │                                                                          │
+  │  [Carregar JSON]  [Guardar JSON]  [Repor Padrões]  [✅ Aplicar]        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+--------------------------------------------------------------------------------
+2. SECÇÕES DO PAINEL
+--------------------------------------------------------------------------------
+
+2.1. DIRETÓRIOS
+───────────────
+  Pasta de dados (data/raw/)    — onde a GUI procura ficheiros EIS
+  Pasta de saída (outputs/)     — onde os resultados são guardados
+  Pasta de relatórios           — destino padrão dos relatórios PDF
+
+  Clique no ícone 📁 para navegar graficamente.
+
+2.2. EIS
+────────
+  Frequência mínima (Hz)        — filtra pontos abaixo deste valor (padrão: 0.01)
+  Frequência máxima (Hz)        — filtra pontos acima deste valor (padrão: 1e6)
+  Mínimo de pontos              — rejeita espectros com menos pontos (padrão: 5)
+
+2.3. FITTING
+────────────
+  Circuito padrão               — circuito inicial para tentativa de ajuste
+  Tolerância de convergência    — critério de paragem do otimizador (padrão: 1e-6)
+  Nº máximo de iterações        — limite do solver (padrão: 5000)
+  Método de otimização          — "leastsq" (padrão), "differential_evolution"
+
+2.4. DRT
+─────────
+  Regularização λ               — controla suavidade do espectro DRT (padrão: 1e-3)
+  Nº de pontos τ                — resolução do eixo de tempo de relaxação (padrão: 100)
+  Intervalo de τ (min, max)     — em segundos (padrão: 1e-6 a 1e3)
+
+2.5. CLASSIFICAÇÃO
+──────────────────
+  Limiar "Excelente"            — Health Score ≥ este valor (padrão: 8.5)
+  Limiar "Bom"                  — Health Score ≥ este valor (padrão: 6.5)
+  Limiar "Fraco"                — Health Score < este valor (padrão: 4.0)
+
+2.6. LLM / IA
+──────────────
+  Provedor                      — "none", "openai", "ollama"
+  Modelo                        — nome do modelo (ex: gpt-4o-mini, llama3)
+  Chave API                     — (apenas OpenAI) — guardada localmente
+  URL base                      — (apenas Ollama) — ex: http://localhost:11434
+  Temperatura                   — criatividade do texto (0.0–1.0, padrão: 0.3)
+  Incluir IA no PDF             — marcar para incluir narrativa no relatório
+
+  SEGURANÇA: A chave API é guardada em texto no ficheiro JSON de configuração.
+  Não partilhe o ficheiro de configuração se contiver a chave API.
+  Para ambientes partilhados, use a variável de ambiente OPENAI_API_KEY.
+
+2.7. APARÊNCIA
+──────────────
+  Tema                          — "dark" (padrão) ou "light"
+  Idioma                        — "pt" (padrão), "en", "es"
+  DPI dos gráficos              — resolução das imagens exportadas (padrão: 150)
+  Escala da interface           — 0.8 a 2.0 (padrão: 1.0)
+
+--------------------------------------------------------------------------------
+3. GUARDAR E CARREGAR CONFIGURAÇÕES
+--------------------------------------------------------------------------------
+
+GUARDAR:
+  1) Faça as alterações desejadas no painel
+  2) Clique "Guardar JSON"
+  3) Escolha um nome e pasta para o ficheiro (ex: config_projeto_MXene.json)
+  4) Clique Guardar
+
+O ficheiro padrão é carregado automaticamente do caminho:
+  Windows: %APPDATA%\IonFlow\config.json
+  Linux:   ~/.config/ionflow/config.json
+
+CARREGAR:
+  1) Clique "Carregar JSON"
+  2) Navegue até ao ficheiro de configuração
+  3) Os campos do painel são preenchidos automaticamente
+  4) Clique "✅ Aplicar" para activar as alterações
+
+REPOR PADRÕES:
+  1) Clique "Repor Padrões"
+  2) Todos os campos voltam aos valores originais do IonFlow
+  3) Clique "✅ Aplicar"
+
+NOTA: Clicar "✅ Aplicar" é necessário para que as alterações tomem efeito
+na sessão atual. As alterações são guardadas automaticamente no ficheiro
+de configuração padrão.
+
+--------------------------------------------------------------------------------
+4. CONFIGURAÇÃO VIA PYTHON (API)
+--------------------------------------------------------------------------------
+
+  from src.config import PipelineConfig
+
+  # Carregar configuração existente
+  cfg = PipelineConfig.from_json("config_projeto.json")
+
+  # Criar com valores padrão
+  cfg = PipelineConfig.default()
+
+  # Alterar parâmetros
+  cfg.eis.freq_min = 0.1
+  cfg.eis.freq_max = 100000.0
+  cfg.fitting.circuit = "R0-p(R1,CPE1)"
+  cfg.llm.provider = "ollama"
+  cfg.llm.model = "llama3"
+  cfg.llm.base_url = "http://localhost:11434"
+
+  # Guardar
+  cfg.to_json("config_modificada.json")
+
+  # Usar no pipeline
+  from src.eis_plots import run_eis_pipeline
+  resultado = run_eis_pipeline("data/raw/AM1.txt", config=cfg)
+
+  # Verificar todos os parâmetros disponíveis
+  print(cfg.to_dict())
+
+--------------------------------------------------------------------------------
+5. AUTO-UPDATE
+--------------------------------------------------------------------------------
+
+5.1. COMO FUNCIONA
+──────────────────
+Ao iniciar a GUI, o IonFlow verifica silenciosamente se há uma versão mais
+recente disponível no repositório GitHub:
+  https://github.com/Emanuel-963/ubiquitous-jougen/releases
+
+Se houver uma versão nova:
+  → Aparece uma janela de notificação com o número da versão e changelog
+  → Três opções: "Descarregar", "Ver no GitHub", "Mais tarde"
+
+5.2. JANELA DE NOTIFICAÇÃO DE UPDATE
+──────────────────────────────────────
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │  ⚡ Nova versão disponível: v0.4.0                                        │
+  │  ────────────────────────────────────────────────────────────────────    │
+  │  Versão atual: 0.3.0                                                     │
+  │  Nova versão: 0.4.0                                                      │
+  │                                                                          │
+  │  O que há de novo:                                                       │
+  │  • Novo parser para ficheiros .soartg (Solartron)                        │
+  │  • Exportação para formato Zennium                                       │
+  │  • Correção de bug no DRT para espectros muito curtos                   │
+  │                                                                          │
+  │  [⬇ Descarregar]    [🌐 Ver no GitHub]    [✖ Mais tarde]               │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+5.3. DESCARREGAR UMA ATUALIZAÇÃO
+──────────────────────────────────
+  1) Clique "⬇ Descarregar" na janela de notificação
+  2) Uma barra de progresso aparece enquanto o ficheiro .zip é descarregado
+  3) O ficheiro é extraído automaticamente para a pasta do projeto
+  4) Mensagem de sucesso: "Actualização extraída em: eis_analytics-v0.4.0/"
+  5) Feche a GUI e abra novamente a partir da nova pasta
+
+NOTA: O processo NÃO substitui automaticamente os ficheiros em uso.
+A nova versão é extraída numa pasta separada (ex: eis_analytics-v0.4.0/).
+Deve mover os seus ficheiros de dados (data/) para a nova pasta manualmente.
+
+5.4. DESATIVAR VERIFICAÇÃO AUTOMÁTICA
+───────────────────────────────────────
+  No painel de Configurações → Aparência → desmarcar "Verificar atualizações ao iniciar"
+
+  Ou no ficheiro de configuração JSON:
+    "check_updates_on_start": false
+
+5.5. VERIFICAR MANUALMENTE
+────────────────────────────
+  GUI: menu Ajuda → Verificar Atualizações
+  Python:
+    from src.updater import get_latest_release
+    info = get_latest_release()
+    if info and info.is_newer_than_local():
+        print(f"Nova versão: {info.tag}")
+        print(info.body)  # changelog
+
+--------------------------------------------------------------------------------
+6. FICHEIRO DE CONFIGURAÇÃO — ESTRUTURA JSON
+--------------------------------------------------------------------------------
+
+Exemplo de config.json (todos os campos):
+
+  {
+    "version": "0.3.0",
+    "check_updates_on_start": true,
+    "language": "pt",
+    "theme": "dark",
+    "plot_dpi": 150,
+    "ui_scale": 1.0,
+    "directories": {
+      "data_dir": "data/raw",
+      "output_dir": "outputs",
+      "reports_dir": "outputs/reports"
+    },
+    "eis": {
+      "freq_min": 0.01,
+      "freq_max": 1000000.0,
+      "min_points": 5
+    },
+    "fitting": {
+      "circuit": "auto",
+      "tolerance": 1e-6,
+      "max_iter": 5000,
+      "method": "leastsq"
+    },
+    "drt": {
+      "lambda_reg": 0.001,
+      "n_tau": 100,
+      "tau_min": 1e-6,
+      "tau_max": 1000.0
+    },
+    "classification": {
+      "threshold_excellent": 8.5,
+      "threshold_good": 6.5,
+      "threshold_weak": 4.0
+    },
+    "llm": {
+      "provider": "none",
+      "model": "gpt-4o-mini",
+      "api_key": "",
+      "base_url": "",
+      "temperature": 0.3,
+      "include_in_pdf": false
+    }
+  }
+
+--------------------------------------------------------------------------------
+7. VARIÁVEIS DE AMBIENTE (ALTERNATIVA AO JSON)
+--------------------------------------------------------------------------------
+
+Para ambientes CI/CD ou containers, as configurações podem ser passadas
+como variáveis de ambiente (têm prioridade sobre o JSON):
+
+  IONFLOW_DB            Caminho da base de dados SQLite
+  OPENAI_API_KEY        Chave API OpenAI (não guarda no JSON)
+  OLLAMA_BASE_URL       URL do servidor Ollama
+  IONFLOW_LANG          Idioma (pt, en, es)
+  IONFLOW_OUTPUT_DIR    Pasta de saída padrão
+
+  # Exemplo PowerShell
+  $env:OPENAI_API_KEY = "sk-..."
+  $env:IONFLOW_LANG = "en"
+  python gui_app.py
+
+  # Exemplo Linux / macOS
+  export OPENAI_API_KEY="sk-..."
+  export IONFLOW_LANG="en"
+  python gui_app.py
+
+================================================================================

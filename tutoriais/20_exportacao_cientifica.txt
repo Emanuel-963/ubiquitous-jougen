@@ -1,0 +1,244 @@
+================================================================================
+      TUTORIAL 20 — EXPORTAÇÃO CIENTÍFICA (IONFLOW v0.3.0)
+================================================================================
+
+Versão: 0.3.0
+Última atualização: Abril 2026
+
+--------------------------------------------------------------------------------
+O QUE HÁ DE NOVO NA EXPORTAÇÃO?
+--------------------------------------------------------------------------------
+
+Na v0.2.0 era possível exportar para CSV, Excel e imagens PNG.
+Na v0.3.0 foram adicionados 4 formatos direcionados para publicação científica:
+
+  ✅ ZView / ZPlot (.z)      — Ajuste de circuitos no ZView da Scribner
+  ✅ LaTeX booktabs (.tex)   — Tabelas prontas para artigos (Elsevier, ACS, RSC)
+  ✅ Origin (.csv + meta)    — Importação direta no OriginPro / OriginLab
+  ✅ MEISP (.txt)            — Compatível com EIS Spectrum Analyser / MEISP
+
+Os formatos anteriores (CSV, Excel, PNG, PDF) continuam disponíveis.
+
+--------------------------------------------------------------------------------
+1. EXPORTAR PELA GUI
+--------------------------------------------------------------------------------
+
+  1) Execute o pipeline EIS
+  2) Clique em "Exportar" na barra de ferramentas
+     (ou menu Ficheiro → Exportar como...)
+  3) Selecione o formato desejado no submenu:
+     → CSV (padrão)
+     → Excel (.xlsx)
+     → ZView (.z)
+     → LaTeX (.tex)
+     → Origin (.csv)
+     → MEISP (.txt)
+     → Imagem PNG
+  4) Escolha a pasta de destino
+  5) O ficheiro é criado imediatamente
+
+--------------------------------------------------------------------------------
+2. EXPORTAR PELA CLI
+--------------------------------------------------------------------------------
+
+  # ZView
+  ionflow-cli eis --data-dir data/raw/ --export-format zview --output outputs/
+
+  # LaTeX
+  ionflow-cli eis --data-dir data/raw/ --export-format latex --output outputs/
+
+  # Origin
+  ionflow-cli eis --data-dir data/raw/ --export-format origin --output outputs/
+
+  # MEISP
+  ionflow-cli eis --data-dir data/raw/ --export-format meisp --output outputs/
+
+  # Múltiplos formatos ao mesmo tempo
+  ionflow-cli eis --data-dir data/raw/ \
+    --export-format csv zview latex --output outputs/
+
+--------------------------------------------------------------------------------
+3. EXPORTAR VIA PYTHON (API)
+--------------------------------------------------------------------------------
+
+  from src.export import (
+      export_to_zview,
+      export_to_latex_table,
+      export_to_origin,
+      export_to_meisp,
+  )
+  import pandas as pd
+
+  # DataFrame com dados EIS (frequency, zreal, zimag)
+  df_eis = pd.read_csv("outputs/resultado.csv")
+
+  # DataFrame com parâmetros ajustados
+  df_params = pd.DataFrame([{
+      "Amostra": "AM1",
+      "Circuito": "Randles-CPE",
+      "Rs (Ω)": 1.20,
+      "Rp (Ω)": 45.3,
+      "Q (F·s^(α-1))": 8.5e-5,
+      "α": 0.92,
+      "BIC": -110.2,
+  }])
+
+  # ZView
+  export_to_zview(df_eis, "outputs/AM1.z")
+
+  # LaTeX
+  export_to_latex_table(df_params, "outputs/tabela_parametros.tex",
+                        caption="Parâmetros de circuito equivalente",
+                        label="tab:eis_params")
+
+  # Origin
+  export_to_origin(df_eis, "outputs/AM1_origin.csv",
+                   metadata={"sample": "AM1", "date": "2026-04-15"})
+
+  # MEISP
+  export_to_meisp(df_eis, "outputs/AM1.txt")
+
+--------------------------------------------------------------------------------
+4. FORMATO ZVIEW (.z)
+--------------------------------------------------------------------------------
+
+O formato ZView é compatível com:
+  • ZView e ZPlot da Scribner Associates
+  • EIS Data Analyzer
+  • ZSimpWin
+
+Estrutura do ficheiro .z gerado:
+  IONFLOW PIPELINE — ZView export
+  Frequency(Hz)  Zreal(ohm)  -Zimag(ohm)
+  100000.000     1.234       0.012
+  50000.000      1.241       0.024
+  ...
+
+NOTA: O ZView usa a convenção -Zimag (positivo para capacitivo).
+O exportador inverte automaticamente o sinal de zimag.
+
+Como abrir no ZView:
+  File → Open → selecionar o ficheiro .z
+  O tipo de dados é reconhecido automaticamente.
+
+--------------------------------------------------------------------------------
+5. FORMATO LATEX BOOKTABS (.tex)
+--------------------------------------------------------------------------------
+
+Gera uma tabela LaTeX compatível com os principais journals:
+  • Electrochimica Acta (Elsevier)
+  • Journal of The Electrochemical Society (IOP)
+  • ACS Applied Materials & Interfaces
+  • RSC Advances / Journal of Materials Chemistry
+
+Exemplo de saída:
+  \begin{table}[htbp]
+    \centering
+    \caption{Parâmetros de circuito equivalente}
+    \label{tab:eis_params}
+    \begin{tabular}{lSSSSS}
+      \toprule
+      {Amostra} & {Circuito} & {$R_\mathrm{s}$ / $\Omega$} &
+                               {$R_\mathrm{p}$ / $\Omega$} &
+                               {$Q$ / F\,s$^{\alpha-1}$} & {$\alpha$} \\
+      \midrule
+      AM1 & Randles-CPE & 1.20 & 45.3 & 8.5e-5 & 0.92 \\
+      AM2 & Randles-CPE & 1.45 & 38.7 & 9.1e-5 & 0.89 \\
+      \bottomrule
+    \end{tabular}
+  \end{table}
+
+Pré-requisitos no documento LaTeX:
+  \usepackage{booktabs}
+  \usepackage{siunitx}   % para S{} colunas alinhadas no decimal
+
+Como usar no artigo:
+  \input{tabela_parametros.tex}
+  ou copiar o conteúdo diretamente no .tex do artigo.
+
+Opções disponíveis na API:
+  export_to_latex_table(
+      df_params,
+      "tabela.tex",
+      caption="...",      # legenda da tabela
+      label="tab:...",    # \label para \ref no texto
+      float_format=".3f", # casas decimais
+      units={"Rs": "Ω", "Rp": "Ω"},  # unidades por coluna
+  )
+
+--------------------------------------------------------------------------------
+6. FORMATO ORIGIN (.csv)
+--------------------------------------------------------------------------------
+
+Gera um CSV com metadados nos comentários, compatível com OriginPro 2019+.
+
+Estrutura:
+  # IONFLOW PIPELINE — Origin export
+  # sample=AM1
+  # date=2026-04-15
+  # instrument=Gamry Interface 1010E
+  # circuit=Randles-CPE
+  frequency,zreal,zimag
+  100000.0,1.234,-0.012
+  50000.0,1.241,-0.024
+  ...
+
+Como importar no OriginPro:
+  File → Import → CSV → selecionar o ficheiro
+  OriginPro reconhece automaticamente as linhas # como comentários/metadados.
+
+--------------------------------------------------------------------------------
+7. FORMATO MEISP (.txt)
+--------------------------------------------------------------------------------
+
+Compatível com:
+  • MEISP (Multiple Electrochemical Impedance Spectra Parameterization)
+  • EIS Spectrum Analyser (Dr. Alexander Kuwertz)
+
+Estrutura:
+  Frequency/Hz    Zre/Ohm    Zim/Ohm
+  1.00000E+05     1.23400   -1.20000E-02
+  5.00000E+04     1.24100   -2.40000E-02
+  ...
+
+--------------------------------------------------------------------------------
+8. EXPORTAR MÚLTIPLAS AMOSTRAS EM BATCH
+--------------------------------------------------------------------------------
+
+  from src.export import export_to_zview, export_to_latex_table
+  from pathlib import Path
+  import pandas as pd
+
+  resultados = {}  # {"AM1": df_eis, "AM2": df_eis, ...}
+
+  for nome, df in resultados.items():
+      # Exportar cada amostra em ZView
+      export_to_zview(df, f"outputs/{nome}.z")
+
+  # Tabela LaTeX com todas as amostras
+  df_todos_params = pd.DataFrame([...])  # linha por amostra
+  export_to_latex_table(
+      df_todos_params,
+      "outputs/tabela_geral.tex",
+      caption="Parâmetros de EIS — todas as amostras",
+      label="tab:eis_all"
+  )
+
+--------------------------------------------------------------------------------
+9. COMPARAÇÃO DE FORMATOS
+--------------------------------------------------------------------------------
+
+Formato  | Software alvo          | Uso principal
+---------|------------------------|---------------------------------------------
+.csv     | Excel, Python, R       | Análise de dados genérica
+.xlsx    | Excel                  | Relatórios com formatação
+.z       | ZView, ZPlot           | Ajuste adicional de circuitos
+.tex     | LaTeX                  | Tabelas em artigos científicos
+.csv*    | OriginPro              | Gráficos de publicação
+.txt     | MEISP, EIS Analyser    | Ajuste alternativo de circuitos
+.png     | Qualquer               | Figuras para relatórios/apresentações
+.pdf     | Qualquer               | Relatório completo auto-gerado
+
+*CSV com metadados em comentários #
+
+================================================================================

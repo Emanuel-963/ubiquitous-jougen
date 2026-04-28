@@ -1,0 +1,200 @@
+================================================================================
+         TUTORIAL 16 — O QUE HÁ DE NOVO NO IONFLOW PIPELINE v0.3.0
+================================================================================
+
+Versão: 0.3.0
+Última atualização: Abril 2026
+
+--------------------------------------------------------------------------------
+RESUMO EXECUTIVO
+--------------------------------------------------------------------------------
+
+O IonFlow Pipeline v0.3.0 é a maior atualização desde o lançamento. São 7 fases
+de desenvolvimento que transformam a ferramenta numa plataforma completa de
+análise eletroquímica, com:
+
+  • Importação nativa de 4 fabricantes de potenciostatos
+  • 4 novos formatos de exportação para publicação científica
+  • Aba de comparação multi-amostra com Health Score
+  • Integração LLM (OpenAI + Ollama) para narrativa científica automática
+  • Painel de configurações persistente + auto-update
+  • Base de dados SQLite para histórico e rastreabilidade
+  • Dashboard web interativo (Streamlit) acessível pelo browser
+
+--------------------------------------------------------------------------------
+1. FASE 2 — IMPORTAÇÃO DIRETA DE POTENCIOSTATOS
+--------------------------------------------------------------------------------
+
+NOVIDADE: Já não é necessário converter ficheiros para CSV antes de importar.
+
+Formatos suportados nativamente:
+  ✅ Gamry Instruments   → .dta
+  ✅ BioLogic Science    → .mpr e .mpt
+  ✅ Metrohm Autolab     → .csv (com headers NOVA)
+  ✅ Zahner Elektrik      → .isc
+
+Como usar:
+  GUI  → Botão "Importar EIS" → selecione o ficheiro diretamente
+  CLI  → ionflow-cli eis --data-dir pasta_com_dta/
+  Python →
+    from src.parsers import parse_eis_file
+    resultado = parse_eis_file("medição.dta")
+    df = resultado.data  # DataFrame com frequency, zreal, zimag
+
+Ver Tutorial 19 para detalhes completos.
+
+--------------------------------------------------------------------------------
+2. FASE 3 — EXPORTAÇÃO CIENTÍFICA
+--------------------------------------------------------------------------------
+
+NOVIDADE: Exporte para formatos compatíveis com software de laboratório e revistas.
+
+Novos formatos:
+  ✅ ZView / ZPlot       → .z    (ajuste de circuitos no ZView)
+  ✅ LaTeX booktabs      → .tex  (tabelas prontas para artigos)
+  ✅ Origin              → .csv  (metadados em comentários)
+  ✅ MEISP               → .txt  (compatível com MEISP/EIS Spectrum Analyser)
+
+Como usar:
+  GUI  → Menu "Exportar como..." → escolha o formato
+  CLI  → ionflow-cli eis --export-format zview --output outputs/
+  Python →
+    from src.export import export_to_zview, export_to_latex_table
+    export_to_zview(df_eis, "resultado.z")
+    export_to_latex_table(df_params, "tabela.tex")
+
+Ver Tutorial 20 para detalhes completos.
+
+--------------------------------------------------------------------------------
+3. FASE 4 — ANÁLISE COMPARATIVA
+--------------------------------------------------------------------------------
+
+NOVIDADE: Compare múltiplas amostras lado a lado com ranking automático.
+
+Funcionalidades:
+  ✅ Aba "📊 Comparar" na GUI
+  ✅ Sobreposição de Nyquist / Bode para N amostras
+  ✅ Health Score (0–10) calculado por amostra
+  ✅ Tabela de ranking exportável
+  ✅ PCA multi-amostra com clustering automático
+
+Como usar:
+  1) Execute o pipeline EIS em múltiplas amostras
+  2) Clique na aba "📊 Comparar"
+  3) Selecione as amostras a comparar na lista
+  4) Clique "Comparar" — gráficos e ranking aparecem automaticamente
+
+Ver Tutorial 21 para detalhes completos.
+
+--------------------------------------------------------------------------------
+4. FASE 5 — IA GENERATIVA
+--------------------------------------------------------------------------------
+
+NOVIDADE: O relatório PDF agora inclui texto científico auto-gerado.
+
+Provedores suportados:
+  ✅ OpenAI (gpt-4o, gpt-4o-mini, etc.)
+  ✅ Ollama local (llama3, mistral, phi3, etc.)
+  ✅ Qualquer API compatível com OpenAI (LM Studio, Jan, etc.)
+
+Onde aparece a IA:
+  • Aba "🤖 Análise IA" da GUI
+  • Seção "Interpretação" do relatório PDF
+  • Dashboard Streamlit → página "🤖 Análise IA"
+  • CLI: ionflow-cli eis --ai --export-pdf
+
+Ver Tutorial 09 (atualizado para v0.3.0) e Tutorial 17 (Dashboard).
+
+--------------------------------------------------------------------------------
+5. FASE 6 — PAINEL DE CONFIGURAÇÕES + AUTO-UPDATE
+--------------------------------------------------------------------------------
+
+NOVIDADE: Todas as configurações persistem entre sessões.
+
+Painel de Configurações (aba "⚙️ Configurações" na GUI):
+  ✅ Diretórios de dados e saída
+  ✅ Parâmetros de fitting (frequência mín/máx, tolerância)
+  ✅ Configuração do LLM (provedor, modelo, chave API)
+  ✅ Aparência (tema, idioma)
+  ✅ Guardar / Carregar configurações em JSON
+  ✅ Repor valores padrão
+
+Auto-Update:
+  ✅ Verifica automaticamente novas versões no GitHub ao iniciar
+  ✅ Mostra changelog da nova versão
+  ✅ Descarrega e extrai automaticamente
+
+Ver Tutorial 22 para detalhes completos.
+
+--------------------------------------------------------------------------------
+6. FASE 7 — BASE DE DADOS SQLITE + DASHBOARD WEB
+--------------------------------------------------------------------------------
+
+NOVIDADE: Todos os resultados são guardados numa base de dados local.
+
+SQLite Backend (src/db/):
+  ✅ Todas as análises são persistidas automaticamente
+  ✅ Histórico de circuit fitting rastreável
+  ✅ IonFlowRepository: CRUD completo para samples, EIS, DRT, ciclagem
+  ✅ FeatureStoreV2: histórico ML com spectral features
+
+Dashboard Streamlit:
+  ✅ Interface web acessível no browser (http://localhost:8501)
+  ✅ 7 páginas: Visão Geral, Upload, EIS, DRT, Ciclagem, Histórico ML, IA
+  ✅ Gráficos Nyquist, Bode, Ragone, Retenção interativos
+  ✅ Sem necessidade de executar o pipeline completo
+
+Ver Tutorial 17 (Dashboard) e Tutorial 18 (SQLite).
+
+--------------------------------------------------------------------------------
+7. TABELA RESUMO DE MUDANÇAS
+--------------------------------------------------------------------------------
+
+Funcionalidade               v0.2.0    v0.3.0
+---------------------------  --------  ------------------------------------------
+Parsers Gamry/BioLogic       ✗         ✅ .dta, .mpr, .mpt, .isc
+Exportação ZView / LaTeX     ✗         ✅ 4 novos formatos
+Análise comparativa          ✗         ✅ Aba Comparar + Health Score
+IA generativa no PDF         ✗         ✅ OpenAI + Ollama
+Painel de configurações      ✗         ✅ Persistente em JSON
+Auto-update                  ✗         ✅ Download automático do GitHub
+SQLite backend               ✗         ✅ IonFlowRepository
+Dashboard web                ✗         ✅ Streamlit (localhost:8501)
+Versão Python mínima         3.10      3.10 (sem mudança)
+Testes automatizados         ~150      ~220+
+
+--------------------------------------------------------------------------------
+8. COMPATIBILIDADE COM v0.2.0
+--------------------------------------------------------------------------------
+
+  ✅ Todos os ficheiros .txt / .csv que funcionavam na v0.2.0 continuam a funcionar
+  ✅ Os scripts CLI têm as mesmas flags (novas foram adicionadas, nenhuma removida)
+  ✅ A GUI tem o mesmo aspeto — novas abas foram adicionadas à direita
+  ✅ Os ficheiros de saída (.csv, .xlsx, .png) têm o mesmo formato
+  ✗ A base de dados SQLite (data/ionflow.db) é nova — não existia em v0.2.0
+
+--------------------------------------------------------------------------------
+9. UPGRADE DE v0.2.0 PARA v0.3.0
+--------------------------------------------------------------------------------
+
+Se tiver o repositório clonado:
+  git pull origin main
+  .\venv\Scripts\Activate.ps1
+  pip install -e ".[dashboard]"
+
+Se usar o instalador .exe:
+  A GUI avisa automaticamente quando há uma nova versão disponível.
+  Clique "Descarregar" na janela de notificação.
+
+--------------------------------------------------------------------------------
+PRÓXIMOS PASSOS
+--------------------------------------------------------------------------------
+
+  → Tutorial 17: Usar o Dashboard Streamlit
+  → Tutorial 18: Trabalhar com a Base de Dados SQLite
+  → Tutorial 19: Importar ficheiros Gamry, BioLogic, etc.
+  → Tutorial 20: Exportar para ZView, LaTeX, Origin
+  → Tutorial 21: Análise comparativa multi-amostra
+  → Tutorial 22: Painel de Configurações e Auto-Update
+
+================================================================================

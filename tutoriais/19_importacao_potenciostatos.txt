@@ -1,0 +1,222 @@
+================================================================================
+   TUTORIAL 19 — IMPORTAÇÃO DIRETA DE POTENCIOSTATOS (IONFLOW v0.3.0)
+================================================================================
+
+Versão: 0.3.0
+Última atualização: Abril 2026
+
+--------------------------------------------------------------------------------
+O QUE MUDOU?
+--------------------------------------------------------------------------------
+
+Na v0.2.0 era necessário converter todos os ficheiros para CSV antes de importar.
+Na v0.3.0 o IonFlow lê diretamente os ficheiros nativos de 4 fabricantes:
+
+  ✅ Gamry Instruments    → .dta
+  ✅ BioLogic Science     → .mpr  e  .mpt
+  ✅ Metrohm Autolab      → .csv  (com headers NOVA/FRA)
+  ✅ Zahner Elektrik      → .isc
+
+A deteção é automática — o software identifica o formato pelo conteúdo
+do ficheiro (magic bytes + headers), não apenas pela extensão.
+
+--------------------------------------------------------------------------------
+1. IMPORTAR PELA GUI
+--------------------------------------------------------------------------------
+
+Passos:
+  1) Abra a GUI: python gui_app.py
+  2) Clique em "📂 Importar EIS" na barra lateral
+     (ou use o menu Ficheiro → Abrir)
+  3) No seletor de ficheiros, filtre por tipo ou escolha "Todos os ficheiros"
+  4) Selecione um ou mais ficheiros (.dta, .mpr, .mpt, .isc, .csv, .txt)
+  5) Os dados são carregados e a pré-visualização aparece na área central:
+     → Tabela dos primeiros pontos (frequência, Z', Z'')
+     → Gráfico Nyquist rápido
+  6) Clique "▶ Executar Pipeline EIS" para iniciar a análise completa
+
+NOTA: Para selecionar múltiplos ficheiros, mantenha Ctrl pressionado ao clicar.
+
+--------------------------------------------------------------------------------
+2. IMPORTAR PELA CLI
+--------------------------------------------------------------------------------
+
+  # Pasta com ficheiros .dta Gamry
+  ionflow-cli eis --data-dir data/raw/ --output outputs/
+
+  # Ficheiro específico
+  ionflow-cli eis --data-dir data/raw/ --output outputs/
+
+  # A CLI deteta automaticamente todos os formatos suportados na pasta
+
+--------------------------------------------------------------------------------
+3. IMPORTAR VIA PYTHON (API)
+--------------------------------------------------------------------------------
+
+A API unificada parse_eis_file() aceita qualquer formato:
+
+  from src.parsers import parse_eis_file
+
+  # Gamry .dta
+  resultado = parse_eis_file("medição_EIS.dta")
+
+  # BioLogic .mpr ou .mpt
+  resultado = parse_eis_file("medição_EIS.mpr")
+  resultado = parse_eis_file("medição_EIS.mpt")
+
+  # Autolab
+  resultado = parse_eis_file("medição_EIS.csv")
+
+  # Zahner
+  resultado = parse_eis_file("medição_EIS.isc")
+
+  # Aceder aos dados
+  df = resultado.data          # DataFrame com colunas: frequency, zreal, zimag
+  meta = resultado.metadata    # dict com metadados do equipamento
+
+  print(df.head())
+  #    frequency    zreal    zimag
+  # 0  100000.0    1.234   -0.012
+  # 1   50000.0    1.241   -0.024
+  # ...
+
+  # Verificar metadados disponíveis
+  print(meta)
+  # {"instrument": "Gamry Interface 1010E", "date": "2026-04-15", ...}
+
+--------------------------------------------------------------------------------
+4. DETALHES POR FABRICANTE
+--------------------------------------------------------------------------------
+
+4.1. GAMRY INSTRUMENTS (.dta)
+─────────────────────────────
+Ficheiros gerados pelo software Echem Analyst (Framework™ / Resonator™).
+
+Identificação: linha com "ZCURVE" ou "CURVE" nos headers
+Colunas lidas: Freq (Hz), Zreal (Ohm), Zimag (Ohm)
+
+Exemplo de ficheiro .dta (primeiras linhas):
+  EXPLAIN
+  TAG	EISPOT
+  TITLE	LABEL	EIS Measurement
+  DATE	LABEL	04/15/2026
+  CURVE	TABLE	5
+  Pt	Time	Freq	Zreal	Zimag	Zsig	Zmod	Zphz
+  #	s	Hz	ohm	ohm	V	ohm	deg
+  0	0.0	100000.0	1.234	-0.012	0.01	1.234	-0.56
+
+Dica: certificar que o ficheiro foi exportado com a opção "EIS" no Echem Analyst.
+Se o ficheiro tiver múltiplas curvas, apenas a primeira ZCURVE é importada.
+
+4.2. BIOLOGIC SCIENCE INSTRUMENTS (.mpr / .mpt)
+─────────────────────────────────────────────────
+Ficheiros gerados pelo EC-Lab® (versões 9.x, 10.x, 11.x).
+
+.mpr — formato binário (raw data, mais completo)
+.mpt — formato texto ASCII (exportado do EC-Lab, mais simples)
+
+Colunas lidas: freq/Hz, Re(Z)/Ohm, -Im(Z)/Ohm
+NOTA: a coluna zimag no BioLogic já é exportada com sinal invertido (-Im(Z)).
+O parser corrige isso automaticamente (aplica ×-1 para obter convenção padrão).
+
+Para exportar .mpt do EC-Lab:
+  File → Save As → ASCII (.mpt) → marcar "EIS" nos canais
+
+4.3. METROHM AUTOLAB (.csv com headers NOVA)
+─────────────────────────────────────────────
+Ficheiros gerados pelo NOVA 1.x / 2.x da Metrohm Autolab.
+
+Identificação: linha "Frequency" seguida de "Z'" e "Z''" nos headers CSV.
+
+Exportar do NOVA:
+  Tools → Export → CSV → selecionar colunas: Frequency, Z', Z''
+
+Dica: se o ficheiro CSV não for detetado como Autolab, verifique se os headers
+contêm as colunas "Frequency", "Z'" e "Z''" (com apóstrofe).
+
+4.4. ZAHNER ELEKTRIK (.isc)
+────────────────────────────
+Ficheiros gerados pelo Thales Z ou ZMAN.
+
+Identificação: extensão .isc e estrutura de comentários no cabeçalho.
+
+Colunas lidas: frequência, parte real, parte imaginária da impedância.
+
+Para exportar do Thales:
+  File → Export → ISC format → EIS data
+
+--------------------------------------------------------------------------------
+5. RESOLVER PROBLEMAS DE IMPORTAÇÃO
+--------------------------------------------------------------------------------
+
+PROBLEMA: "Formato não reconhecido" ou "Não foi possível ler o ficheiro"
+  
+  Passo 1: Verificar o conteúdo do ficheiro com um editor de texto (Notepad++)
+  Passo 2: Identificar as colunas de frequência e impedância manualmente
+  Passo 3: Usar a importação genérica CSV:
+
+    from src.parsers import parse_eis_file
+    # Forçar parser genérico
+    resultado = parse_eis_file("dados.txt", force_parser="generic")
+    df = resultado.data
+
+  Passo 4: Se as colunas tiverem nomes diferentes, mapeá-las manualmente:
+
+    import pandas as pd
+    df_raw = pd.read_csv("dados.txt", sep="\t", skiprows=3)
+    df = df_raw.rename(columns={
+        "Frequencia_Hz": "frequency",
+        "Zreal_Ohm":     "zreal",
+        "Zimag_Ohm":     "zimag"
+    })
+
+PROBLEMA: "zimag tem sinal positivo para dados capacitivos"
+
+  O IonFlow usa a convenção zimag < 0 para sistemas capacitivos.
+  Se os seus dados têm zimag > 0 (convenção alternativa), corrija:
+
+    df["zimag"] = -df["zimag"].abs()
+
+PROBLEMA: Ficheiro .mpr não abre (binário)
+  Certifique-se de ter instalado: pip install galvani
+  O parser BioLogic usa a biblioteca galvani para ler .mpr binário.
+
+--------------------------------------------------------------------------------
+6. DETEÇÃO AUTOMÁTICA DE FORMATO
+--------------------------------------------------------------------------------
+
+O IonFlow testa os parsers nesta ordem ao encontrar um ficheiro desconhecido:
+
+  1. Extensão .dta → Gamry
+  2. Extensão .mpr → BioLogic binário
+  3. Extensão .mpt → BioLogic texto
+  4. Extensão .isc → Zahner
+  5. Extensão .csv → testa Autolab headers; se não, testa genérico
+  6. Extensão .txt → testa formato IonFlow padrão; se não, genérico
+  7. Extensão .xlsx → Excel genérico
+
+Se nenhum parser funcionar, é gerado um aviso e o ficheiro é ignorado.
+
+--------------------------------------------------------------------------------
+7. PROCESSAR MÚLTIPLOS FABRICANTES NUM BATCH
+--------------------------------------------------------------------------------
+
+  from src.parsers import parse_eis_file
+  from pathlib import Path
+
+  pasta = Path("data/raw/")
+  extensoes = [".dta", ".mpr", ".mpt", ".isc", ".csv", ".txt"]
+
+  resultados = []
+  for ficheiro in pasta.iterdir():
+      if ficheiro.suffix.lower() in extensoes:
+          try:
+              r = parse_eis_file(ficheiro)
+              resultados.append((ficheiro.name, r.data))
+              print(f"✅ {ficheiro.name}: {len(r.data)} pontos")
+          except Exception as e:
+              print(f"⚠️  {ficheiro.name}: {e}")
+
+  print(f"\nTotal importado: {len(resultados)} ficheiros")
+
+================================================================================

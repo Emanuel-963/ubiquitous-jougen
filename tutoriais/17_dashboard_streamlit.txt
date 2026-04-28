@@ -1,0 +1,283 @@
+================================================================================
+         TUTORIAL 17 — DASHBOARD STREAMLIT (IONFLOW v0.3.0)
+================================================================================
+
+Versão: 0.3.0
+Última atualização: Abril 2026
+
+--------------------------------------------------------------------------------
+O QUE É O DASHBOARD?
+--------------------------------------------------------------------------------
+
+O Dashboard é uma interface web que corre localmente no seu browser.
+Permite visualizar e explorar todos os resultados guardados na base de dados
+SQLite sem necessidade de executar o pipeline completo.
+
+É ideal para:
+  • Apresentar resultados a colegas ou orientadores
+  • Navegar no histórico de análises anteriores
+  • Comparar amostras rapidamente
+  • Usar a análise IA de forma interativa
+  • Aceder aos dados a partir de outro computador na mesma rede
+
+--------------------------------------------------------------------------------
+1. INSTALAÇÃO
+--------------------------------------------------------------------------------
+
+O Streamlit é uma dependência opcional. Instale uma única vez:
+
+  # Ativar o ambiente virtual primeiro
+  .\venv\Scripts\Activate.ps1          (Windows PowerShell)
+  source venv/bin/activate             (Linux / macOS)
+
+  # Instalar streamlit
+  pip install "streamlit>=1.30"
+
+  # Ou via extra do projeto
+  pip install -e ".[dashboard]"
+
+Verificar instalação:
+  python -m streamlit --version
+  # → Streamlit, versão X.XX.X
+
+--------------------------------------------------------------------------------
+2. INICIAR O DASHBOARD
+--------------------------------------------------------------------------------
+
+  # No PowerShell (Windows) — método recomendado
+  .\venv\Scripts\python.exe -m streamlit run dashboard.py
+
+  # Com base de dados personalizada
+  $env:IONFLOW_DB = "C:\meus_dados\ionflow.db"
+  .\venv\Scripts\python.exe -m streamlit run dashboard.py
+
+  # Linux / macOS
+  python -m streamlit run dashboard.py
+  IONFLOW_DB=/caminho/ionflow.db python -m streamlit run dashboard.py
+
+O browser abre automaticamente em http://localhost:8501
+Se não abrir, copie o URL manualmente para o browser.
+
+NOTA: O terminal deve permanecer aberto enquanto usa o dashboard.
+Para parar, pressione Ctrl+C no terminal.
+
+--------------------------------------------------------------------------------
+3. PÁGINAS DO DASHBOARD
+--------------------------------------------------------------------------------
+
+O menu lateral (sidebar) tem 7 páginas:
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ⚡ IonFlow                                                                  │
+│  Pipeline v0.3.0  |  Dashboard v0.3.0                                       │
+│  ─────────────────────────────────────────                                  │
+│  🏠 Visão Geral                                                              │
+│  📤 Upload & Dados                                                           │
+│  📊 Resultados EIS                                                           │
+│  🌀 Análise DRT                                                              │
+│  🔋 Ciclagem                                                                 │
+│  🗄️ Histórico ML                                                             │
+│  🤖 Análise IA                                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+--------------------------------------------------------------------------------
+3.1. PÁGINA: 🏠 VISÃO GERAL
+--------------------------------------------------------------------------------
+
+Mostra um resumo rápido do estado da base de dados:
+
+  • 4 métricas: total de amostras, resultados EIS, ciclagem, histórico ML
+  • Tabela das amostras mais recentes
+  • Guia rápido das funcionalidades
+
+Use esta página como ponto de partida para perceber o que está guardado.
+
+--------------------------------------------------------------------------------
+3.2. PÁGINA: 📤 UPLOAD & DADOS
+--------------------------------------------------------------------------------
+
+Permite carregar ficheiros EIS diretamente no dashboard (sem usar a GUI).
+
+Formatos aceites: .csv, .txt, .dta, .mpr, .mpt, .xlsx
+
+Passos:
+  1) Clique em "Selecionar ficheiros EIS"
+  2) Escolha um ou mais ficheiros
+  3) Cada ficheiro abre numa aba separada com:
+     → Tabela dos primeiros 10 pontos (frequência, Z', Z'')
+     → Gráfico Nyquist interativo
+  4) Escreva um rótulo (ex: "Campanha Abril 2026")
+  5) Clique "💾 Guardar no BD" para persistir
+
+Os ficheiros guardados aparecem imediatamente na página Visão Geral.
+
+DICA: Esta página é útil para uma pré-visualização rápida antes de executar
+o pipeline completo na GUI.
+
+--------------------------------------------------------------------------------
+3.3. PÁGINA: 📊 RESULTADOS EIS
+--------------------------------------------------------------------------------
+
+Exibe todos os resultados de circuit fitting guardados na BD.
+
+Filtros disponíveis:
+  • Por amostra (nome do ficheiro)
+  • Por circuito equivalente (RC, Randles, Randles-CPE, etc.)
+
+Colunas exibidas:
+  sample_name  |  file_label  |  circuit_name  |  Rs (Ω)  |  Rp (Ω)
+  Capacitância  |  Score  |  Rank  |  Categoria
+
+Para exportar: clique no ícone de download (↓) no canto superior direito da
+tabela.
+
+--------------------------------------------------------------------------------
+3.4. PÁGINA: 🌀 ANÁLISE DRT
+--------------------------------------------------------------------------------
+
+Exibe os picos τ/γ calculados pela análise DRT.
+
+  • Filtre por amostra
+  • Tabela de picos: τ₁, γ₁, τ₂, γ₂, τ₃, γ₃
+  • Stem-plot automático (log τ vs γ) para visualizar a distribuição de picos
+
+Interpretação do stem-plot:
+  Picos em τ < 10⁻³ s  → processos rápidos (transferência de carga)
+  Picos em τ > 10⁻¹ s  → processos lentos (difusão, adsorção)
+
+--------------------------------------------------------------------------------
+3.5. PÁGINA: 🔋 CICLAGEM
+--------------------------------------------------------------------------------
+
+Exibe resultados de ciclagem galvanostática.
+
+  • Tabela: ciclo, energia (Wh/kg), potência (W/kg), retenção (%)
+  • Diagrama de Ragone (log-log: potência vs energia)
+    → Classifica o sistema no espectro supercapacitor ↔ bateria
+  • Curva de Retenção de Capacidade
+    → Linha vermelha tracejada em 80% (critério de vida útil)
+
+Interpretação do Ragone:
+  Ponto no canto superior-esquerdo  → alta energia, baixa potência (bateria)
+  Ponto no canto inferior-direito   → baixa energia, alta potência (supercap.)
+
+--------------------------------------------------------------------------------
+3.6. PÁGINA: 🗄️ HISTÓRICO ML
+--------------------------------------------------------------------------------
+
+Navegador do FeatureStore SQLite — registo de todas as tentativas de
+circuit fitting executadas pelo motor de ML.
+
+  • Métrica: total de registos
+  • Resumo em texto português (gerado automaticamente)
+  • Estatísticas por circuito:
+    → contagem de uso, BIC médio, confiança média, percentagem de uso
+    → Gráfico de barras horizontal
+  • Tabela de registos filtrada por circuito
+
+Botão "🗑️ Limpar histórico":
+  Remove TODOS os registos do FeatureStore. Use com cuidado.
+  Útil para recomeçar o histórico depois de treinar novos dados.
+
+--------------------------------------------------------------------------------
+3.7. PÁGINA: 🤖 ANÁLISE IA
+--------------------------------------------------------------------------------
+
+Interface para gerar narrativas científicas dos seus resultados usando LLM.
+
+Configuração (painel esquerdo):
+  Provedor:    none | ollama | openai
+  Modelo:      llama3 (Ollama) / gpt-4o-mini (OpenAI) / qualquer outro
+  API Key:     necessária apenas para OpenAI
+  Base URL:    necessária para Ollama (http://localhost:11434)
+  Temperatura: 0.0 (determinístico) ... 1.0 (criativo)
+
+Painel direito:
+  1) Cole os dados / resultados na caixa "Dados / contexto"
+     Ex: "Rs=1.2 Ω, Rp=45 Ω, circuito=Randles-CPE, τ₁=2×10⁻⁴ s"
+  2) Escreva uma instrução adicional (opcional)
+     Ex: "Compare com valores típicos de supercapacitores de carbono"
+  3) Clique "▶ Executar"
+  4) A resposta aparece em markdown formatado
+
+Exemplo de saída:
+  "O valor de Rs=1.2 Ω indica resistência ohmica moderada, típica de
+  eletrólito aquoso. A constante de tempo τ₁=2×10⁻⁴ s corresponde a
+  transferência de carga rápida, consistente com material de carbono
+  poroso de alta área superficial..."
+
+--------------------------------------------------------------------------------
+4. FLUXO DE TRABALHO RECOMENDADO
+--------------------------------------------------------------------------------
+
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │  1. Execute o pipeline na GUI (aba EIS, DRT ou Ciclagem)            │
+  │  2. Os resultados são guardados automaticamente em ionflow.db        │
+  │  3. Abra o Dashboard: python -m streamlit run dashboard.py          │
+  │  4. Navegue nos resultados, gere gráficos, peça análise IA          │
+  │  5. Para novos dados: use "📤 Upload & Dados" no Dashboard           │
+  └─────────────────────────────────────────────────────────────────────┘
+
+--------------------------------------------------------------------------------
+5. ACESSO EM REDE LOCAL (PARA APRESENTAÇÕES)
+--------------------------------------------------------------------------------
+
+Para aceder o dashboard noutro computador na mesma rede Wi-Fi:
+
+  # Iniciar com acesso em rede
+  python -m streamlit run dashboard.py --server.address 0.0.0.0
+
+  # O terminal mostra:
+  #   Local URL:   http://localhost:8501
+  #   Network URL: http://192.168.1.XX:8501  ← usar noutro computador
+
+O outro computador só precisa de um browser — não precisa de Python instalado.
+
+--------------------------------------------------------------------------------
+6. PERSONALIZAR A PORTA
+--------------------------------------------------------------------------------
+
+  # Usar porta 8080 em vez de 8501
+  python -m streamlit run dashboard.py --server.port 8080
+
+--------------------------------------------------------------------------------
+7. VARIÁVEIS DE AMBIENTE
+--------------------------------------------------------------------------------
+
+  IONFLOW_DB        Caminho para o ficheiro SQLite (default: data/ionflow.db)
+
+  # PowerShell
+  $env:IONFLOW_DB = "C:\projetos\minha_bd.db"
+  python -m streamlit run dashboard.py
+
+  # Linux / macOS
+  export IONFLOW_DB="/home/user/minha_bd.db"
+  python -m streamlit run dashboard.py
+
+--------------------------------------------------------------------------------
+8. PROBLEMAS COMUNS
+--------------------------------------------------------------------------------
+
+PROBLEMA: "streamlit não é reconhecido"
+  SOLUÇÃO: Usar python -m streamlit run dashboard.py (em vez de streamlit run)
+  OU: verificar que o venv está ativado
+
+PROBLEMA: "No space left on device" ao instalar
+  SOLUÇÃO: Libertar espaço no disco antes de instalar
+  DIAGNÓSTICO: Get-PSDrive C  (PowerShell) / df -h  (Linux)
+  AÇÃO RÁPIDA: python -m pip cache purge  (liberta ~300-400 MB)
+
+PROBLEMA: "ModuleNotFoundError: No module named 'src'"
+  SOLUÇÃO: Executar a partir da raiz do projeto
+  cd C:\caminho\para\eis_analytics
+  python -m streamlit run dashboard.py
+
+PROBLEMA: Dashboard abre mas mostra "Nenhuma amostra"
+  SOLUÇÃO: Executar primeiro o pipeline na GUI para popular a BD
+  OU: usar "📤 Upload & Dados" para carregar ficheiros manualmente
+
+PROBLEMA: Gráficos não aparecem
+  SOLUÇÃO: Verificar que matplotlib está instalado
+  pip install matplotlib
+
+================================================================================
