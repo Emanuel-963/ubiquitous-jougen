@@ -16,9 +16,7 @@ Covers:
 
 from __future__ import annotations
 
-import json
 import os
-import textwrap
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -27,7 +25,6 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pandas as pd
 import pytest
-
 
 # ═══════════════════════════════════════════════════════════════════
 # Fixtures & helpers
@@ -75,48 +72,58 @@ class _FakeDRT:
 
 def _make_ranked_df(n: int = 10) -> pd.DataFrame:
     rng = np.random.RandomState(42)
-    return pd.DataFrame({
-        "Sample": [f"sample_{i}" for i in range(n)],
-        "Rs_fit": rng.uniform(0.1, 10, n),
-        "Rp_fit": rng.uniform(10, 100, n),
-        "Q": rng.uniform(1e-6, 1e-3, n),
-        "n": rng.uniform(0.7, 1.0, n),
-        "Score": rng.uniform(0, 1, n),
-        "Rank": list(range(1, n + 1)),
-    })
+    return pd.DataFrame(
+        {
+            "Sample": [f"sample_{i}" for i in range(n)],
+            "Rs_fit": rng.uniform(0.1, 10, n),
+            "Rp_fit": rng.uniform(10, 100, n),
+            "Q": rng.uniform(1e-6, 1e-3, n),
+            "n": rng.uniform(0.7, 1.0, n),
+            "Score": rng.uniform(0, 1, n),
+            "Rank": list(range(1, n + 1)),
+        }
+    )
 
 
 def _make_circuit_table() -> pd.DataFrame:
-    return pd.DataFrame({
-        "Circuito": ["R(RC)", "R(RC)", "R(RQ)", "R(RC)", "R(RQ)"],
-        "R_s": [1.0, 1.1, 0.9, 1.2, 0.8],
-        "R_ct": [50, 55, 48, 60, 45],
-    })
+    return pd.DataFrame(
+        {
+            "Circuito": ["R(RC)", "R(RC)", "R(RQ)", "R(RC)", "R(RQ)"],
+            "R_s": [1.0, 1.1, 0.9, 1.2, 0.8],
+            "R_ct": [50, 55, 48, 60, 45],
+        }
+    )
 
 
 def _make_merged_table() -> pd.DataFrame:
     rng = np.random.RandomState(42)
-    return pd.DataFrame({
-        "File": [f"cell_{i}" for i in range(5)],
-        "Energy_Wh": rng.uniform(10, 100, 5),
-        "Power_W": rng.uniform(5, 50, 5),
-    })
+    return pd.DataFrame(
+        {
+            "File": [f"cell_{i}" for i in range(5)],
+            "Energy_Wh": rng.uniform(10, 100, 5),
+            "Power_W": rng.uniform(5, 50, 5),
+        }
+    )
 
 
 def _make_drt_summary() -> pd.DataFrame:
-    return pd.DataFrame({
-        "File": ["drt_1", "drt_2", "drt_3"],
-        "N_peaks": [3, 2, 4],
-        "R_total": [100, 120, 95],
-    })
+    return pd.DataFrame(
+        {
+            "File": ["drt_1", "drt_2", "drt_3"],
+            "N_peaks": [3, 2, 4],
+            "R_total": [100, 120, 95],
+        }
+    )
 
 
 def _make_drt_peaks() -> pd.DataFrame:
-    return pd.DataFrame({
-        "File": ["drt_1", "drt_1", "drt_2"],
-        "tau": [1e-3, 1e-1, 1e-2],
-        "R_peak": [30, 40, 50],
-    })
+    return pd.DataFrame(
+        {
+            "File": ["drt_1", "drt_1", "drt_2"],
+            "tau": [1e-3, 1e-1, 1e-2],
+            "R_peak": [30, 40, 50],
+        }
+    )
 
 
 @pytest.fixture
@@ -474,7 +481,7 @@ class TestBuildCorrelationText:
 
 class TestGenerateMarkdown:
     def test_full_report(self, full_pipeline_results):
-        from src.report_generator import ReportConfig, generate_markdown
+        from src.report_generator import generate_markdown
 
         md = generate_markdown(full_pipeline_results, ai_summary="AI says hello.")
         assert "# IonFlow Pipeline" in md
@@ -536,7 +543,8 @@ class TestPDFGeneration:
 
         gen = ReportGenerator()
         paths = gen.generate(
-            tmp_out, full_pipeline_results,
+            tmp_out,
+            full_pipeline_results,
             ai_summary="Test AI summary.",
             formats=["pdf"],
         )
@@ -673,7 +681,8 @@ class TestMultiFormat:
 
         gen = ReportGenerator()
         paths = gen.generate(
-            tmp_out, full_pipeline_results,
+            tmp_out,
+            full_pipeline_results,
             formats=["pdf", "markdown"],
         )
         assert len(paths) == 2
@@ -686,21 +695,23 @@ class TestMultiFormat:
 
         gen = ReportGenerator()
         paths = gen.generate(
-            tmp_out, full_pipeline_results,
+            tmp_out,
+            full_pipeline_results,
             formats=["latex"],
         )
         assert len(paths) == 1
         assert paths[0].endswith(".tex")
         content = Path(paths[0]).read_text(encoding="utf-8")
         assert "\\documentclass" in content
-        assert "EIS Analysis" in content
+        assert "EIS Impedance Analysis" in content
 
     def test_docx_stub(self, full_pipeline_results, tmp_out):
         from src.report_generator import ReportGenerator
 
         gen = ReportGenerator()
         paths = gen.generate(
-            tmp_out, full_pipeline_results,
+            tmp_out,
+            full_pipeline_results,
             formats=["docx"],
         )
         assert len(paths) == 1
@@ -712,7 +723,8 @@ class TestMultiFormat:
 
         gen = ReportGenerator()
         paths = gen.generate(
-            tmp_out, full_pipeline_results,
+            tmp_out,
+            full_pipeline_results,
             formats=["pdf", "markdown", "latex", "docx"],
         )
         assert len(paths) == 4
@@ -722,7 +734,8 @@ class TestMultiFormat:
 
         gen = ReportGenerator()
         paths = gen.generate(
-            tmp_out, full_pipeline_results,
+            tmp_out,
+            full_pipeline_results,
             formats=["pdf", "unknown_format"],
         )
         assert len(paths) == 1  # only PDF succeeds
@@ -898,7 +911,7 @@ class TestReportGeneratorInterface:
 class TestEdgeCases:
     def test_dict_based_results(self, tmp_out):
         """Pipeline results as plain dicts (instead of dataclasses)."""
-        from src.report_generator import ReportGenerator, build_eis_section
+        from src.report_generator import build_eis_section
 
         results = {
             "eis": {"ranked_df": None, "circuit_table": None, "raw_eis": {}},
@@ -923,10 +936,12 @@ class TestEdgeCases:
     def test_nan_in_dataframe(self, tmp_out):
         from src.report_generator import ReportGenerator
 
-        df = pd.DataFrame({
-            "Sample": ["a", "b"],
-            "Score": [1.0, float("nan")],
-        })
+        df = pd.DataFrame(
+            {
+                "Sample": ["a", "b"],
+                "Score": [1.0, float("nan")],
+            }
+        )
         eis = _FakeEIS(ranked_df=df, circuit_table=pd.DataFrame(), raw_eis={})
         gen = ReportGenerator()
         paths = gen.generate(tmp_out, {"eis": eis}, formats=["pdf"])
@@ -938,7 +953,8 @@ class TestEdgeCases:
         gen = ReportGenerator()
         summary = "Analysis shows τ = 1.5ms, R = 50Ω ± 2Ω. Status: 🟢"
         paths = gen.generate(
-            tmp_out, full_pipeline_results,
+            tmp_out,
+            full_pipeline_results,
             ai_summary=summary,
             formats=["pdf"],
         )
