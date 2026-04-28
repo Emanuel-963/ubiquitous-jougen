@@ -136,6 +136,54 @@ def _convert_potentiostat_to_csv(src: Path, target_dir: str) -> Optional[str]:
         return None
 
 
+def _ask_export_format(parent) -> Optional[str]:
+    """Show a modal dialog and return the selected export format key.
+
+    Returns one of ``"zview"``, ``"latex"``, ``"origin"``, ``"meisp"``,
+    or ``None`` if the user cancelled.
+    """
+    import tkinter as _tk
+
+    formats = [
+        ("ZView / ZPlot (.z)", "zview"),
+        ("LaTeX booktabs (.tex)", "latex"),
+        ("Origin CSV (.csv)", "origin"),
+        ("MEISP (.mps)", "meisp"),
+    ]
+
+    chosen: list = [None]  # mutable container to pass value out of inner func
+
+    dlg = _tk.Toplevel(parent)
+    dlg.title("Exportar EIS como…")
+    dlg.resizable(False, False)
+    dlg.grab_set()  # modal
+
+    _tk.Label(dlg, text="Selecione o formato de exportação:", padx=16, pady=8).pack()
+
+    var = _tk.StringVar(value=formats[0][1])
+    for label, key in formats:
+        _tk.Radiobutton(dlg, text=label, variable=var, value=key, anchor="w").pack(
+            fill="x", padx=24
+        )
+
+    def _ok():
+        chosen[0] = var.get()
+        dlg.destroy()
+
+    def _cancel():
+        dlg.destroy()
+
+    btn_frame = _tk.Frame(dlg)
+    btn_frame.pack(pady=12)
+    _tk.Button(btn_frame, text="OK", width=10, command=_ok).pack(side="left", padx=8)
+    _tk.Button(btn_frame, text="Cancelar", width=10, command=_cancel).pack(
+        side="left", padx=8
+    )
+
+    parent.wait_window(dlg)
+    return chosen[0]
+
+
 class QueueWriter:
     def __init__(self, q: queue.Queue):
         self.q = q
@@ -679,6 +727,13 @@ class PipelineApp(ctk.CTk):
             command=self._generate_report_clicked,
         )
         self.btn_report.grid(row=10, column=0, padx=16, pady=(0, 8), sticky="ew")
+
+        self.btn_export = ctk.CTkButton(
+            sidebar,
+            text="📤 " + tr("Exportar EIS como..."),
+            command=self._export_eis_clicked,
+        )
+        self.btn_export.grid(row=11, column=0, padx=16, pady=(0, 8), sticky="ew")
 
         self.btn_batch = ctk.CTkButton(
             sidebar,
@@ -4456,6 +4511,82 @@ class PipelineApp(ctk.CTk):
                 self.log_queue.put(("log", f"Relatório gerado: {', '.join(paths)}"))
             except Exception as exc:
                 self.log_queue.put(("log", f"Erro ao gerar relatório: {exc}"))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _export_eis_clicked(self):
+        """Open an export-format dialog and export raw EIS data."""
+        raw_eis = getattr(self, "raw_eis", None) or {}
+        if not raw_eis:
+            # Also try last_eis_result
+            last = getattr(self, "last_eis_result", None)
+            if last is not None:
+                raw_eis = getattr(last, "raw_eis", {}) or {}
+        if not raw_eis:
+            self._append_log(
+                "Nenhum dado EIS disponível para exportar. "
+                "Execute o Pipeline EIS primeiro."
+            )
+            return
+
+        # Ask user to pick format via a small dialog
+        fmt = _ask_export_format(self)
+        if not fmt:
+            return  # user cancelled
+
+        out_dir = filedialog.askdirectory(
+            title=tr("Selecione pasta de destino para exportação"),
+            initialdir="outputs",
+        )
+        if not out_dir:
+            return
+
+        self._append_log(
+            f"Exportando {len(raw_eis)} arquivo(s) como '{fmt}' → {out_dir}"
+        )
+
+        def worker():
+            try:
+                from src.export import export_eis
+
+                paths = export_eis(raw_eis, fmt=fmt, out_dir=out_dir)
+                self.log_queue.put(
+                    (
+                        "log",
+                        f"Exportação concluída: {len(paths)} arquivo(s) em {out_dir}",
+                    )
+                )
+                # Also export LaTeX circuit/ranking tables when available
+                if fmt == "latex":
+                    last = getattr(self, "last_eis_result", None)
+                    if last is not None:
+                        from pathlib import Path as _P
+
+                        from src.export import (
+                            export_circuit_table_latex,
+                            export_ranking_latex,
+                        )
+
+                        extras = []
+                        ct = getattr(last, "circuit_table", None)
+                        if ct is not None and not ct.empty:
+                            dest = _P(out_dir) / "table_circuit_params.tex"
+                            export_circuit_table_latex(ct, dest)
+                            extras.append(dest.name)
+                        rd = getattr(last, "ranked_df", None)
+                        if rd is not None and not rd.empty:
+                            dest = _P(out_dir) / "table_eis_ranking.tex"
+                            export_ranking_latex(rd, dest)
+                            extras.append(dest.name)
+                        if extras:
+                            self.log_queue.put(
+                                (
+                                    "log",
+                                    f"Tabelas LaTeX adicionais: {', '.join(extras)}",
+                                )
+                            )
+            except Exception as exc:
+                self.log_queue.put(("log", f"Erro na exportação: {exc}"))
 
         threading.Thread(target=worker, daemon=True).start()
 
