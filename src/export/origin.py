@@ -13,7 +13,7 @@ File structure
     # IonFlow Pipeline Export
     # Sample: <sample_name>
     # Date: <timestamp>
-    # Instrument: IonFlow Pipeline v0.2.0
+    # Instrument: IonFlow Pipeline v0.3.0
     # Columns: Frequency(Hz), Z'(Ohm), -Z''(Ohm), |Z|(Ohm), Phase(deg)
     #
     Frequency(Hz),Z'(Ohm),-Z''(Ohm),|Z|(Ohm),Phase(deg)

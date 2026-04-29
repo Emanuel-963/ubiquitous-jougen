@@ -1,4 +1,4 @@
-# IonFlow Pipeline v0.2.0 — One-page Summary
+# IonFlow Pipeline v0.3.0 — One-page Summary
 
 ## What it is
 
@@ -8,7 +8,7 @@ Relaxation Times (DRT)** analysis. It features an AI-powered interpretation agen
 PDF reporting, parallel processing, and an interactive GUI — all in a single installable
 desktop application.
 
-## Key Features (v0.2.0)
+## Key Features (v0.3.0)
 
 | Category | Capabilities |
 |----------|-------------|
@@ -20,7 +20,7 @@ desktop application.
 | **Reporting** | Automated PDF with cover, EIS/Cycling/DRT/AI sections, images, tables |
 | **GUI** | MVC architecture, 6 tab modules, keyboard shortcuts, 3 languages (PT/EN/ES), accessibility settings |
 | **CLI** | `ionflow-cli eis / cycling / drt / analyze / validate / config` |
-| **Quality** | 1782 automated tests, GitHub Actions CI, structured logging |
+| **Quality** | 220+ new automated tests (v0.3.0), 1782 (v0.2.0), GitHub Actions CI, structured logging |
 
 ## Quick Start
 

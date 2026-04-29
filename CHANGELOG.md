@@ -2,6 +2,78 @@
 
 All notable changes to the IonFlow Pipeline are documented here.
 
+## [0.3.0] — 2026-04-28
+
+### Highlights
+
+**IonFlow Pipeline v0.3.0** expands the platform with native instrument parsers, scientific
+export formats, multi-sample comparative analysis, generative AI, persistent SQLite storage,
+and a Streamlit web dashboard — completing 7 planned development phases.
+
+- **50+ Python modules**
+- **220+ new automated tests** (7 phases)
+- **4 native parsers**: Gamry, BioLogic, Autolab, Zahner
+- **4 scientific export formats**: ZView, LaTeX booktabs, OriginPro, MEISP
+- **Comparative analysis** with Health Score (0–10) and automatic PCA
+- **Generative AI**: OpenAI (gpt-4o) + Ollama (local) via unified LLMAdapter
+- **Settings panel** with persistent JSON config + GitHub auto-update
+- **SQLite backend** (7 tables, migrations) + Streamlit dashboard (7 pages)
+
+---
+
+### Added — Phase 2: Native Instrument Parsers
+
+- **`src/parsers/gamry.py`** — Gamry `.dta` parser
+- **`src/parsers/biologic.py`** — BioLogic `.mpr` / `.mpt` parser
+- **`src/parsers/autolab.py`** — Metrohm Autolab `.csv` parser
+- **`src/parsers/zahner.py`** — Zahner `.isc` parser
+- **`src/parsers/__init__.py`** — Unified `parse_eis_file()` with auto-detection
+
+### Added — Phase 3: Scientific Export
+
+- **`src/export/zview.py`** — ZView/ZPlot `.z` format
+- **`src/export/latex_export.py`** — LaTeX booktabs `.tex` tables
+- **`src/export/origin.py`** — OriginPro `.csv` with metadata header
+- **`src/export/meisp.py`** — MEISP `.txt` format
+
+### Added — Phase 4: Comparative Analysis
+
+- **`src/comparison/`** — Multi-sample overlay (Nyquist + Bode + DRT)
+- **Health Score** — Weighted 0–10 score per sample (Rs, Rp, BIC, KK, ML confidence)
+- **PCA** — Automatic k-means clustering with 2D visualisation
+- GUI tab **📊 Comparar** with exportable ranking table
+
+### Added — Phase 5: Generative AI
+
+- **`src/ai/llm_adapter.py`** — `LLMAdapter` (OpenAI + Ollama + NullAdapter)
+- Automatic scientific narrative in Portuguese, embedded in PDF reports
+
+### Added — Phase 6: Settings + Auto-Update
+
+- **Settings panel** (`⚙️ Configurações`) — persistent JSON config
+- **`src/updater.py`** — GitHub release checker + in-GUI download
+
+### Added — Phase 7: SQLite Backend + Streamlit Dashboard
+
+- **`src/db/schema.py`** — 7-table SQLite schema with WAL mode and FK cascade
+- **`src/db/migrations.py`** — Versioned, idempotent migrations
+- **`src/db/repository.py`** — `IonFlowRepository` CRUD (samples, EIS, DRT, cycling, params)
+- **`src/db/feature_store_v2.py`** — `FeatureStoreV2` with similarity search and ML history
+- **`dashboard.py`** — Streamlit multipage app (Overview, Upload, EIS, DRT, Cycling, History, AI)
+- Launch: `python -m streamlit run dashboard.py` → `http://localhost:8501`
+
+### Added — Tutorials
+
+- `tutoriais/16_novidades_v0.3.0.txt` — Overview of all phases + upgrade guide
+- `tutoriais/17_dashboard_streamlit.txt` — Streamlit dashboard guide
+- `tutoriais/18_base_dados_sqlite.txt` — IonFlowRepository + FeatureStoreV2 with examples
+- `tutoriais/19_importacao_potenciostatos.txt` — Gamry/BioLogic/Autolab/Zahner parsers
+- `tutoriais/20_exportacao_cientifica.txt` — ZView/LaTeX/Origin/MEISP export
+- `tutoriais/21_analise_comparativa.txt` — Multi-sample comparison + Health Score + PCA
+- `tutoriais/22_configuracoes_e_autoupdate.txt` — Settings panel + auto-update + env vars
+
+---
+
 ## [0.2.0] — 2026-04-16
 
 ### Highlights

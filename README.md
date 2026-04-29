@@ -3,10 +3,10 @@
 **Plataforma profissional de análise eletroquímica** — EIS, ciclagem galvanostática, DRT — com agente IA, relatórios PDF, CLI e GUI interativa.
 
 [![CI](https://github.com/Emanuel-963/ubiquitous-jougen/actions/workflows/ci.yml/badge.svg)](https://github.com/Emanuel-963/ubiquitous-jougen/actions/workflows/ci.yml)
-![Version](https://img.shields.io/badge/version-0.2.0-blue)
+![Version](https://img.shields.io/badge/version-0.3.0-blue)
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License MIT](https://img.shields.io/badge/license-MIT-green)
-![Tests](https://img.shields.io/badge/tests-1819%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-220%2B%20passing-brightgreen)
 
 ---
 
@@ -27,19 +27,25 @@ ionflow-cli analyze --all --ai --export-pdf report.pdf
 
 ---
 
-## ✨ Funcionalidades (v0.2.0)
+## ✨ Funcionalidades (v0.3.0)
 
 | Módulo | Descrição |
 |---|---|
 | **Pipeline EIS** | 7 circuitos equivalentes, ML shortlist, Monte Carlo, Kramers-Kronig |
 | **Pipeline DRT** | Tikhonov regularisation, detecção de picos, overlay multi-amostra |
 | **Pipeline Ciclagem** | Ragone com zonas de referência, gap analysis vs targets |
-| **🤖 Agente IA** | 50+ regras eletroquímicas, motor de inferência, predição, process advisor |
+| **🤖 Agente IA** | 50+ regras eletroquímicas + LLM generativo (OpenAI / Ollama) |
 | **📄 PDF Reports** | Relatório automático com capa, secções EIS/Ciclagem/DRT/IA |
 | **CLI** | `ionflow-cli eis / cycling / drt / analyze / validate / config` |
-| **GUI** | MVC, 6 módulos de abas, atalhos teclado, 3 idiomas (PT/EN/ES) |
+| **GUI** | MVC, 9 abas, atalhos teclado, 3 idiomas (PT/EN/ES) |
 | **Batch** | Processamento paralelo com `ProcessPoolExecutor` |
 | **i18n** | 3 idiomas com troca em tempo real |
+| **Importação nativa** | Parsers Gamry (.dta), BioLogic (.mpr/.mpt), Autolab, Zahner (.isc) |
+| **Exportação científica** | ZView, LaTeX booktabs, OriginPro, MEISP |
+| **Análise comparativa** | Overlay N amostras, Health Score (0–10), PCA automático |
+| **Base de dados** | SQLite local: amostras, EIS, DRT, ciclagem, histórico ML |
+| **Dashboard web** | Streamlit — 7 páginas em `localhost:8501` |
+| **Auto-update** | Verificação e download de novas versões pelo GitHub |
 
 ---
 
@@ -202,20 +208,22 @@ mypy src                 # type checking
 
 ---
 
-## 📊 Métricas v0.1.0 → v0.2.0
+## 📊 Métricas v0.1.0 → v0.2.0 → v0.3.0
 
-| Métrica | v0.1.0 | v0.2.0 |
-|---------|--------|--------|
-| Módulos Python | 18 | **35+** |
-| Circuitos | 3 | **7** (extensível) |
-| Testes | ~70% cov | **1782 testes** |
-| Idiomas | 2 (PT/EN) | **3** (+ ES) |
-| Agente IA | ❌ | ✅ Rule-based + ML + LLM |
-| PDF Reports | ❌ | ✅ Automático |
-| CLI | ❌ | ✅ Completa |
-| Monte Carlo | ❌ | ✅ N=100 + Bootstrap |
-| Kramers-Kronig | ❌ | ✅ Validação automática |
-| Batch Processing | ❌ | ✅ Paralelo |
+| Métrica | v0.1.0 | v0.2.0 | v0.3.0 |
+|---------|--------|--------|--------|
+| Módulos Python | 18 | 35+ | **50+** |
+| Circuitos | 3 | 7 | **7** (extensível) |
+| Testes automatizados | ~70% cov | 1782 | **220+ (novos)** |
+| Idiomas | 2 (PT/EN) | 3 (+ ES) | **3** |
+| Agente IA | ❌ | ✅ Rule-based + ML | ✅ **+ LLM generativo** |
+| PDF Reports | ❌ | ✅ | ✅ |
+| CLI | ❌ | ✅ | ✅ |
+| Importação nativa | ❌ | ❌ | ✅ **Gamry / BioLogic / Autolab / Zahner** |
+| Exportação científica | ❌ | ❌ | ✅ **ZView / LaTeX / Origin / MEISP** |
+| Health Score + PCA | ❌ | ❌ | ✅ |
+| SQLite + Dashboard | ❌ | ❌ | ✅ **Streamlit localhost:8501** |
+| Auto-update | ❌ | ❌ | ✅ |
 
 ---
 

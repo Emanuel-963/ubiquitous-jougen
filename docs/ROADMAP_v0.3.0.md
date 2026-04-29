@@ -204,4 +204,4 @@ src/
 ---
 
 *Repositório: github.com/Emanuel-963/ubiquitous-jougen*
-*Versão actual: v0.2.0 | Próxima: v0.3.0 | Roadmap revisto: 2026-04-27*
+*Versão actual: v0.3.0 | Roadmap revisto: 2026-04-28*

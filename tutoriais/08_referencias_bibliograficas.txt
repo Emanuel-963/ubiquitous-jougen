@@ -1,8 +1,8 @@
 ================================================================================
-    REFERÊNCIAS BIBLIOGRÁFICAS — IONFLOW PIPELINE v0.1.0
+    REFERÊNCIAS BIBLIOGRÁFICAS — IONFLOW PIPELINE v0.3.0
 ================================================================================
 
-Versão: 0.1.0
+Versão: 0.3.0
 Última atualização: Abril 2026
 
 Este documento lista as referências científicas, livros e documentação
@@ -555,5 +555,5 @@ NOTA SOBRE ACESSO ÀS REFERÊNCIAS
   ou adquiridos via editoras (Wiley, Springer, Elsevier).
 
 ================================================================================
-               FIM DAS REFERÊNCIAS — IONFLOW PIPELINE v0.1.0
+               FIM DAS REFERÊNCIAS — IONFLOW PIPELINE v0.3.0
 ================================================================================

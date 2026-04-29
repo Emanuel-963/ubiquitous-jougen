@@ -1,7 +1,7 @@
-# Apresentação: IonFlow Pipeline v0.2.0
+# Apresentação: IonFlow Pipeline v0.3.0
 
 ## Slide 1 — Título
-- **IonFlow Pipeline v0.2.0** — Plataforma de Análise Eletroquímica com IA
+- **IonFlow Pipeline v0.3.0** — Plataforma de Análise Eletroquímica com IA
 - Autor(es), orientador, afiliação
 - Abril 2026
 
@@ -9,7 +9,7 @@
 - **Contexto:** Análise de EIS, ciclagem e DRT para caracterização de materiais (supercapacitores, baterias, revestimentos)
 - **Problema:** Processos manuais, reprodutibilidade limitada, interpretação dependente de especialista
 - **Solução:** Pipeline automatizado com interpretação inteligente e relatórios profissionais
-- **Objectivos v0.2.0:** 7 circuitos, agente IA, PDF, CLI, 3 idiomas, 1782 testes
+- **Objectivos v0.3.0:** 7 fases completas, parsers nativos, exportação científica, Health Score, LLM generativo, SQLite, Dashboard Streamlit
 
 ## Slide 3 — Arquitetura & Métodos
 - **Pipeline:** Load → Validação (Kramers-Kronig) → Fitting (7 circuitos × multi-seed) → Ranking (BIC) → PCA → DRT → Ciclagem → IA
@@ -50,13 +50,12 @@
 - **CLI:** `ionflow-cli eis / cycling / drt / analyze / validate`
 
 ## Slide 9 — Conclusões & Trabalho Futuro
-- v0.2.0 transforma script → plataforma profissional
+- v0.3.0 adiciona importação nativa, exportação científica, Health Score, LLM, SQLite e Dashboard
 - 35+ módulos, MVC, IA, PDF, CLI, batch
 - **Próximos passos:**
-  - Integração com potenciostatos (importação directa)
-  - Base de dados SQLite para histórico multi-projecto
-  - Dashboard web (Dash/Streamlit)
-  - Publicação como pacote PyPI
+  - Publicar no PyPI como pacote
+  - Containerizar com Docker para servidores de laboratório
+  - Submeter artigo JOSS (Journal of Open Source Software)
 
 ## Slide 10 — Agradecimentos & Perguntas
 
@@ -67,7 +66,7 @@
 
 ## Materiais suplementares
 - `CHANGELOG.md` — Lista completa de mudanças
-- `docs/UPGRADE_PLAN_v0.2.0.md` — Plano de 30 dias detalhado
-- `tests/` — 1782 testes automatizados
-- `tutoriais/` — Tutoriais passo a passo
+- `docs/ROADMAP_v0.3.0.md` — Plano de 7 fases detalhado
+- `tests/` — 220+ testes automatizados (v0.3.0) + 1782 (v0.2.0)
+- `tutoriais/` — 22 tutoriais passo a passo
 

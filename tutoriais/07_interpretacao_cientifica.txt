@@ -307,7 +307,7 @@ ESTRUTURA RECOMENDADA PARA UM ARTIGO/RELATÓRIO:
   □ Resultados comparados com literatura?
 
 ================================================================================
-               FIM DOS TUTORIAIS DO IONFLOW PIPELINE v0.1.0
+               FIM DOS TUTORIAIS DO IONFLOW PIPELINE v0.3.0
 ================================================================================
 
 Para dúvidas ou bugs, abra um Issue no repositório:
