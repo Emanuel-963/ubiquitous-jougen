@@ -3,7 +3,6 @@ __pycache__/
 *.pyc
 .env
 .ipynb_checkpoints/
-outputs/
 
 # Local Python embeddable and wrapper
 python-3.11-embed-amd64.zip
@@ -32,12 +31,28 @@ build/
 
 # Runtime logs and ML cache (not version-controlled)
 logs/
-data/ml/
 
-# Large cycling data (download separately or provide your own)
-data/processed/*.txt
-data/organnnn/*GCD*
-data/organnnn/discharge*
+# ── data/ — pasta de dados pessoais (local only) ─────────────────────
+# Mantidos: data/ionflow.ico (usado pelo build/installer)
+#            data/knowledge/ (regras IA — parte do software)
+#            */.gitkeep (preserva estrutura de pastas no repositório)
+data/raw/*
+data/processed/*
+data/organnnn/*
+data/ml/*
+data/ionflowMarca.png
+data/*.db
+data/*.db-shm
+data/*.db-wal
+# Excepção: manter os .gitkeep para preservar estrutura
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/organnnn/.gitkeep
+!data/ml/.gitkeep
+
+# ── outputs/ — resultados e relatórios gerados localmente ─────────────
+outputs/*
+!outputs/.gitkeep
 
 # Generated docs
 docs/*.pptx
