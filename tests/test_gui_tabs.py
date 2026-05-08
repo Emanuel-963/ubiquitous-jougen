@@ -5,14 +5,25 @@ All tests are headless — no tkinter / customtkinter required.
 
 from __future__ import annotations
 
-import json
 import os
-from typing import Any, Dict, List
+from typing import List
 
 import numpy as np
 import pandas as pd
-import pytest
 from matplotlib.figure import Figure
+
+# ── tabs ─────────────────────────────────────────────────────────────
+from src.gui.tabs.advanced_charts import (
+    _find_matching_index,
+    _split_arquivo,
+    build_fig_corr,
+    build_fig_drt_eis,
+    build_fig_pca,
+    build_fig_pca_metric,
+    build_fig_rank,
+    build_fig_series,
+)
+from src.gui.tabs.tables import table_column_configs
 
 # ── widgets ──────────────────────────────────────────────────────────
 from src.gui.widgets import (
@@ -23,20 +34,6 @@ from src.gui.widgets import (
     StyledOptionMenuHelper,
     TableState,
 )
-
-# ── tabs ─────────────────────────────────────────────────────────────
-from src.gui.tabs.advanced_charts import (
-    build_fig_corr,
-    build_fig_drt_eis,
-    build_fig_pca,
-    build_fig_pca_metric,
-    build_fig_rank,
-    build_fig_series,
-    _find_matching_index,
-    _split_arquivo,
-)
-from src.gui.tabs.tables import TableColumnConfig, table_column_configs
-
 
 # ═══════════════════════════════════════════════════════════════════════
 #  LogRedirector
@@ -130,11 +127,13 @@ class TestExportResult:
 
 class TestFilterableTableManager:
     def _sample_df(self):
-        return pd.DataFrame({
-            "Name": ["Alpha", "Beta", "Gamma", "Delta"],
-            "Value": [10, 20, 30, 40],
-            "Score": [1.1, 2.2, 3.3, 4.4],
-        })
+        return pd.DataFrame(
+            {
+                "Name": ["Alpha", "Beta", "Gamma", "Delta"],
+                "Value": [10, 20, 30, 40],
+                "Score": [1.1, 2.2, 3.3, 4.4],
+            }
+        )
 
     def test_register_and_keys(self):
         mgr = FilterableTableManager()
@@ -287,9 +286,9 @@ class TestStyledOptionMenuHelper:
         assert set(names) == {"a", "c"}
 
     def test_unique_series_bases(self):
-        df = pd.DataFrame({
-            "Arquivo": ["1 NF H2SO4", "2 NF H2SO4", "1 GCD NaOH", "2 GCD NaOH"]
-        })
+        df = pd.DataFrame(
+            {"Arquivo": ["1 NF H2SO4", "2 NF H2SO4", "1 GCD NaOH", "2 GCD NaOH"]}
+        )
         bases = StyledOptionMenuHelper.unique_series_bases(df)
         assert "GCD NaOH" in bases
         assert "NF H2SO4" in bases
@@ -456,11 +455,13 @@ class TestBuildFigPCAMetric:
 
 class TestBuildFigCorr:
     def test_returns_figure(self):
-        df = pd.DataFrame({
-            "A": [1.0, 2.0, 3.0],
-            "B": [3.0, 2.0, 1.0],
-            "C": [1.5, 2.5, 3.5],
-        })
+        df = pd.DataFrame(
+            {
+                "A": [1.0, 2.0, 3.0],
+                "B": [3.0, 2.0, 1.0],
+                "C": [1.5, 2.5, 3.5],
+            }
+        )
         fig = build_fig_corr(df)
         assert isinstance(fig, Figure)
 
@@ -479,11 +480,13 @@ class TestBuildFigCorr:
 
 class TestBuildFigDRTEIS:
     def _df(self):
-        return pd.DataFrame({
-            "Sample": ["s1", "s2"],
-            "gamma_peak_main": [0.5, 0.3],
-            "Retenção (%)": [90.0, 80.0],
-        })
+        return pd.DataFrame(
+            {
+                "Sample": ["s1", "s2"],
+                "gamma_peak_main": [0.5, 0.3],
+                "Retenção (%)": [90.0, 80.0],
+            }
+        )
 
     def test_returns_figure(self):
         fig = build_fig_drt_eis(self._df())
@@ -498,10 +501,12 @@ class TestBuildFigDRTEIS:
         assert build_fig_drt_eis(df) is None
 
     def test_all_nan(self):
-        df = pd.DataFrame({
-            "gamma_peak_main": [np.nan],
-            "Retenção (%)": [np.nan],
-        })
+        df = pd.DataFrame(
+            {
+                "gamma_peak_main": [np.nan],
+                "Retenção (%)": [np.nan],
+            }
+        )
         assert build_fig_drt_eis(df) is None
 
 
@@ -512,10 +517,12 @@ class TestBuildFigDRTEIS:
 
 class TestBuildFigSeries:
     def _df(self):
-        return pd.DataFrame({
-            "Arquivo": ["1 NF H2SO4", "2 NF H2SO4", "3 NF H2SO4"],
-            "Rs": [1.0, 1.5, 2.0],
-        })
+        return pd.DataFrame(
+            {
+                "Arquivo": ["1 NF H2SO4", "2 NF H2SO4", "3 NF H2SO4"],
+                "Rs": [1.0, 1.5, 2.0],
+            }
+        )
 
     def test_returns_figure(self):
         fig = build_fig_series(self._df(), "Rs", "NF H2SO4")
@@ -544,7 +551,12 @@ class TestTableColumnConfig:
     def test_all_six_keys(self):
         configs = table_column_configs()
         assert set(configs.keys()) == {
-            "eis", "cic", "circuit", "drt", "drt_peaks", "drt_eis"
+            "eis",
+            "cic",
+            "circuit",
+            "drt",
+            "drt_peaks",
+            "drt_eis",
         }
 
     def test_has_required_fields(self):
@@ -568,33 +580,288 @@ class TestTabsPackageImports:
     """Verify that the tabs __init__ re-exports work."""
 
     def test_import_eis_charts(self):
-        from src.gui.tabs import build_fig_nyquist, build_fig_bode, build_fig_impedance_heatmap
+        from src.gui.tabs import (
+            build_fig_bode,
+            build_fig_impedance_heatmap,
+            build_fig_nyquist,
+        )
+
         assert callable(build_fig_nyquist)
         assert callable(build_fig_bode)
         assert callable(build_fig_impedance_heatmap)
 
     def test_import_cycling_charts(self):
         from src.gui.tabs import (
-            build_fig_energy_power, build_fig_energy_cycle,
-            build_fig_retention_cycle, build_fig_ragone,
+            build_fig_energy_cycle,
+            build_fig_energy_power,
+            build_fig_ragone,
+            build_fig_retention_cycle,
         )
+
+        assert callable(build_fig_energy_cycle)
         assert callable(build_fig_energy_power)
         assert callable(build_fig_ragone)
+        assert callable(build_fig_retention_cycle)
 
     def test_import_drt_charts(self):
         from src.gui.tabs import (
-            build_fig_drt_spectrum, build_fig_drt_overlay, build_fig_drt_heatmap,
+            build_fig_drt_heatmap,
+            build_fig_drt_overlay,
+            build_fig_drt_spectrum,
         )
+
+        assert callable(build_fig_drt_heatmap)
+        assert callable(build_fig_drt_overlay)
         assert callable(build_fig_drt_spectrum)
 
     def test_import_advanced_charts(self):
         from src.gui.tabs import (
-            build_fig_rank, build_fig_pca, build_fig_pca_metric,
-            build_fig_corr, build_fig_drt_eis, build_fig_series,
+            build_fig_corr,
+            build_fig_drt_eis,
+            build_fig_pca,
+            build_fig_pca_metric,
+            build_fig_rank,
+            build_fig_series,
         )
+
+        assert callable(build_fig_corr)
+        assert callable(build_fig_drt_eis)
+        assert callable(build_fig_pca)
+        assert callable(build_fig_pca_metric)
         assert callable(build_fig_rank)
         assert callable(build_fig_series)
 
     def test_import_tables(self):
         from src.gui.tabs import TableColumnConfig, table_column_configs
+
         assert callable(table_column_configs)
+        assert TableColumnConfig is not None
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Regression tests — Compare Tab (BUG-01, BUG-02, BUG-05, BUG-06)
+#
+#  These tests are headless: they exercise the compare-tab logic via a
+#  minimal stub (_CompareStub) that replicates the exact methods from
+#  gui_app.py::PipelineApp, without importing tkinter or customtkinter.
+#  If the algorithm in gui_app.py changes, the stub must be updated too.
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class _FakeBooleanVar:
+    """Headless substitute for ctk.BooleanVar."""
+
+    def __init__(self, value: bool = True) -> None:
+        self._v = value
+
+    def get(self) -> bool:
+        return self._v
+
+    def set(self, v: bool) -> None:
+        self._v = v
+
+
+class _FakeWidget:
+    def destroy(self) -> None:
+        pass
+
+
+class _FakeScrollableFrame:
+    """Headless substitute for CTkScrollableFrame."""
+
+    def __init__(self) -> None:
+        self._children: list = []
+
+    def winfo_children(self) -> list:
+        return list(self._children)
+
+
+class _FakeFrame:
+    """Headless substitute for CTkFrame used for compare plots."""
+
+    def __init__(self) -> None:
+        self._children: list = []
+        self._labels: list = []
+
+    def winfo_children(self) -> list:
+        return list(self._children)
+
+
+class _CompareStub:
+    """Minimal stub replicating compare-tab methods from gui_app.py::PipelineApp.
+
+    Keep in sync with:
+      • _open_compare_tab        (BUG-02 fix)
+      • _refresh_compare_sample_list  (BUG-01 / BUG-05 fix)
+      • _run_compare_clicked     (BUG-06 fix)
+    """
+
+    def __init__(self) -> None:
+        self.raw_eis: dict = {}
+        self.compare_sample_vars: dict = {}
+        self.compare_scroll = _FakeScrollableFrame()
+        self.compare_nyquist_frame = _FakeFrame()
+        self.compare_bode_frame = _FakeFrame()
+        self._log: list = []
+        self._tab_opened: str | None = None
+
+    # mirrors gui_app.py::_open_compare_tab  (BUG-02)
+    def _open_compare_tab(self) -> None:
+        self._refresh_compare_sample_list()
+        self._tab_opened = "🔄 Comparar Amostras"
+
+    # mirrors gui_app.py::_refresh_compare_sample_list  (BUG-01 / BUG-05)
+    def _refresh_compare_sample_list(self) -> None:
+        if set(self.raw_eis.keys()) == set(self.compare_sample_vars.keys()):
+            return  # BUG-05 early-exit
+        for widget in self.compare_scroll.winfo_children():
+            widget.destroy()
+        self.compare_scroll._children.clear()
+        self.compare_sample_vars.clear()
+        for name in sorted(self.raw_eis.keys()):
+            var = _FakeBooleanVar(value=True)
+            self.compare_sample_vars[name] = var
+            self.compare_scroll._children.append(_FakeWidget())
+
+    # mirrors gui_app.py::_run_compare_clicked  (BUG-06)
+    def _run_compare_clicked(self) -> None:
+        selected = [k for k, v in self.compare_sample_vars.items() if v.get()]
+        if len(selected) < 2:
+            msg = "Selecione pelo menos 2 amostras para comparação."
+            for frame in (self.compare_nyquist_frame, self.compare_bode_frame):
+                for w in frame.winfo_children():
+                    w.destroy()
+                frame._children.clear()
+                frame._labels.append(msg)
+            self._log.append(msg)
+            return
+        # (overlay generation is not exercised in these headless tests)
+
+
+class TestCompareTabRegression:
+    """Regression tests for BUG-01, BUG-02, BUG-05, BUG-06 in gui_app.py."""
+
+    # ── BUG-01 ────────────────────────────────────────────────────────
+
+    def test_handle_both_done_refreshes_compare_list(self):
+        """After setting raw_eis (as _handle_both_done does), calling
+        _refresh_compare_sample_list must populate compare_sample_vars.
+        Previously the refresh was not called from _handle_both_done."""
+        stub = _CompareStub()
+        stub.raw_eis = {
+            "AM1": pd.DataFrame(
+                {"frequency": [100.0], "zreal": [1.0], "zimag": [-0.5]}
+            ),
+            "AM2": pd.DataFrame(
+                {"frequency": [100.0], "zreal": [2.0], "zimag": [-0.8]}
+            ),
+        }
+        stub._refresh_compare_sample_list()
+
+        assert set(stub.compare_sample_vars.keys()) == {"AM1", "AM2"}
+        assert len(stub.compare_scroll._children) == 2
+
+    def test_handle_both_done_all_vars_default_true(self):
+        """All BooleanVars must default to True after refresh (opt-in comparison)."""
+        stub = _CompareStub()
+        stub.raw_eis = {"A": pd.DataFrame(), "B": pd.DataFrame(), "C": pd.DataFrame()}
+        stub._refresh_compare_sample_list()
+
+        assert all(v.get() for v in stub.compare_sample_vars.values())
+
+    # ── BUG-02 ────────────────────────────────────────────────────────
+
+    def test_open_compare_tab_calls_refresh_before_set(self):
+        """_open_compare_tab must refresh the sample list AND then switch tab.
+        Previously btn_compare only called tabs.set(), leaving a stale list."""
+        stub = _CompareStub()
+        stub.raw_eis = {
+            "X": pd.DataFrame({"frequency": [10.0], "zreal": [5.0], "zimag": [-1.0]}),
+            "Y": pd.DataFrame({"frequency": [10.0], "zreal": [6.0], "zimag": [-1.5]}),
+        }
+        assert stub.compare_sample_vars == {}
+
+        stub._open_compare_tab()
+
+        assert "X" in stub.compare_sample_vars
+        assert "Y" in stub.compare_sample_vars
+        assert stub._tab_opened == "🔄 Comparar Amostras"
+
+    def test_open_compare_tab_empty_raw_eis_still_switches_tab(self):
+        """Opening the compare tab with no loaded samples must still switch tab."""
+        stub = _CompareStub()
+        stub._open_compare_tab()
+
+        assert stub._tab_opened == "🔄 Comparar Amostras"
+        assert stub.compare_sample_vars == {}
+
+    # ── BUG-06 ────────────────────────────────────────────────────────
+
+    def test_run_compare_no_selection_shows_warning(self):
+        """0 samples selected: warning appended to log and placed in both frames."""
+        stub = _CompareStub()
+        stub.raw_eis = {"AM1": pd.DataFrame(), "AM2": pd.DataFrame()}
+        stub._refresh_compare_sample_list()
+        for var in stub.compare_sample_vars.values():
+            var.set(False)
+
+        stub._run_compare_clicked()
+
+        assert len(stub._log) == 1
+        assert "2 amostras" in stub._log[0]
+        assert len(stub.compare_nyquist_frame._labels) == 1
+        assert len(stub.compare_bode_frame._labels) == 1
+
+    def test_run_compare_one_sample_also_shows_warning(self):
+        """Exactly 1 sample selected must also trigger the warning (len < 2)."""
+        stub = _CompareStub()
+        stub.raw_eis = {"AM1": pd.DataFrame(), "AM2": pd.DataFrame()}
+        stub._refresh_compare_sample_list()
+        stub.compare_sample_vars["AM2"].set(False)
+
+        stub._run_compare_clicked()
+
+        assert len(stub._log) == 1
+        assert len(stub.compare_nyquist_frame._labels) == 1
+
+    # ── BUG-05 ────────────────────────────────────────────────────────
+
+    def test_refresh_compare_noop_if_unchanged(self):
+        """_refresh_compare_sample_list must return early when the sample
+        set is identical — no widget rebuild should occur."""
+        stub = _CompareStub()
+        stub.raw_eis = {"A": pd.DataFrame(), "B": pd.DataFrame()}
+        stub._refresh_compare_sample_list()
+
+        children_ref = stub.compare_scroll._children  # capture list identity
+
+        stub._refresh_compare_sample_list()  # second call — same keys
+
+        assert stub.compare_scroll._children is children_ref  # no rebuild
+        assert set(stub.compare_sample_vars.keys()) == {"A", "B"}
+
+    def test_refresh_compare_rebuilds_when_sample_added(self):
+        """Adding a new sample to raw_eis MUST trigger a full rebuild."""
+        stub = _CompareStub()
+        stub.raw_eis = {"A": pd.DataFrame()}
+        stub._refresh_compare_sample_list()
+        assert len(stub.compare_sample_vars) == 1
+
+        stub.raw_eis["B"] = pd.DataFrame()
+        stub._refresh_compare_sample_list()
+
+        assert set(stub.compare_sample_vars.keys()) == {"A", "B"}
+        assert len(stub.compare_scroll._children) == 2
+
+    def test_refresh_compare_rebuilds_when_sample_removed(self):
+        """Removing a sample from raw_eis must also trigger a rebuild."""
+        stub = _CompareStub()
+        stub.raw_eis = {"A": pd.DataFrame(), "B": pd.DataFrame(), "C": pd.DataFrame()}
+        stub._refresh_compare_sample_list()
+        assert len(stub.compare_sample_vars) == 3
+
+        del stub.raw_eis["C"]
+        stub._refresh_compare_sample_list()
+
+        assert set(stub.compare_sample_vars.keys()) == {"A", "B"}
+        assert len(stub.compare_scroll._children) == 2

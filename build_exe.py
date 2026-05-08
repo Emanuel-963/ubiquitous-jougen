@@ -24,10 +24,10 @@ APP_NAME = "IonFlow_Pipeline"
 # Extra data the app needs at runtime
 _ctk_path = Path(importlib.import_module("customtkinter").__file__).parent
 DATA_ITEMS = [
-    (ROOT / "data",   "data"),
+    (ROOT / "data", "data"),
     (ROOT / "themes", "themes"),
     (ROOT / "src" / "i18n_strings", "src/i18n_strings"),
-    (_ctk_path, "customtkinter"),           # theme JSONs + assets
+    (_ctk_path, "customtkinter"),  # theme JSONs + assets
 ]
 
 # Modules that PyInstaller may fail to detect automatically
@@ -99,10 +99,12 @@ HIDDEN_IMPORTS = [
 
 def build(onefile: bool = False) -> None:
     cmd = [
-        sys.executable, "-m", "PyInstaller",
+        sys.executable,
+        "-m",
+        "PyInstaller",
         "--noconfirm",
         "--clean",
-        "--windowed",                       # no console window
+        "--windowed",  # no console window
         f"--name={APP_NAME}",
         f"--icon={ICON}",
     ]
@@ -129,10 +131,40 @@ def build(onefile: bool = False) -> None:
 
 
 if __name__ == "__main__":
+    # BUG-04: warn if not running under Python 3.11
+    _major, _minor = sys.version_info.major, sys.version_info.minor
+    if (_major, _minor) != (3, 11):
+        import warnings
+
+        warnings.warn(
+            f"Building with Python {_major}.{_minor} — the target runtime is 3.11.\n"
+            "Run this script via 'python3.11.cmd build_exe.py' to produce a "
+            "Python 3.11 binary.",
+            stacklevel=1,
+        )
+
     parser = argparse.ArgumentParser(description="Build IonFlow Pipeline .exe")
     parser.add_argument(
-        "--onefile", action="store_true",
+        "--onefile",
+        action="store_true",
         help="Package as a single .exe (slower startup)",
     )
     args = parser.parse_args()
     build(onefile=args.onefile)
+
+    # Copia a pasta tutoriais para o dist/IonFlow_Pipeline
+    import shutil
+    from pathlib import Path
+
+    dist_dir = Path("dist/IonFlow_Pipeline")
+    src_tutoriais = Path("tutoriais")
+    dst_tutoriais = dist_dir / "tutoriais"
+    if dst_tutoriais.exists():
+        shutil.rmtree(dst_tutoriais)
+    if src_tutoriais.exists():
+        shutil.copytree(src_tutoriais, dst_tutoriais)
+        print(f"Tutoriais copiados para {dst_tutoriais}")
+    else:
+        print(
+            "[AVISO] Pasta 'tutoriais' não encontrada, não será copiada para o instalador."
+        )

@@ -3,6 +3,7 @@ import contextlib
 import json
 import os
 import queue
+import re
 import shutil
 import sys
 import threading
@@ -746,7 +747,7 @@ class PipelineApp(ctk.CTk):
         self.btn_compare = ctk.CTkButton(
             sidebar,
             text="🔄 " + tr("Comparar Amostras"),
-            command=lambda: self.tabs.set("🔄 " + tr("Comparar Amostras")),
+            command=self._open_compare_tab,
         )
         self.btn_compare.grid(row=12, column=0, padx=16, pady=(0, 8), sticky="ew")
 
@@ -794,6 +795,14 @@ class PipelineApp(ctk.CTk):
         self.progress_bar = ctk.CTkProgressBar(sidebar, mode="indeterminate")
         self.progress_bar.grid(row=25, column=0, padx=16, pady=(0, 12), sticky="ew")
         self.progress_bar.set(0)
+
+        ctk.CTkButton(
+            sidebar,
+            text="📚 " + tr("Referências"),
+            command=self._show_references_window,
+            fg_color="transparent",
+            border_width=1,
+        ).grid(row=26, column=0, padx=16, pady=(4, 12), sticky="ew")
 
         ctk.CTkLabel(sidebar, text=tr("Tema"), anchor="w").grid(
             row=14, column=0, padx=16, pady=(0, 4), sticky="ew"
@@ -4897,6 +4906,7 @@ class PipelineApp(ctk.CTk):
         self._set_status("Ambos concluídos")
         self._stop_progress("Ambos concluídos")
         self._enable_buttons()
+        self._refresh_compare_sample_list()
         if self.interactive_win is not None and self.interactive_win.winfo_exists():
             self._open_interactive_window()
 
@@ -5004,12 +5014,14 @@ class PipelineApp(ctk.CTk):
         self.compare_scroll = ctk.CTkScrollableFrame(left)
         self.compare_scroll.grid(row=2, column=0, sticky="nsew", padx=4, pady=4)
 
-        ctk.CTkButton(
+        # UX-04: keep a reference so we can disable/enable the button
+        self._btn_run_compare = ctk.CTkButton(
             left,
             text="🔄 " + tr("Comparar"),
             command=self._run_compare_clicked,
             font=ctk.CTkFont(size=13, weight="bold"),
-        ).grid(row=3, column=0, padx=8, pady=(4, 8), sticky="ew")
+        )
+        self._btn_run_compare.grid(row=3, column=0, padx=8, pady=(4, 8), sticky="ew")
 
         # ── Right: subtabs for Nyquist, Bode, Timeline, Health Score ─────
         right = ctk.CTkFrame(outer)
@@ -5552,14 +5564,51 @@ class PipelineApp(ctk.CTk):
 
     # ── Compare tab helpers ───────────────────────────────────────────
 
+    def _open_compare_tab(self):
+        """Switch to the Compare tab and refresh the sample list."""
+        self._refresh_compare_sample_list()
+        self.tabs.set("🔄 " + tr("Comparar Amostras"))
+        # UX-02: update sidebar button to show current sample count
+        n = len(self.raw_eis)
+        label = (
+            f"🔄 {tr('Comparar Amostras')} ({n})"
+            if n
+            else "🔄 " + tr("Comparar Amostras")
+        )
+        self.btn_compare.configure(text=label)
+
     def _refresh_compare_sample_list(self):
         """Rebuild the sample checklist in the Compare tab from self.raw_eis."""
+        # BUG-05 / OPT-01: skip full rebuild if the sample set hasn't changed.
+        # Compare the full key set (not just visible vars) so that changes to
+        # hidden samples (beyond the OPT-04 cap) still trigger a fresh render.
+        current_keys = frozenset(self.raw_eis.keys())
+        if current_keys == getattr(self, "_compare_last_keys", None):
+            return
+        self._compare_last_keys = current_keys
+
+        # UX-03: remember which names were selected before rebuilding
+        previously_selected = frozenset(
+            name for name, var in self.compare_sample_vars.items() if var.get()
+        )
+
         for widget in self.compare_scroll.winfo_children():
             widget.destroy()
         self.compare_sample_vars.clear()
 
-        for name in sorted(self.raw_eis.keys()):
-            var = ctk.BooleanVar(value=True)
+        # OPT-04: cap visible checkboxes at 50 to keep the scroll frame responsive
+        _MAX_VISIBLE = 50
+        sorted_names = sorted(self.raw_eis.keys())
+        visible_names = sorted_names[:_MAX_VISIBLE]
+        hidden_count = len(sorted_names) - len(visible_names)
+
+        for name in visible_names:
+            # UX-03: if user had previously selected this sample, keep it selected;
+            # new samples default to True
+            was_selected = (
+                (name in previously_selected) if previously_selected else True
+            )
+            var = ctk.BooleanVar(value=was_selected)
             self.compare_sample_vars[name] = var
             label = name if len(name) <= 28 else f"\u2026{name[-25:]}"
             ctk.CTkCheckBox(
@@ -5567,6 +5616,14 @@ class PipelineApp(ctk.CTk):
                 text=label,
                 variable=var,
                 wraplength=180,
+            ).pack(anchor="w", padx=4, pady=2)
+
+        if hidden_count > 0:
+            ctk.CTkLabel(
+                self.compare_scroll,
+                text=f"(+ {hidden_count} mais — use filtro)",
+                text_color="gray",
+                font=("", 11, "italic"),
             ).pack(anchor="w", padx=4, pady=2)
 
     def _compare_select_all(self):
@@ -5579,10 +5636,34 @@ class PipelineApp(ctk.CTk):
 
     def _run_compare_clicked(self):
         """Generate overlay plots and health score for selected samples."""
+        # UX-04: disable button and show loading text while calculating
+        btn = getattr(self, "_btn_run_compare", None)
+        if btn:
+            btn.configure(state="disabled", text="⏳ " + tr("Calculando…"))
+            btn.update()
+
+        try:
+            self._run_compare_inner()
+        finally:
+            if btn:
+                btn.configure(state="normal", text="🔄 " + tr("Comparar"))
+
+    def _run_compare_inner(self):
+        """Inner logic for _run_compare_clicked (separated for UX-04 try/finally)."""
         selected = [k for k, v in self.compare_sample_vars.items() if v.get()]
 
-        if not selected:
-            self._append_log(tr("Nenhuma amostra selecionada para comparação."))
+        if len(selected) < 2:  # BUG-06: visual warning for < 2 samples selected
+            msg = tr("Selecione pelo menos 2 amostras para comparação.")
+            for frame in (self.compare_nyquist_frame, self.compare_bode_frame):
+                for w in frame.winfo_children():
+                    w.destroy()
+                ctk.CTkLabel(
+                    frame,
+                    text="⚠  " + msg,
+                    text_color="orange",
+                    font=ctk.CTkFont(size=13),
+                ).pack(expand=True)
+            self._append_log(msg)
             return
 
         # Nyquist overlay
@@ -5691,6 +5772,157 @@ class PipelineApp(ctk.CTk):
                 ),
                 tags=(tag,),
             )
+
+    # ── v0.3.0: Help > Referências ─────────────────────────────────────
+
+    def _show_references_window(self) -> None:
+        """Open the offline bibliographic references browser window."""
+        import webbrowser
+
+        from src.references import filter_references, load_references
+
+        # Reuse existing window if already open
+        if (
+            hasattr(self, "_refs_win")
+            and self._refs_win is not None
+            and self._refs_win.winfo_exists()
+        ):
+            self._refs_win.lift()
+            self._refs_win.focus_force()
+            return
+
+        win = ctk.CTkToplevel(self)
+        win.title("Referências Bibliográficas — IonFlow Pipeline v0.3.0")
+        win.geometry("900x720")
+        win.resizable(True, True)
+        self._refs_win = win
+
+        # ── Search bar ──────────────────────────────────────────────────
+        top = ctk.CTkFrame(win)
+        top.pack(fill="x", padx=12, pady=(12, 4))
+
+        ctk.CTkLabel(top, text="Filtrar:", anchor="w", width=60).pack(
+            side="left", padx=(0, 6)
+        )
+        search_var = ctk.StringVar()
+        ctk.CTkEntry(
+            top,
+            textvariable=search_var,
+            placeholder_text="ex: EIS, DRT, CPE, fitting, Randles…",
+            width=320,
+        ).pack(side="left", padx=(0, 10))
+        ctk.CTkButton(
+            top, text="Limpar", width=80, command=lambda: search_var.set("")
+        ).pack(side="left")
+        count_label = ctk.CTkLabel(top, text="", anchor="e")
+        count_label.pack(side="right", padx=12)
+
+        # ── Scrollable text area ────────────────────────────────────────
+        tb = ctk.CTkTextbox(
+            win,
+            wrap="word",
+            font=ctk.CTkFont(family="Courier New", size=12),
+            activate_scrollbars=True,
+        )
+        tb.pack(fill="both", expand=True, padx=12, pady=(4, 4))
+
+        # Access the underlying tkinter Text widget for tag support
+        _tk = tb._textbox
+        _tk.tag_configure(
+            "header",
+            font=("Courier New", 11, "bold"),
+            foreground="#9dcfff",
+        )
+        _tk.tag_configure(
+            "tag_ref",
+            font=("Courier New", 12, "bold"),
+            foreground="#ffd787",
+        )
+        _tk.tag_configure(
+            "doi_link",
+            foreground="#6db3f2",
+            underline=True,
+        )
+        _tk.tag_configure(
+            "arrow_line",
+            foreground="#a8e6a3",
+        )
+
+        all_refs = load_references()
+
+        def _populate(query: str = "") -> None:
+            """Re-render the text box filtered by *query*."""
+            _tk.configure(state="normal")
+            _tk.delete("1.0", "end")
+            # Remove stale per-DOI tags
+            for tag_name in list(_tk.tag_names()):
+                if tag_name.startswith("doi_"):
+                    _tk.tag_delete(tag_name)
+
+            refs = filter_references(all_refs, query)
+            count_label.configure(text=f"{len(refs)} / {len(all_refs)} referências")
+
+            if not refs:
+                _tk.insert(
+                    "end",
+                    "\n  (Nenhuma referência encontrada para este filtro)",
+                )
+                _tk.configure(state="disabled")
+                return
+
+            current_part: str | None = None
+            for ref in refs:
+                if ref.part != current_part:
+                    current_part = ref.part
+                    sep = "=" * 72
+                    _tk.insert("end", f"\n{sep}\n{current_part}\n{sep}\n\n", "header")
+
+                for line in ref.text.split("\n"):
+                    doi_m = re.match(r"(\s*DOI:\s*)([\S]+)(.*)", line, re.IGNORECASE)
+                    if doi_m and ref.doi_url:
+                        tag_name = f"doi_{ref.tag}"
+                        doi_url_copy = ref.doi_url
+                        _tk.insert("end", doi_m.group(1))
+                        _tk.insert(
+                            "end",
+                            doi_m.group(2) + doi_m.group(3),
+                            (tag_name, "doi_link"),
+                        )
+                        _tk.insert("end", "\n")
+                        _tk.tag_bind(
+                            tag_name,
+                            "<Button-1>",
+                            lambda _e, u=doi_url_copy: webbrowser.open(u),
+                        )
+                        _tk.tag_bind(
+                            tag_name,
+                            "<Enter>",
+                            lambda _e: _tk.configure(cursor="hand2"),
+                        )
+                        _tk.tag_bind(
+                            tag_name,
+                            "<Leave>",
+                            lambda _e: _tk.configure(cursor="arrow"),
+                        )
+                    elif re.match(r"\s*\[", line):
+                        _tk.insert("end", line + "\n", "tag_ref")
+                    elif line.lstrip().startswith("->") or line.lstrip().startswith(
+                        "\u2192"
+                    ):
+                        _tk.insert("end", line + "\n", "arrow_line")
+                    else:
+                        _tk.insert("end", line + "\n")
+
+                _tk.insert("end", "\n")
+
+            _tk.configure(state="disabled")
+
+        _populate()
+        search_var.trace_add("write", lambda *_: _populate(search_var.get()))
+
+        ctk.CTkButton(win, text="Fechar", command=win.destroy, width=120).pack(
+            pady=(4, 12)
+        )
 
 
 def main():

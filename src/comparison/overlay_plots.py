@@ -29,12 +29,28 @@ _PALETTE = [
 ]
 
 _MAX_LABEL_LEN = 25
+# OPT-03: maximum data points per series rendered in the overlay plots.
+# Rendering more than this yields no visible improvement on a typical screen
+# but noticeably slows down the Matplotlib draw call.
+_MAX_PLOT_POINTS = 200
 
 
 def _short_label(name: str) -> str:
     return (
         name if len(name) <= _MAX_LABEL_LEN else f"\u2026{name[-(_MAX_LABEL_LEN - 1):]}"
     )
+
+
+def _downsample(df: pd.DataFrame, max_pts: int = _MAX_PLOT_POINTS) -> pd.DataFrame:
+    """Return *df* subsampled to at most *max_pts* rows (OPT-03).
+
+    Uses a uniform stride so the frequency-domain shape is preserved.  If the
+    DataFrame is already small enough it is returned unchanged.
+    """
+    if len(df) <= max_pts:
+        return df
+    stride = len(df) // max_pts
+    return df.iloc[::stride].copy()
 
 
 # ---------------------------------------------------------------------------
@@ -75,6 +91,8 @@ def plot_nyquist_overlay(
             if "frequency" in df.columns
             else df
         )
+        # OPT-03: downsample before plotting
+        d = _downsample(d)
         zr = d["zreal"].values
         zi = -d["zimag"].values
         color = _PALETTE[i % len(_PALETTE)]
@@ -150,6 +168,8 @@ def plot_bode_overlay(
         if df is None or not required.issubset(df.columns):
             continue
         d = df.sort_values("frequency").copy()
+        # OPT-03: downsample before plotting
+        d = _downsample(d)
         freq = d["frequency"].values
         zr = d["zreal"].values
         zi = d["zimag"].values

@@ -1,0 +1,187 @@
+================================================================================
+     TUTORIAL 23 — ABA "COMPARAR AMOSTRAS" NA GUI (IONFLOW v0.3.1)
+================================================================================
+
+Versão: 0.3.1
+Última atualização: Maio 2026
+
+--------------------------------------------------------------------------------
+O QUE É A ABA "COMPARAR AMOSTRAS"?
+--------------------------------------------------------------------------------
+
+A aba "🔄 Comparar Amostras" permite visualizar e comparar múltiplas amostras
+EIS lado a lado numa única sessão da GUI, sem sair do programa.
+
+Funcionalidades disponíveis:
+  ✅ Checklist de amostras carregadas (selecionar/desmarcar individualmente)
+  ✅ Sobreposição de espectros Nyquist (subtab "🟦 Nyquist")
+  ✅ Sobreposição de curvas Bode — |Z| e fase (subtab "📈 Bode")
+  ✅ Timeline de parâmetros (Rs, Rp, C, Energia) por amostra (subtab "📊 Timeline")
+  ✅ Health Score automático por amostra (subtab "💚 Health Score")
+  ✅ Botões "✓ Todos" / "✗ Limpar" para selecionar todas ou nenhuma amostra
+
+DIFERENÇA em relação ao Tutorial 21:
+  O Tutorial 21 descreve a análise comparativa via Python/API.
+  Este tutorial foca exclusivamente no uso da interface gráfica (GUI).
+
+--------------------------------------------------------------------------------
+1. PRÉ-REQUISITOS
+--------------------------------------------------------------------------------
+
+  • Ter executado o Pipeline EIS (botão "Rodar Pipeline EIS") OU
+    o Pipeline "Ambos" (botão "Rodar Ambos") com pelo menos 2 ficheiros.
+
+  • Os ficheiros EIS devem estar na pasta configurada em
+    "Importar EIS para raw" (por padrão: data/raw/).
+
+  IMPORTANTE (v0.3.1): em versões anteriores, ao usar o pipeline "Ambos"
+  (EIS + Ciclagem), a lista de amostras não aparecia na aba Comparar.
+  Este bug foi corrigido na v0.3.1.
+
+--------------------------------------------------------------------------------
+2. PASSO A PASSO — COMPARAR AMOSTRAS
+--------------------------------------------------------------------------------
+
+PASSO 1 — Carregar ficheiros EIS
+  1) Na sidebar, clique em "Importar EIS para raw"
+  2) Selecione 2 ou mais ficheiros .txt de espectros EIS
+  3) Confirme a seleção
+
+PASSO 2 — Executar o pipeline
+  Opção A (só EIS):
+    • Clique "Rodar Pipeline EIS" na sidebar
+    • Aguarde o processamento completar (barra de progresso + "✓ Concluído")
+
+  Opção B (EIS + Ciclagem):
+    • Importe também os ficheiros de ciclagem
+    • Clique "Rodar Ambos"
+    • Aguarde os dois pipelines completarem
+
+PASSO 3 — Abrir a aba Comparar
+  • Na sidebar, clique no botão "🔄 Comparar Amostras"
+    A lista de amostras é actualizada automaticamente ao clicar neste botão.
+
+  OU
+
+  • Clique directamente na aba "🔄 Comparar Amostras" na área de abas
+    (no topo da área principal)
+
+PASSO 4 — Selecionar amostras
+  No painel esquerdo da aba, verá uma lista de checkboxes — uma por amostra.
+  Por padrão, todas as amostras estão marcadas (✓).
+
+  Para filtrar:
+    • Desmarque individualmente as amostras que não quer comparar
+    • Use "✗ Limpar" para desmarcar todas e depois marque só as pretendidas
+    • Use "✓ Todos" para voltar a marcar todas
+
+  NOTA: É necessário selecionar pelo menos 2 amostras. Se selecionar menos,
+  aparecerá um aviso laranja "⚠ Selecione pelo menos 2 amostras" na área
+  de gráfico (comportamento adicionado na v0.3.1).
+
+PASSO 5 — Gerar a comparação
+  Clique no botão "🔄 Comparar" (em baixo do painel de amostras).
+  Os gráficos são gerados nas 4 subtabs do painel direito.
+
+PASSO 6 — Explorar os resultados
+  → Subtab "🟦 Nyquist"
+      Espectros de impedância sobrepostos. Cada amostra tem cor distinta.
+      O eixo X é Re(Z) e o eixo Y é -Im(Z), ambos em Ohm.
+
+  → Subtab "📈 Bode"
+      Módulo |Z| e ângulo de fase em função da frequência.
+      Útil para identificar diferenças de resposta em diferentes bandas.
+
+  → Subtab "📊 Timeline"
+      Evolução de parâmetros (Rs, Rp, C, Energia) ao longo das amostras.
+      Útil para rastrear degradação ou evolução entre ciclos de processamento.
+
+      Pode escolher quais parâmetros mostrar usando as checkboxes no topo
+      da subtab (Rs / Rp / C / Energia).
+
+      NOTA: A Timeline requer que o Pipeline EIS tenha gerado um
+      features_df (tabela de parâmetros). Se não aparecer, execute
+      o pipeline novamente antes de comparar.
+
+  → Subtab "💚 Health Score"
+      Tabela com o Health Score (0–10) e métricas chave para cada amostra.
+      Ordenada do maior para o menor score.
+
+      Health Score:
+        9–10  → Excelente
+        7–8   → Bom
+        5–6   → Médio
+        3–4   → Fraco
+        0–2   → Crítico
+
+      Consulte o Tutorial 21 para a fórmula completa do Health Score.
+
+--------------------------------------------------------------------------------
+3. COMPORTAMENTOS ESPERADOS E CASOS ESPECIAIS
+--------------------------------------------------------------------------------
+
+  Situação                          Comportamento
+  ────────────────────────────────  ────────────────────────────────────────────
+  0 ou 1 amostra seleccionada       Aviso laranja nos painéis Nyquist e Bode;
+                                    nenhum gráfico é gerado
+  Amostras sem features_df          Timeline e Health Score não aparecem;
+                                    mensagem no log: "Execute o Pipeline EIS
+                                    primeiro para ver timeline e Health Score"
+  Re-execução do pipeline           A lista de amostras é actualizada ao clicar
+                                    em "Comparar Amostras" na sidebar; as
+                                    amostras já existentes são re-adicionadas
+  Muitas amostras (> 50)            A lista é scrollável; use "✗ Limpar" e
+                                    marque apenas as amostras de interesse
+
+--------------------------------------------------------------------------------
+4. DICAS DE UTILIZAÇÃO
+--------------------------------------------------------------------------------
+
+  • Para comparar grupos de amostras (ex: diferentes temperaturas de sinterização),
+    use o botão "✗ Limpar" e marque manualmente apenas o grupo pretendido.
+
+  • O gráfico Nyquist usa cores distintas automaticamente para até 10 amostras.
+    Com mais de 10, as cores reciclam — nesse caso prefira grupos menores.
+
+  • A Timeline é especialmente útil para experiências de degradação:
+    ordene os ficheiros por data/ciclo antes de importar para que o eixo X
+    reflicta a sequência temporal correcta.
+
+  • Para exportar os gráficos de sobreposição, use o botão direito do rato
+    sobre o gráfico → "Guardar imagem como..." (funcionalidade do Matplotlib).
+
+--------------------------------------------------------------------------------
+5. PERGUNTAS FREQUENTES
+--------------------------------------------------------------------------------
+
+P: Carrego os ficheiros mas a lista de amostras na aba Comparar está vazia.
+R: Certifique-se de que executou o Pipeline EIS (ou "Ambos") até ao fim.
+   Depois, clique no botão "🔄 Comparar Amostras" na sidebar para actualizar
+   a lista. Em versões anteriores a v0.3.1, isto era um bug conhecido (BUG-01/02).
+
+P: Clico em "Comparar" mas não aparece nenhum gráfico.
+R: Verifique se tem pelo menos 2 amostras marcadas na lista. Se tiver 0 ou 1,
+   aparecerá uma mensagem de aviso laranja na área de gráfico.
+
+P: A subtab "Timeline" está vazia / não mostra dados.
+R: A Timeline depende do features_df gerado pelo Pipeline EIS. Se usou apenas
+   o Pipeline de Ciclagem, execute também o Pipeline EIS nos mesmos ficheiros.
+
+P: Os gráficos Nyquist/Bode não aparecem após clicar "Comparar".
+R: Verifique o painel de Logs (aba "📋 Logs") para mensagens de erro. Um erro
+   comum é a ausência das colunas "frequency", "zreal", "zimag" nos dados.
+
+P: Posso usar a aba Comparar sem a GUI (via Python)?
+R: Sim. Consulte o Tutorial 21 para uso programático da API de comparação.
+
+--------------------------------------------------------------------------------
+REFERÊNCIAS
+--------------------------------------------------------------------------------
+
+  Tutorial 21 — Análise Comparativa Multi-amostra (API Python)
+  Tutorial 02 — Pipeline EIS (como executar o pipeline)
+  Tutorial 03 — Pipeline Ciclagem
+  Tutorial 14 — Validação Kramers-Kronig (componente do Health Score)
+  CHANGELOG.md — secção [0.3.1] para lista completa de bugs corrigidos
+
+================================================================================

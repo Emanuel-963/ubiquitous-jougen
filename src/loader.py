@@ -1,9 +1,42 @@
 import logging
-from typing import Optional
+import os
+from typing import Dict, Optional, Tuple
 
 import pandas as pd
 
 logger = logging.getLogger(__name__)
+
+# OPT-02: in-process cache to avoid re-reading unchanged files.
+# Key = absolute path; value = (mtime_ns, DataFrame copy).
+# The cache lives for the duration of the process — safe because EIS files
+# in a lab session are written once and never modified mid-run.
+_LOAD_CACHE: Dict[str, Tuple[int, pd.DataFrame]] = {}
+
+
+def _cache_get(path: str) -> Optional[pd.DataFrame]:
+    """Return a cached DataFrame if *path* has not changed since last read."""
+    try:
+        mtime_ns = os.stat(path).st_mtime_ns
+        entry = _LOAD_CACHE.get(path)
+        if entry is not None and entry[0] == mtime_ns:
+            return entry[1].copy()
+    except OSError:
+        pass
+    return None
+
+
+def _cache_put(path: str, df: pd.DataFrame) -> None:
+    """Store *df* in the cache, keyed by *path* + current mtime."""
+    try:
+        mtime_ns = os.stat(path).st_mtime_ns
+        _LOAD_CACHE[path] = (mtime_ns, df.copy())
+    except OSError:
+        pass
+
+
+def clear_load_cache() -> None:
+    """Evict all cached entries (useful in tests or after batch imports)."""
+    _LOAD_CACHE.clear()
 
 
 def load_eis_file(path: str) -> pd.DataFrame:
@@ -11,7 +44,16 @@ def load_eis_file(path: str) -> pd.DataFrame:
 
     Tenta diversos separadores, converte vírgulas decimais e valida
     que temos ao menos 3 colunas com dados.
+
+    Results are cached in-process by file mtime (OPT-02).  Re-reading the
+    same unchanged file is a no-op after the first call.
     """
+    # OPT-02: return cached copy when file has not changed
+    cached = _cache_get(path)
+    if cached is not None:
+        logger.debug("load_eis_file: cache hit for %s", path)
+        return cached
+
     # Tentar com diferentes separadores
     separators = [";", "\t", ",", None]
     df: Optional[pd.DataFrame] = None
@@ -90,4 +132,6 @@ def load_eis_file(path: str) -> pd.DataFrame:
     if len(df) == 0:
         raise ValueError(f"Arquivo {path} resultou em 0 linhas de dados válidos")
 
+    # OPT-02: store in cache before returning
+    _cache_put(path, df)
     return df

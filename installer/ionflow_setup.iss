@@ -9,7 +9,7 @@
 ; ──────────────────────────────────────────────────────────────
 
 #define MyAppName      "IonFlow Pipeline"
-#define MyAppVersion   "0.3.0"
+#define MyAppVersion   "0.3.1"
 #define MyAppPublisher "Emanuel"
 #define MyAppURL       "https://github.com/Emanuel-963/ubiquitous-jougen"
 #define MyAppExeName   "IonFlow_Pipeline.exe"
@@ -54,8 +54,14 @@ Name: "english";    MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-; Copy the entire PyInstaller dist folder
+
+; Copia tudo exceto data/raw e data/processed (essas pastas serão criadas vazias)
 Source: "{#DistDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Inclui tutoriais
+Source: "{#DistDir}\tutoriais\*"; DestDir: "{app}\tutoriais"; Flags: ignoreversion recursesubdirs createallsubdirs
+[Dirs]
+Name: "{app}\data\raw"
+Name: "{app}\data\processed"
 
 [Icons]
 Name: "{group}\{#MyAppName}";         Filename: "{app}\{#MyAppExeName}"

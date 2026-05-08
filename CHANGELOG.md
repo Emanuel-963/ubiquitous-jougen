@@ -2,6 +2,56 @@
 
 All notable changes to the IonFlow Pipeline are documented here.
 
+## [0.3.1] — 2026-05-07
+
+### Fixed
+
+- **BUG-01** — `_handle_both_done` now calls `_refresh_compare_sample_list()` so the
+  Compare tab is populated after running the "Both" (EIS + Cycling) pipeline.
+- **BUG-02** — Sidebar "Comparar Amostras" button now calls the new `_open_compare_tab()`
+  method, which refreshes the checklist before switching tabs.
+- **BUG-03** — Streamlit exit code 1 confirmed as false positive (Ctrl+C termination);
+  dashboard starts correctly on `http://localhost:8501`.
+- **BUG-04** — `build_exe.py` now emits a `warnings.warn` if the build Python is not 3.11,
+  guiding users to run `python3.11.cmd build_exe.py`.
+- **BUG-05** — `_refresh_compare_sample_list` has an early-exit (using `frozenset` of keys)
+  that skips full widget rebuild when the sample set is unchanged.
+- **BUG-06** — `_run_compare_clicked` shows an orange `CTkLabel` warning when fewer than
+  2 samples are selected, in both the Nyquist and Bode frames.
+- **BUG-07** — Added `tutoriais/23_comparar_amostras_gui.txt`: step-by-step guide for
+  the Compare tab (prerequisites, 6 steps, edge-case table, FAQ).
+
+### Performance
+
+- **OPT-02** — `src/loader.py` caches `load_eis_file()` results keyed by file path +
+  `mtime_ns`. Re-reading an unchanged file is a no-op (returns a DataFrame copy from
+  memory). Call `clear_load_cache()` to evict all entries.
+- **OPT-03** — `src/comparison/overlay_plots.py` applies adaptive downsampling before
+  rendering: if a series has > 200 points, `_downsample()` applies a uniform stride so
+  each sample contributes at most `_MAX_PLOT_POINTS = 200` points. Both `plot_nyquist_overlay`
+  and `plot_bode_overlay` benefit.
+- **OPT-04** — `_refresh_compare_sample_list` caps visible checkboxes at 50
+  (`_MAX_VISIBLE = 50`). When additional samples exist, a grey italic label
+  `"(+ N mais — use filtro)"` is shown at the bottom of the scroll frame.
+
+### Improved
+
+- **UX-01** — Buttons "✓ Todos" and "✗ Limpar" in the Compare tab were already wired
+  correctly to `_compare_select_all` / `_compare_select_none`; confirmed working.
+- **UX-02** — Sidebar "Comparar Amostras" button now shows the loaded sample count:
+  `"🔄 Comparar Amostras (N)"`. Updates every time the Compare tab is opened.
+- **UX-03** — `_refresh_compare_sample_list` preserves the user's checkbox selection
+  across pipeline re-runs. Previously-checked samples remain checked; new samples
+  default to checked.
+- **UX-04** — The "🔄 Comparar" button inside the Compare tab is disabled and shows
+  "⏳ Calculando…" while plots are being generated. Restored in a `finally` block so
+  the button is never stuck disabled even on error.
+
+- Added `TestCompareTabRegression` (9 tests) to `tests/test_gui_tabs.py` covering
+  BUG-01, BUG-02, BUG-05 and BUG-06. All 86 tests pass.
+
+---
+
 ## [0.3.0] — 2026-04-28
 
 ### Highlights
