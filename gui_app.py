@@ -4520,7 +4520,14 @@ class PipelineApp(ctk.CTk):
 
         def worker():
             try:
-                gen = ReportGenerator()
+                # Build ReportConfig with branding from gui_settings
+                report_cfg = ReportConfig(
+                    author=self.gui_settings.get("report_author", "IonFlow Pipeline")
+                    or "IonFlow Pipeline",
+                    institution=self.gui_settings.get("report_institution", ""),
+                    logo_path=self.gui_settings.get("report_logo_path", ""),
+                )
+                gen = ReportGenerator(report_config=report_cfg)
                 results: Dict[str, Any] = {}
                 if getattr(self, "last_eis_result", None) is not None:
                     results["eis"] = self.last_eis_result
@@ -5243,6 +5250,48 @@ class PipelineApp(ctk.CTk):
         _field("dpi_save", "DPI salvar", str(cfg.dpi_save))
         _field("dpi_diagnostics", "DPI diagnóstico", str(cfg.dpi_diagnostics))
 
+        # ── Relatório PDF / Branding ───────────────────────────────────
+        _section("📄 " + tr("Relatório PDF / Branding"))
+        _field(
+            "report_author",
+            tr("Autor / Pesquisador"),
+            self.gui_settings.get("report_author", ""),
+        )
+        _field(
+            "report_institution",
+            tr("Instituição / Laboratório"),
+            self.gui_settings.get("report_institution", ""),
+        )
+
+        # Logo path: text entry + image file picker
+        ctk.CTkLabel(outer, text=tr("Logo (PNG/JPG)"), anchor="w").grid(
+            row=row_idx, column=0, sticky="w", padx=(16, 4), pady=2
+        )
+        logo_entry = ctk.CTkEntry(outer, width=300)
+        logo_entry.insert(0, self.gui_settings.get("report_logo_path", ""))
+        logo_entry.grid(row=row_idx, column=1, sticky="ew", padx=(0, 4), pady=2)
+        outer.grid_columnconfigure(1, weight=1)
+        self._settings_entries["report_logo_path"] = logo_entry
+
+        def _browse_logo(e=logo_entry):
+            path = filedialog.askopenfilename(
+                title=tr("Selecionar logo"),
+                filetypes=[
+                    ("Imagens", "*.png *.jpg *.jpeg *.bmp *.gif"),
+                    ("PNG", "*.png"),
+                    ("JPEG", "*.jpg *.jpeg"),
+                    ("All files", "*.*"),
+                ],
+            )
+            if path:
+                e.delete(0, "end")
+                e.insert(0, path)
+
+        ctk.CTkButton(outer, text="🖼", width=32, command=_browse_logo).grid(
+            row=row_idx, column=2, padx=(0, 8), pady=2
+        )
+        row_idx += 1
+
         # ── Botões ────────────────────────────────────────────────────
         btn_frame = ctk.CTkFrame(outer)
         btn_frame.grid(
@@ -5389,6 +5438,27 @@ class PipelineApp(ctk.CTk):
         self.gui_settings["llm_base_url"] = cfg.llm_base_url
         self.gui_settings["llm_temperature"] = cfg.llm_temperature
         self.gui_settings["llm_max_tokens"] = cfg.llm_max_tokens
+
+        # Persist branding / PDF report settings
+        with contextlib.suppress(Exception):
+            self.gui_settings["report_author"] = (
+                self._settings_entries.get("report_author", ctk.CTkEntry(self))
+                .get()
+                .strip()
+            )
+        with contextlib.suppress(Exception):
+            self.gui_settings["report_institution"] = (
+                self._settings_entries.get("report_institution", ctk.CTkEntry(self))
+                .get()
+                .strip()
+            )
+        with contextlib.suppress(Exception):
+            logo_val = (
+                self._settings_entries.get("report_logo_path", ctk.CTkEntry(self))
+                .get()
+                .strip()
+            )
+            self.gui_settings["report_logo_path"] = logo_val
 
         self._save_gui_settings()
         self._append_log(tr("Configurações aplicadas."))
