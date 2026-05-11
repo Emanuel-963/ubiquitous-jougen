@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>IonFlow Pipeline — Professional EIS Analysis, Open Source</title>
+<style>
+  :root {
+    --bg:        #0d1117;
+    --bg2:       #161b22;
+    --bg3:       #21262d;
+    --border:    #30363d;
+    --text:      #e6edf3;
+    --muted:     #8b949e;
+    --accent:    #2563eb;
+    --accent-h:  #1d4ed8;
+    --green:     #3fb950;
+    --orange:    #f97316;
+    --radius:    10px;
+    --shadow:    0 4px 24px rgba(0,0,0,.4);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         background: var(--bg); color: var(--text); line-height: 1.6; }
+  a    { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── Nav ─────────────────────────────────────────────────────────── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(13,17,23,.92); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: .8rem 2rem;
+  }
+  .nav-brand { font-weight: 700; font-size: 1.1rem; color: var(--text); }
+  .nav-links  { display: flex; gap: 1.5rem; font-size: .9rem; }
+  .nav-links a { color: var(--muted); }
+  .nav-links a:hover { color: var(--text); text-decoration: none; }
+  .nav-cta {
+    background: var(--accent); color: #fff; padding: .45rem 1.1rem;
+    border-radius: 6px; font-weight: 600; font-size: .88rem;
+  }
+  .nav-cta:hover { background: var(--accent-h); text-decoration: none; }
+
+  /* ── Hero ────────────────────────────────────────────────────────── */
+  .hero {
+    text-align: center; padding: 6rem 1rem 4rem;
+    background: radial-gradient(ellipse 80% 60% at 50% -10%,
+                rgba(37,99,235,.18) 0%, transparent 70%);
+  }
+  .badge {
+    display: inline-block; background: rgba(37,99,235,.15);
+    border: 1px solid rgba(37,99,235,.4); color: #60a5fa;
+    font-size: .75rem; font-weight: 600; letter-spacing: .06em;
+    padding: .3rem .8rem; border-radius: 999px; margin-bottom: 1.2rem;
+    text-transform: uppercase;
+  }
+  h1 { font-size: clamp(2rem, 5vw, 3.4rem); font-weight: 800; line-height: 1.15;
+       max-width: 800px; margin: 0 auto .8rem; }
+  .hero p {
+    color: var(--muted); max-width: 620px; margin: 0 auto 2.2rem;
+    font-size: clamp(1rem, 2vw, 1.15rem);
+  }
+  .hero-btns { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+  .btn-primary {
+    background: var(--accent); color: #fff; padding: .75rem 1.8rem;
+    border-radius: var(--radius); font-weight: 700; font-size: 1rem;
+    display: inline-flex; align-items: center; gap: .5rem;
+  }
+  .btn-primary:hover { background: var(--accent-h); text-decoration: none; }
+  .btn-ghost {
+    background: transparent; color: var(--text);
+    border: 1px solid var(--border); padding: .75rem 1.8rem;
+    border-radius: var(--radius); font-weight: 600; font-size: 1rem;
+  }
+  .btn-ghost:hover { background: var(--bg3); text-decoration: none; }
+
+  /* ── Stat bar ────────────────────────────────────────────────────── */
+  .stats {
+    display: flex; justify-content: center; gap: 3rem; flex-wrap: wrap;
+    padding: 2rem 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .stat { text-align: center; }
+  .stat strong { display: block; font-size: 1.8rem; font-weight: 800; color: var(--text); }
+  .stat span   { font-size: .85rem; color: var(--muted); }
+
+  /* ── Section ─────────────────────────────────────────────────────── */
+  section { padding: 4rem 1rem; max-width: 1100px; margin: 0 auto; }
+  .section-label {
+    text-align: center; font-size: .8rem; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: .6rem;
+  }
+  h2 { font-size: clamp(1.5rem, 3vw, 2.2rem); font-weight: 700; text-align: center;
+       margin-bottom: .5rem; }
+  .section-sub { text-align: center; color: var(--muted); max-width: 560px;
+                 margin: 0 auto 2.5rem; }
+
+  /* ── Feature grid ────────────────────────────────────────────────── */
+  .grid-3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.2rem; }
+  .card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.5rem;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .card:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+  .card-icon { font-size: 1.8rem; margin-bottom: .8rem; }
+  .card h3 { font-size: 1rem; font-weight: 700; margin-bottom: .4rem; }
+  .card p  { font-size: .88rem; color: var(--muted); }
+
+  /* ── Comparison table ────────────────────────────────────────────── */
+  .table-wrap { overflow-x: auto; margin-top: 1.5rem; }
+  table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  th, td { padding: .8rem 1rem; border: 1px solid var(--border); text-align: center; }
+  thead th { background: var(--bg3); font-weight: 700; }
+  tbody tr:nth-child(odd)  { background: var(--bg2); }
+  tbody tr:nth-child(even) { background: var(--bg); }
+  td:first-child { text-align: left; font-weight: 600; }
+  .yes  { color: var(--green);  font-weight: 700; }
+  .no   { color: #f85149;       font-weight: 700; }
+  .part { color: var(--orange); font-weight: 700; }
+  .highlight-col { background: rgba(37,99,235,.08) !important; }
+
+  /* ── Pricing ─────────────────────────────────────────────────────── */
+  .pricing-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 1.2rem;
+  }
+  .plan {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.8rem 1.4rem;
+    display: flex; flex-direction: column; gap: .5rem;
+  }
+  .plan.popular {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent), var(--shadow);
+  }
+  .plan-badge {
+    font-size: .7rem; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--accent);
+    background: rgba(37,99,235,.15); border-radius: 4px;
+    padding: .15rem .5rem; width: fit-content;
+  }
+  .plan h3  { font-size: 1.15rem; font-weight: 700; }
+  .price    { font-size: 2rem; font-weight: 800; line-height: 1.1; }
+  .price sub { font-size: .9rem; font-weight: 400; color: var(--muted); }
+  .plan-desc { font-size: .82rem; color: var(--muted); }
+  .plan-features { list-style: none; margin-top: .5rem; }
+  .plan-features li { font-size: .85rem; padding: .3rem 0;
+                       border-bottom: 1px solid var(--border); }
+  .plan-features li::before { content: "✓ "; color: var(--green); font-weight: 700; }
+  .plan-cta {
+    margin-top: auto; padding-top: 1rem;
+    background: var(--bg3); border: 1px solid var(--border);
+    color: var(--text); border-radius: 6px; padding: .6rem; text-align: center;
+    font-weight: 600; font-size: .88rem; cursor: pointer;
+    display: block;
+  }
+  .plan-cta.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .plan-cta:hover { opacity: .9; text-decoration: none; }
+
+  /* ── Partners ────────────────────────────────────────────────────── */
+  .partner-logos {
+    display: flex; flex-wrap: wrap; gap: 1.2rem; justify-content: center;
+    align-items: center; margin-top: 1.5rem;
+  }
+  .partner-pill {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: .7rem 1.4rem;
+    font-size: .85rem; font-weight: 600; color: var(--muted);
+  }
+
+  /* ── Install ─────────────────────────────────────────────────────── */
+  .code-block {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.2rem 1.5rem;
+    font-family: "SFMono-Regular", Consolas, "Courier New", monospace;
+    font-size: .88rem; color: #a5f3fc; overflow-x: auto;
+    margin-bottom: 1rem;
+  }
+  .code-block span.c { color: var(--muted); }
+
+  /* ── CTA banner ──────────────────────────────────────────────────── */
+  .cta-banner {
+    background: linear-gradient(135deg, rgba(37,99,235,.25) 0%, rgba(37,99,235,.05) 100%);
+    border: 1px solid rgba(37,99,235,.35); border-radius: var(--radius);
+    padding: 3rem 2rem; text-align: center; margin: 2rem 0;
+  }
+  .cta-banner h2 { margin-bottom: .6rem; }
+  .cta-banner p  { color: var(--muted); margin-bottom: 1.5rem; }
+
+  /* ── Footer ──────────────────────────────────────────────────────── */
+  footer {
+    border-top: 1px solid var(--border); padding: 2rem;
+    text-align: center; font-size: .82rem; color: var(--muted);
+  }
+  footer a { color: var(--muted); }
+  footer a:hover { color: var(--text); }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════ NAV ══════════════════════════════ -->
+<nav>
+  <span class="nav-brand">⚡ IonFlow Pipeline</span>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#compare">vs. Others</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#install">Install</a>
+    <a href="https://github.com/Emanuel-963/ubiquitous-jougen" target="_blank">GitHub</a>
+  </div>
+  <a class="nav-cta" href="https://github.com/Emanuel-963/ubiquitous-jougen/releases/latest">
+    ⬇ Download
+  </a>
+</nav>
+
+<!-- ═══════════════════════════════════ HERO ══════════════════════════════ -->
+<div class="hero">
+  <div class="badge">Open Source · Free Tier Available</div>
+  <h1>Professional EIS Analysis.<br/>Without the Vendor Lock-in.</h1>
+  <p>
+    IonFlow Pipeline is a desktop + Python library for Electrochemical Impedance
+    Spectroscopy analysis — circuit fitting, DRT, PCA, cycling data, and PDF
+    reports in one tool.
+  </p>
+  <div class="hero-btns">
+    <a class="btn-primary"
+       href="https://github.com/Emanuel-963/ubiquitous-jougen/releases/latest">
+      ⬇ Download for Windows
+    </a>
+    <a class="btn-ghost"
+       href="https://github.com/Emanuel-963/ubiquitous-jougen">
+      ☆ View on GitHub
+    </a>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════ STATS ══════════════════════════════ -->
+<div class="stats">
+  <div class="stat"><strong>11</strong><span>Built-in circuits</span></div>
+  <div class="stat"><strong>2 056</strong><span>Tests passing</span></div>
+  <div class="stat"><strong>6</strong><span>File formats supported</span></div>
+  <div class="stat"><strong>100 %</strong><span>Offline — your data stays yours</span></div>
+  <div class="stat"><strong>v0.3.1</strong><span>Latest stable release</span></div>
+</div>
+
+<!-- ══════════════════════════════ FEATURES ══════════════════════════════ -->
+<section id="features">
+  <p class="section-label">Capabilities</p>
+  <h2>Everything a Battery Lab Needs</h2>
+  <p class="section-sub">From raw impedance files to publication-ready reports in a few clicks.</p>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-icon">📂</div>
+      <h3>Multi-Vendor File Support</h3>
+      <p>Read CSV, Gamry .dta, BioLogic .mpt/.mpr, Zahner .idf, and plain text without conversion.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔌</div>
+      <h3>Equivalent Circuit Fitting</h3>
+      <p>11 circuits (Randles-CPE-W, ZARC-ZARC-W, Gerischer, Warburg Finite/Short…) with physics-based initial estimates. ML-assisted model selection.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">📊</div>
+      <h3>DRT Analysis</h3>
+      <p>Tikhonov-regularised Distribution of Relaxation Times — model-free deconvolution of electrode processes.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">✅</div>
+      <h3>Kramers-Kronig Validation</h3>
+      <p>Lin-KK residual test automatically flags non-stationary or non-linear spectra before fitting.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔋</div>
+      <h3>Battery Cycling Analysis</h3>
+      <p>Ragone plots, capacity retention, energy/power vs. cycle, C-rate analysis from raw cycling data.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔬</div>
+      <h3>PCA &amp; Ranking</h3>
+      <p>Principal component analysis of fitted parameters. Automatic classification and sample ranking by health score.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">📄</div>
+      <h3>Branded PDF Reports</h3>
+      <p>One-click PDF and Markdown reports with your logo, author name, and institution. AI-enhanced summaries optional.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">⚡</div>
+      <h3>Batch Processing</h3>
+      <p>Process entire experiment folders in one run. Results persisted to a SQLite feature store for longitudinal tracking.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🐍</div>
+      <h3>Python API</h3>
+      <p>All functionality accessible programmatically. Integrate into notebooks, CI pipelines, or your own application.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ COMPARISON ════════════════════════════════ -->
+<section id="compare">
+  <p class="section-label">Comparison</p>
+  <h2>How IonFlow Compares</h2>
+  <p class="section-sub">Against the most widely used EIS software packages.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th class="highlight-col">IonFlow Pipeline</th>
+          <th>RelaxIS 3</th>
+          <th>ZView</th>
+          <th>EC-Lab</th>
+          <th>EIS Spectrum Analyser</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Price</td>
+          <td class="highlight-col yes">Free / €149 Pro</td>
+          <td>€890+</td>
+          <td>$2 500+</td>
+          <td>Bundled (BioLogic)</td>
+          <td class="yes">Free</td>
+        </tr>
+        <tr>
+          <td>Open source</td>
+          <td class="highlight-col yes">✓ MIT</td>
+          <td class="no">✗</td>
+          <td class="no">✗</td>
+          <td class="no">✗</td>
+          <td class="part">Partial</td>
+        </tr>
+        <tr>
+          <td>Python scriptable</td>
+          <td class="highlight-col yes">✓</td>
+          <td class="no">✗</td>
+          <td class="no">✗</td>
+          <td class="no">✗</td>
+          <td class="no">✗</td>
+        </tr>
+        <tr>
+          <td>DRT analysis</td>
+          <td class="highlight-col yes">✓ built-in</td>
+          <td class="yes">✓ (add-on)</td>
+          <td class="no">✗</td>
+          <td class="part">Partial</td>
+          <td class="no">✗</td>
+        </tr>
+        <tr>
+          <td>Kramers-Kronig test</td>
+          <td class="highlight-col yes">✓ lin-KK</td>
+          <td class="yes">✓</td>
+          <td class="part">Basic</td>
+          <td class="yes">✓</td>
+          <td class="no">✗</td>
+        </tr>
+        <tr>
+          <td>Battery cycling analysis</td>
+          <td class="highlight-col yes">✓</td>
+          <td class="no">✗</td>
+          <td class="no">✗</td>
+          <td class="yes">✓</td>
+          <td class="no">✗</td>
+        </tr>
+        <tr>
+          <td>BioLogic .mpr parser</td>
+          <td class="highlight-col yes">✓</td>
+          <td class="no">✗</td>
+          <td class="no">✗</td>
+          <td class="yes">✓ (native)</td>
+          <td class="no">✗</td>
+        </tr>
+        <tr>
+          <td>Gamry .dta parser</td>
+          <td class="highlight-col yes">✓</td>
+          <td class="yes">✓</td>
+          <td class="yes">✓</td>
+          <td class="no">✗</td>
+          <td class="no">✗</td>
+        </tr>
+        <tr>
+          <td>Batch processing</td>
+          <td class="highlight-col yes">✓</td>
+          <td class="yes">✓</td>
+          <td class="no">✗</td>
+          <td class="no">✗</td>
+          <td class="no">✗</td>
+        </tr>
+        <tr>
+          <td>PDF reports</td>
+          <td class="highlight-col yes">✓ + branding</td>
+          <td class="yes">✓</td>
+          <td class="part">Basic</td>
+          <td class="part">Basic</td>
+          <td class="no">✗</td>
+        </tr>
+        <tr>
+          <td>ML circuit selection</td>
+          <td class="highlight-col yes">✓</td>
+          <td class="no">✗</td>
+          <td class="no">✗</td>
+          <td class="no">✗</td>
+          <td class="no">✗</td>
+        </tr>
+        <tr>
+          <td>Actively maintained</td>
+          <td class="highlight-col yes">✓ 2024–2026</td>
+          <td class="yes">✓</td>
+          <td class="part">Slow</td>
+          <td class="yes">✓</td>
+          <td class="no">✗ (abandoned)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ════════════════════════════ PRICING ════════════════════════════════ -->
+<section id="pricing">
+  <p class="section-label">Pricing</p>
+  <h2>Start Free. Scale When Ready.</h2>
+  <p class="section-sub">The core tool is and always will be open source.</p>
+
+  <div class="pricing-grid">
+    <div class="plan">
+      <h3>Community</h3>
+      <div class="price">€0</div>
+      <div class="plan-desc">Perfect for students and small experiments.</div>
+      <ul class="plan-features">
+        <li>Up to 5 files per run</li>
+        <li>All 11 circuits</li>
+        <li>DRT &amp; Kramers-Kronig</li>
+        <li>PDF reports</li>
+        <li>Community support (GitHub)</li>
+      </ul>
+      <a class="plan-cta" href="https://github.com/Emanuel-963/ubiquitous-jougen/releases/latest">
+        Download Free
+      </a>
+    </div>
+
+    <div class="plan popular">
+      <div class="plan-badge">Most Popular</div>
+      <h3>Pro</h3>
+      <div class="price">€149<sub>/year</sub></div>
+      <div class="plan-desc">For individual researchers and consultants.</div>
+      <ul class="plan-features">
+        <li>Unlimited files</li>
+        <li>Batch processing</li>
+        <li>AI-enhanced reports</li>
+        <li>Priority email support</li>
+        <li>All future Pro features</li>
+      </ul>
+      <a class="plan-cta primary" href="mailto:TODO@ionflow.io?subject=IonFlow Pro License">
+        Buy Pro
+      </a>
+    </div>
+
+    <div class="plan">
+      <h3>Lab</h3>
+      <div class="price">€499<sub>/year</sub></div>
+      <div class="plan-desc">For research groups (up to 5 seats).</div>
+      <ul class="plan-features">
+        <li>5 Pro seats</li>
+        <li>LIMS export (CSV/JSON)</li>
+        <li>Shared feature store</li>
+        <li>Onboarding call</li>
+        <li>Slack/Teams support</li>
+      </ul>
+      <a class="plan-cta" href="mailto:TODO@ionflow.io?subject=IonFlow Lab License">
+        Contact Sales
+      </a>
+    </div>
+
+    <div class="plan">
+      <h3>OEM / SDK</h3>
+      <div class="price">€5 000<sub>/year</sub></div>
+      <div class="plan-desc">Embed IonFlow analysis in your instrument software.</div>
+      <ul class="plan-features">
+        <li>White-label branding</li>
+        <li><code>ionflow-sdk</code> package</li>
+        <li>C / C# wrapper API</li>
+        <li>SLA + dedicated support</li>
+        <li>Custom circuit modules</li>
+      </ul>
+      <a class="plan-cta" href="mailto:TODO@ionflow.io?subject=IonFlow OEM Partnership">
+        Contact OEM Team
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════ INSTALL ════════════════════════════════ -->
+<section id="install">
+  <p class="section-label">Get Started</p>
+  <h2>Up and Running in Minutes</h2>
+  <p class="section-sub">Choose the installation method that fits your workflow.</p>
+
+  <h3 style="margin-bottom:.6rem;color:var(--muted);font-size:.9rem;font-weight:600;">
+    Option 1 — Windows Installer (recommended for non-developers)
+  </h3>
+  <div class="code-block">
+    <span class="c"># Download and run:</span><br/>
+    IonFlow_Pipeline_Setup_0.3.1.exe
+  </div>
+
+  <h3 style="margin:.8rem 0 .6rem;color:var(--muted);font-size:.9rem;font-weight:600;">
+    Option 2 — pip (Python 3.11+)
+  </h3>
+  <div class="code-block">
+    pip install ionflow-pipeline<br/>
+    <span class="c"># With BioLogic .mpr support:</span><br/>
+    pip install "ionflow-pipeline[biologic]"
+  </div>
+
+  <h3 style="margin:.8rem 0 .6rem;color:var(--muted);font-size:.9rem;font-weight:600;">
+    Option 3 — Python API
+  </h3>
+  <div class="code-block">
+    from main import run_eis_pipeline<br/><br/>
+    result = run_eis_pipeline()         <span class="c"># reads data/raw/</span><br/>
+    print(result.feature_table.head())  <span class="c"># pandas DataFrame</span>
+  </div>
+</section>
+
+<!-- ═══════════════════════ MANUFACTURER PARTNERS ════════════════════════ -->
+<section>
+  <p class="section-label">Compatibility</p>
+  <h2>Works With Your Instruments</h2>
+  <p class="section-sub">Native parsers for the most widely used EIS workstations.</p>
+  <div class="partner-logos">
+    <div class="partner-pill">BioLogic / EC-Lab</div>
+    <div class="partner-pill">Gamry Instruments</div>
+    <div class="partner-pill">Zahner</div>
+    <div class="partner-pill">Metrohm Autolab</div>
+    <div class="partner-pill">PalmSens</div>
+    <div class="partner-pill">Generic CSV / ASCII</div>
+  </div>
+  <p style="text-align:center;margin-top:1.2rem;font-size:.85rem;color:var(--muted);">
+    Interested in a native plugin for your instrument software?
+    <a href="mailto:TODO@ionflow.io?subject=OEM Integration">Contact us →</a>
+  </p>
+</section>
+
+<!-- ══════════════════════════════ CTA ════════════════════════════════ -->
+<section>
+  <div class="cta-banner">
+    <h2>Ready to Replace Expensive Black-Box Software?</h2>
+    <p>Download IonFlow Pipeline for free today. Upgrade when you need more.</p>
+    <div class="hero-btns">
+      <a class="btn-primary"
+         href="https://github.com/Emanuel-963/ubiquitous-jougen/releases/latest">
+        ⬇ Download v0.3.1
+      </a>
+      <a class="btn-ghost"
+         href="https://github.com/Emanuel-963/ubiquitous-jougen">
+        Read the Docs
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ FOOTER ════════════════════════════════ -->
+<footer>
+  <p>
+    &copy; 2026 IonFlow Pipeline —
+    <a href="https://github.com/Emanuel-963/ubiquitous-jougen/blob/main/LICENSE">MIT License</a> ·
+    <a href="https://github.com/Emanuel-963/ubiquitous-jougen">GitHub</a> ·
+    <a href="https://github.com/Emanuel-963/ubiquitous-jougen/issues">Report a Bug</a> ·
+    <a href="mailto:TODO@ionflow.io">Contact</a>
+  </p>
+  <p style="margin-top:.4rem;">Built with Python · CustomTkinter · fpdf2 · scipy · matplotlib</p>
+</footer>
+
+</body>
+</html>

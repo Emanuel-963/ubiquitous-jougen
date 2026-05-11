@@ -92,6 +92,7 @@ from src.gui.widgets import LogRedirector as _LogRedirector
 from src.gui.widgets import StyledOptionMenuHelper as _StyledOptionMenuHelper
 from src.i18n import get_language, set_language, tr
 from src.kramers_kronig import KKResult, KramersKronigValidator
+from src.license_manager import FREE_FILE_LIMIT, LicenseLimitError, LicenseManager
 from src.report_generator import ReportConfig, ReportGenerator
 from src.uncertainty import UncertaintyAnalyzer
 
@@ -4416,6 +4417,25 @@ class PipelineApp(ctk.CTk):
         )
         if not folder:
             return
+
+        # Count files before checking license
+        from pathlib import Path as _Path
+
+        n_files = len(
+            [
+                f
+                for f in _Path(folder).rglob("*")
+                if f.is_file()
+                and f.suffix.lower()
+                in {".csv", ".txt", ".mpt", ".mpr", ".dta", ".idf", ".z", ".dfr"}
+            ]
+        )
+        try:
+            LicenseManager.get().check_file_limit(n_files)
+        except LicenseLimitError as exc:
+            self._append_log(str(exc))
+            return
+
         self._append_log(f"Batch processing: {folder}")
         self._update_status_bar(pipeline_status="running: batch")
 
@@ -4630,6 +4650,28 @@ class PipelineApp(ctk.CTk):
         threading.Thread(target=worker, daemon=True).start()
 
     def _run_eis_clicked(self):
+        # License file-limit gate
+        from pathlib import Path as _Path
+
+        from src.config import PipelineConfig as _Cfg
+
+        try:
+            _data_dir = _Cfg().data_dir
+            _eis_exts = {".csv", ".txt", ".mpt", ".mpr", ".dta", ".idf", ".z", ".dfr"}
+            _n = len(
+                [
+                    f
+                    for f in _Path(_data_dir).iterdir()
+                    if f.is_file() and f.suffix.lower() in _eis_exts
+                ]
+            )
+            LicenseManager.get().check_file_limit(_n)
+        except LicenseLimitError as exc:
+            self._append_log(str(exc))
+            return
+        except Exception:
+            pass  # If we can't count, don't block the run
+
         self._last_pipeline = "eis"
         self._update_status_bar(pipeline_status="running: EIS")
         self._disable_buttons()
@@ -5290,6 +5332,65 @@ class PipelineApp(ctk.CTk):
         ctk.CTkButton(outer, text="🖼", width=32, command=_browse_logo).grid(
             row=row_idx, column=2, padx=(0, 8), pady=2
         )
+        row_idx += 1
+
+        # ── Licença ───────────────────────────────────────────────────
+        _section("🔑 " + tr("Licença"))
+        lic_mgr = LicenseManager.get()
+        self._license_status_label = ctk.CTkLabel(
+            outer,
+            text=lic_mgr.status_label(),
+            anchor="w",
+            font=("Helvetica", 12),
+        )
+        self._license_status_label.grid(
+            row=row_idx, column=0, columnspan=3, sticky="w", padx=16, pady=(2, 4)
+        )
+        row_idx += 1
+
+        ctk.CTkLabel(outer, text=tr("Chave de licença"), anchor="w").grid(
+            row=row_idx, column=0, sticky="w", padx=(16, 4), pady=2
+        )
+        license_entry = ctk.CTkEntry(outer, width=300, show="*")
+        license_entry.grid(row=row_idx, column=1, sticky="ew", padx=(0, 4), pady=2)
+        self._settings_entries["license_key"] = license_entry
+
+        def _activate_license(e=license_entry):
+            key = e.get().strip()
+            if not key:
+                return
+            ok = LicenseManager.get().activate(key)
+            if ok:
+                self._license_status_label.configure(
+                    text=LicenseManager.get().status_label(), text_color="green"
+                )
+                self._append_log(tr("Licença Pro activada com sucesso."))
+                e.delete(0, "end")
+            else:
+                self._license_status_label.configure(
+                    text="❌ " + tr("Chave inválida — verifique e tente novamente."),
+                    text_color="red",
+                )
+
+        def _deactivate_license():
+            LicenseManager.get().deactivate()
+            self._license_status_label.configure(
+                text=LicenseManager.get().status_label(), text_color="gray"
+            )
+            self._append_log(tr("Licença removida. A usar versão gratuita."))
+
+        ctk.CTkButton(
+            outer, text=tr("Activar"), width=80, command=_activate_license
+        ).grid(row=row_idx, column=2, padx=(0, 8), pady=2)
+        row_idx += 1
+        ctk.CTkButton(
+            outer,
+            text=tr("Remover licença"),
+            width=180,
+            fg_color="#8B0000",
+            hover_color="#A00000",
+            command=_deactivate_license,
+        ).grid(row=row_idx, column=1, sticky="w", padx=(0, 4), pady=2)
         row_idx += 1
 
         # ── Botões ────────────────────────────────────────────────────
