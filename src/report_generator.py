@@ -590,7 +590,7 @@ def _make_pdf_class(fingerprint: str, version: str):
             self.set_font("Helvetica", "I", 7)
             self.set_text_color(150, 150, 150)
             left = (
-                f"IonFlow Pipeline {self._version}" f"  •  SHA-256: {self._fingerprint}"
+                f"IonFlow Pipeline {self._version}" f"  |  SHA-256: {self._fingerprint}"
             )
             right = f"Page {self.page_no()} / {{nb}}"
             self.cell(0, 5, left, align="L")
