@@ -12,10 +12,10 @@ import os
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple
 
+import matplotlib.pyplot as plt
 import numpy as np
 from numpy.linalg import LinAlgError
 from scipy.optimize import least_squares
-import matplotlib.pyplot as plt
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +133,7 @@ def circuit_catalog() -> List[CircuitTemplate]:
     """Return all registered circuits (delegates to CircuitRegistry)."""
     try:
         from src.circuit_registry import CircuitRegistry
+
         return CircuitRegistry.all()
     except Exception:  # pragma: no cover — fallback if registry not available
         return [
@@ -172,11 +173,17 @@ def extract_eis_features_for_ml(df) -> Dict[str, float]:
     high_slice = slice(n - q, n)
 
     feats = {
-        "logf_slope_low": slope(logf[low_slice], np.log10(mag[low_slice])) if n >= 2 else np.nan,
-        "logf_slope_high": slope(logf[high_slice], np.log10(mag[high_slice])) if n >= 2 else np.nan,
+        "logf_slope_low": slope(logf[low_slice], np.log10(mag[low_slice]))
+        if n >= 2
+        else np.nan,
+        "logf_slope_high": slope(logf[high_slice], np.log10(mag[high_slice]))
+        if n >= 2
+        else np.nan,
         "phase_min": float(np.nanmin(phase)) if phase.size else np.nan,
         "phase_max": float(np.nanmax(phase)) if phase.size else np.nan,
-        "phase_range": float(np.nanmax(phase) - np.nanmin(phase)) if phase.size else np.nan,
+        "phase_range": float(np.nanmax(phase) - np.nanmin(phase))
+        if phase.size
+        else np.nan,
         "freq_at_phase_min": float(freq[np.nanargmin(phase)]) if phase.size else np.nan,
         "mag_range": float(np.nanmax(mag) - np.nanmin(mag)) if mag.size else np.nan,
         "zreal_min": float(np.nanmin(z.real)) if z.size else np.nan,
@@ -208,9 +215,14 @@ def shortlist_circuits(
     if ml_ranked:
         picks = [catalog_map[n] for n in ml_ranked if n in catalog_map]
         if picks:
-            logger.info("shortlist_circuits: using ML-ranked %s", [c.name for c in picks[:top_n]])
+            logger.info(
+                "shortlist_circuits: using ML-ranked %s",
+                [c.name for c in picks[:top_n]],
+            )
             return picks[:top_n]
-        logger.debug("shortlist_circuits: ML names not in catalog, falling back to heuristic.")
+        logger.debug(
+            "shortlist_circuits: ML names not in catalog, falling back to heuristic."
+        )
 
     # ── Heuristic path (unchanged) ───────────────────────────────
     picks: List[CircuitTemplate] = []
@@ -228,7 +240,25 @@ def shortlist_circuits(
     phase_min = features.get("phase_min", np.nan)
     phase_max = features.get("phase_max", np.nan)
     slope_low = features.get("logf_slope_low", np.nan)
+    slope_high = features.get("logf_slope_high", np.nan)
     mag_range = features.get("mag_range", np.nan)
+    zreal_max = features.get("zreal_max", np.nan)
+    zreal_min = features.get("zreal_min", np.nan)
+    zreal_span = (
+        float(zreal_max) - float(zreal_min)
+        if np.isfinite(zreal_max) and np.isfinite(zreal_min)
+        else np.nan
+    )
+
+    # Near-ideal capacitor: very deep phase AND high-freq slope ≈ -1 → CPE-Simple
+    if (
+        np.isfinite(phase_min)
+        and phase_min < -80
+        and np.isfinite(slope_high)
+        and slope_high < -0.8
+        and "CPE-Simple" in names_available
+    ):
+        add_by_name("CPE-Simple")
 
     # Strong capacitive arc → more likely two arcs or coating
     if np.isfinite(phase_min) and phase_min < -70:
@@ -241,12 +271,32 @@ def shortlist_circuits(
         add_by_name("Randles-CPE-W")  # already present, safe
         if "Warburg-Finite" in names_available:
             add_by_name("Warburg-Finite")
+        # Warburg-Short has same slope signature — include for BIC comparison
+        if "Warburg-Short" in names_available:
+            add_by_name("Warburg-Short")
+        # Gerischer has intermediate slope ≈ -0.25 to -0.45
+        if (
+            np.isfinite(slope_low)
+            and -0.6 < slope_low < -0.2
+            and "Gerischer" in names_available
+        ):
+            add_by_name("Gerischer")
 
-    # Very wide mag_range + two arcs → ZARC-ZARC-W
-    if (np.isfinite(mag_range) and mag_range > 100
-            and np.isfinite(phase_min) and phase_min < -50):
+    # Very wide impedance span → solid electrolyte with three arcs
+    if np.isfinite(zreal_span) and zreal_span > 500 and "Three-ZARC" in names_available:
+        add_by_name("Three-ZARC")
+
+    # Very wide mag_range + two arcs → ZARC-ZARC-W or Three-ZARC
+    if (
+        np.isfinite(mag_range)
+        and mag_range > 100
+        and np.isfinite(phase_min)
+        and phase_min < -50
+    ):
         if "ZARC-ZARC-W" in names_available:
             add_by_name("ZARC-ZARC-W")
+        if mag_range > 500 and "Three-ZARC" in names_available:
+            add_by_name("Three-ZARC")
 
     # Inductive loop if phase crosses positive or mag rises at high freq
     if np.isfinite(phase_max) and phase_max > 10:
@@ -312,7 +362,7 @@ def fit_template(template: CircuitTemplate, freq: np.ndarray, z: np.ndarray) -> 
         safe_ub = np.maximum(ub, 1e-14)
         for _ in range(5):
             log_p = rng.uniform(np.log10(safe_lb), np.log10(safe_ub))
-            seeds.append(np.clip(10 ** log_p, lb, ub))
+            seeds.append(np.clip(10**log_p, lb, ub))
 
     best_res = None
     for p0 in seeds:
@@ -342,8 +392,10 @@ def fit_template(template: CircuitTemplate, freq: np.ndarray, z: np.ndarray) -> 
                 p0_clipped = np.clip(p0, lb2, ub2)
                 try:
                     res2 = least_squares(
-                        residuals, p0_clipped,
-                        bounds=(lb2, ub2), max_nfev=8000,
+                        residuals,
+                        p0_clipped,
+                        bounds=(lb2, ub2),
+                        max_nfev=8000,
                     )
                     if res2.cost < best_res.cost:
                         best_res = res2
@@ -366,7 +418,8 @@ def fit_template(template: CircuitTemplate, freq: np.ndarray, z: np.ndarray) -> 
             sigma2 = rss / max(n_points - k_params, 1)
             cov = inv * sigma2
             params_std = {
-                name: float(np.sqrt(abs(cov[i, i]))) for i, name in enumerate(template.param_names)
+                name: float(np.sqrt(abs(cov[i, i])))
+                for i, name in enumerate(template.param_names)
             }
     except LinAlgError:
         params_std = {}
@@ -448,7 +501,11 @@ def _save_diagnostics(
     axes[2].grid(alpha=0.3)
 
     plt.tight_layout()
-    fname = f"{sample_name}_{template.name}.png" if sample_name else f"diag_{template.name}.png"
+    fname = (
+        f"{sample_name}_{template.name}.png"
+        if sample_name
+        else f"diag_{template.name}.png"
+    )
     path = os.path.join(out_dir, fname)
     plt.savefig(path, dpi=300, bbox_inches="tight")
     plt.close(fig)
@@ -515,10 +572,14 @@ def run_shortlist_fit(
         bic = r.get("bic", np.inf)
         return bic + penalty
 
-    results_sorted = sorted(results, key=lambda r: (penalized_bic(r), r.get("rss", np.inf)))
+    results_sorted = sorted(
+        results, key=lambda r: (penalized_bic(r), r.get("rss", np.inf))
+    )
 
     # Confidence estimate via softmax over -0.5 * penalized BIC (relative)
-    finite_bic = [penalized_bic(r) for r in results_sorted if np.isfinite(penalized_bic(r))]
+    finite_bic = [
+        penalized_bic(r) for r in results_sorted if np.isfinite(penalized_bic(r))
+    ]
     if finite_bic:
         bmin = min(finite_bic)
         scores = []

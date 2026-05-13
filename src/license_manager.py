@@ -37,16 +37,30 @@ from pathlib import Path
 FREE_FILE_LIMIT: int = 5
 """Maximum files processed per run in the free tier."""
 
-_SECRET: bytes = b"ionflow-license-v1-xK9mPqRzWn4s"
-"""
-Shared secret used for HMAC key validation.
-This is embedded in the binary; it is NOT a cryptographic secret — it provides
-a simple deterrent against casual key forgery, not strong protection.
-"""
+LAB_SEAT_LIMIT: int = 5
+"""Maximum concurrent users in the Lab tier."""
+
+# ---------------------------------------------------------------------------
+# Per-tier HMAC secrets (NOT cryptographic — casual forgery deterrent only)
+# ---------------------------------------------------------------------------
+
+_SECRET_PRO: bytes = b"ionflow-license-v1-xK9mPqRzWn4s"
+_SECRET_LAB: bytes = b"ionflow-lab-v1-tY7nBkLvWm2pXqRs"
+_SECRET_OEM: bytes = b"ionflow-oem-v1-zQ3cDjHuEa6wFgNt"
+
+# Keep backwards-compatible alias
+_SECRET: bytes = _SECRET_PRO
 
 _SERIAL_CHARS: str = string.ascii_uppercase + string.digits
 _SERIAL_LEN: int = 8
 _MAC_LEN: int = 10  # hex nibbles
+
+# Valid tier prefixes
+_TIER_SECRETS: dict[str, bytes] = {
+    "PRO": _SECRET_PRO,
+    "LAB": _SECRET_LAB,
+    "OEM": _SECRET_OEM,
+}
 
 
 # ---------------------------------------------------------------------------
@@ -71,35 +85,43 @@ class LicenseKeyError(LicenseError):
 # ---------------------------------------------------------------------------
 
 
-def _compute_mac(serial: str) -> str:
-    """Return the expected MAC for *serial* (uppercase hex, _MAC_LEN chars)."""
+def _compute_mac(serial: str, tier: str = "PRO") -> str:
+    """Return the expected MAC for *serial* and *tier* (uppercase hex, _MAC_LEN chars)."""
+    secret = _TIER_SECRETS.get(tier.upper(), _SECRET_PRO)
     return (
-        hmac.new(_SECRET, serial.upper().encode("ascii"), hashlib.sha256)
+        hmac.new(secret, serial.upper().encode("ascii"), hashlib.sha256)
         .hexdigest()[:_MAC_LEN]
         .upper()
     )
 
 
-def generate_key(serial: str) -> str:
+def generate_key(serial: str, tier: str = "PRO") -> str:
     """
-    Build a valid license key from *serial*.
+    Build a valid license key from *serial* and *tier*.
 
     Parameters
     ----------
     serial:
         Exactly 8 uppercase alphanumeric characters.  Any lowercase letters
         are automatically folded to uppercase.
+    tier:
+        One of ``"PRO"``, ``"LAB"``, ``"OEM"`` (case-insensitive).
+        Defaults to ``"PRO"`` for backwards compatibility.
 
     Returns
     -------
     str
-        A key of the form ``IONFLOW-PRO-<SERIAL8>-<MAC10>``.
+        A key of the form ``IONFLOW-<TIER>-<SERIAL8>-<MAC10>``.
 
     Raises
     ------
     ValueError
-        If *serial* has an invalid length or contains illegal characters.
+        If *serial* has an invalid length or contains illegal characters,
+        or if *tier* is unknown.
     """
+    tier = tier.upper()
+    if tier not in _TIER_SECRETS:
+        raise ValueError(f"Unknown tier {tier!r}. Must be one of {list(_TIER_SECRETS)}")
     serial = serial.upper()
     if len(serial) != _SERIAL_LEN:
         raise ValueError(
@@ -107,29 +129,40 @@ def generate_key(serial: str) -> str:
         )
     if not all(c in _SERIAL_CHARS for c in serial):
         raise ValueError(f"Serial must contain only A-Z and 0-9, got {serial!r}")
-    mac = _compute_mac(serial)
-    return f"IONFLOW-PRO-{serial}-{mac}"
+    mac = _compute_mac(serial, tier)
+    return f"IONFLOW-{tier}-{serial}-{mac}"
 
 
 def validate_key(key: str) -> bool:
     """
-    Return True if *key* is a well-formed, authentic IonFlow Pro license key.
+    Return True if *key* is a well-formed, authentic IonFlow license key
+    for any tier (Pro, Lab, or OEM).
 
     This is a pure function — it does **not** mutate any state.
     """
+    return key_tier(key) is not None
+
+
+def key_tier(key: str) -> str | None:
+    """Return the tier string (``"PRO"``, ``"LAB"``, ``"OEM"``) for a valid key,
+    or ``None`` if the key is invalid or malformed."""
     key = key.strip().upper()
-    prefix = "IONFLOW-PRO-"
+    prefix = "IONFLOW-"
     if not key.startswith(prefix):
-        return False
-    rest = key[len(prefix) :]  # "SERIAL8-MAC10"
-    parts = rest.rsplit("-", 1)
-    if len(parts) != 2:
-        return False
-    serial, mac = parts
+        return None
+    rest = key[len(prefix) :]  # "TIER-SERIAL8-MAC10"
+    parts = rest.split("-", 2)
+    if len(parts) != 3:
+        return None
+    tier, serial, mac = parts
+    if tier not in _TIER_SECRETS:
+        return None
     if len(serial) != _SERIAL_LEN or len(mac) != _MAC_LEN:
-        return False
-    expected = _compute_mac(serial)
-    return hmac.compare_digest(mac, expected)
+        return None
+    expected = _compute_mac(serial, tier)
+    if not hmac.compare_digest(mac, expected):
+        return None
+    return tier
 
 
 # ---------------------------------------------------------------------------
@@ -145,7 +178,7 @@ class LicenseManager:
     -----
     >>> from src.license_manager import LicenseManager
     >>> mgr = LicenseManager.get()
-    >>> mgr.tier          # "free" or "pro"
+    >>> mgr.tier          # "free", "pro", "lab", or "oem"
     >>> mgr.activate("IONFLOW-PRO-ABCD1234-XXXXXXXXXX")
     True
     >>> mgr.check_file_limit(10)  # raises LicenseLimitError on free tier
@@ -187,9 +220,10 @@ class LicenseManager:
     def _load_persisted_key(self) -> None:
         try:
             raw = self._key_path().read_text(encoding="utf-8").strip()
-            if validate_key(raw):
+            t = key_tier(raw)
+            if t is not None:
                 self._key = raw.upper()
-                self._tier = "pro"
+                self._tier = t.lower()
         except Exception:
             pass
 
@@ -211,13 +245,23 @@ class LicenseManager:
 
     @property
     def tier(self) -> str:
-        """``"free"`` or ``"pro"``."""
+        """``"free"``, ``"pro"``, ``"lab"``, or ``"oem"``."""
         return self._tier
 
     @property
     def is_pro(self) -> bool:
-        """True when a valid Pro license is active."""
-        return self._tier == "pro"
+        """True when a Pro *or higher* license is active."""
+        return self._tier in ("pro", "lab", "oem")
+
+    @property
+    def is_lab(self) -> bool:
+        """True when a Lab *or higher* license is active."""
+        return self._tier in ("lab", "oem")
+
+    @property
+    def is_oem(self) -> bool:
+        """True when an OEM license is active."""
+        return self._tier == "oem"
 
     @property
     def active_key(self) -> str | None:
@@ -229,14 +273,15 @@ class LicenseManager:
         Try to activate *key*.
 
         Returns True on success, False if the key is invalid.
+        The detected tier (pro/lab/oem) is set automatically.
         The key is persisted to disk on success.
         """
-        key = key.strip().upper()
-        if not validate_key(key):
+        t = key_tier(key)
+        if t is None:
             return False
-        self._key = key
-        self._tier = "pro"
-        self._persist_key(key)
+        self._key = key.strip().upper()
+        self._tier = t.lower()
+        self._persist_key(self._key)
         return True
 
     def deactivate(self) -> None:
@@ -249,7 +294,7 @@ class LicenseManager:
         """
         Raise :class:`LicenseLimitError` if *n_files* exceeds the free-tier cap.
 
-        Does nothing when a Pro license is active.
+        Does nothing when any paid license is active.
 
         Parameters
         ----------
@@ -273,7 +318,15 @@ class LicenseManager:
 
     def status_label(self) -> str:
         """Human-readable status string for display in the UI."""
-        if self.is_pro:
+        if self._tier == "oem":
+            serial = (self._key or "").split("-")[2] if self._key else "?"
+            return f"✅ OEM activo  [serial: {serial}]"
+        if self._tier == "lab":
+            serial = (self._key or "").split("-")[2] if self._key else "?"
+            return (
+                f"✅ Lab activo  [serial: {serial}]  (até {LAB_SEAT_LIMIT} utilizadores)"
+            )
+        if self._tier == "pro":
             serial = (self._key or "").split("-")[2] if self._key else "?"
             return f"✅ Pro activo  [serial: {serial}]"
         return f"🆓 Versão gratuita  (máx. {FREE_FILE_LIMIT} ficheiros/execução)"

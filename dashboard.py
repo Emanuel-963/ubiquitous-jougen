@@ -75,6 +75,7 @@ PAGES = {
     "🔋 Ciclagem": "cycling",
     "🗄️ Histórico ML": "history",
     "🤖 Análise IA": "ai",
+    "📚 Referências": "references",
 }
 
 with st.sidebar:
@@ -592,6 +593,71 @@ def _page_ai() -> None:
 
 
 # ═══════════════════════════════════════════════════════════════════════
+# Page: Referências Bibliográficas
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def _page_references() -> None:
+    st.title("📚 Referências Bibliográficas")
+    st.caption(
+        "Referências acadêmicas que fundamentam os algoritmos e métodos do "
+        "IonFlow Pipeline v0.3.0.  Clique em qualquer DOI para abrir o artigo."
+    )
+
+    try:
+        from src.references import filter_references, load_references
+    except ImportError as exc:
+        st.error(f"Não foi possível carregar o módulo de referências: {exc}")
+        return
+
+    query = st.text_input(
+        "Filtrar",
+        placeholder="ex: EIS, DRT, CPE, fitting, Randles…",
+        label_visibility="collapsed",
+    )
+    all_refs = load_references()
+    refs = filter_references(all_refs, query)
+
+    st.caption(f"{len(refs)} / {len(all_refs)} referências")
+    st.divider()
+
+    if not refs:
+        st.info("Nenhuma referência encontrada para este filtro.")
+        return
+
+    # Group by PARTE section
+    sections: dict[str, list] = {}
+    for ref in refs:
+        sections.setdefault(ref.part, []).append(ref)
+
+    for part_name, part_refs in sections.items():
+        with st.expander(
+            f"**{part_name}** ({len(part_refs)} refs)", expanded=(not query)
+        ):
+            for ref in part_refs:
+                lines = ref.text.split("\n")
+                md_lines: list[str] = []
+                for line in lines:
+                    import re as _re
+
+                    doi_m = _re.match(r"(\s*DOI:\s*)([\S]+)(.*)", line, _re.IGNORECASE)
+                    if doi_m and ref.doi_url:
+                        doi_str = doi_m.group(2).rstrip(".,)")
+                        md_lines.append(
+                            f"{doi_m.group(1).strip()} "
+                            f"[{doi_str}]({ref.doi_url}){doi_m.group(3)}"
+                        )
+                    elif line.lstrip().startswith("->") or line.lstrip().startswith(
+                        "→"
+                    ):
+                        md_lines.append(f"*{line.strip()}*")
+                    else:
+                        md_lines.append(line)
+                st.markdown("\n".join(md_lines))
+                st.markdown("---")
+
+
+# ═══════════════════════════════════════════════════════════════════════
 # Router
 # ═══════════════════════════════════════════════════════════════════════
 
@@ -603,6 +669,7 @@ _ROUTER = {
     "cycling": _page_cycling,
     "history": _page_history,
     "ai": _page_ai,
+    "references": _page_references,
 }
 
 _ROUTER[_PAGE_ID]()

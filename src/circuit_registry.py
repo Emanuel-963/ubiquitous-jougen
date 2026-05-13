@@ -5,13 +5,17 @@ Every circuit is registered as a :class:`CircuitTemplate` with rich metadata
 
 Built-in circuits (registered at import time)
 ----------------------------------------------
-1. ``Randles-CPE-W``    — Rs − (Rp ‖ CPE) − W
-2. ``Two-Arc-CPE``      — Rs − (Rp1 ‖ CPE1) − (Rp2 ‖ CPE2)
-3. ``Inductive-CPE``    — Rs − L − (Rp ‖ CPE)
-4. ``Coating-CPE``      — Rs − (Rcoat ‖ CPEcoat) − (Rct ‖ CPEdl)
-5. ``Warburg-Finite``   — Rs − (Rp ‖ CPE) − Wfinite
-6. ``ZARC-ZARC-W``      — Rs − ZARC₁ − ZARC₂ − W
-7. ``Simple-RC``        — Rs − (Rp ‖ C)
+ 1. ``Randles-CPE-W``    — Rs − (Rp ‖ CPE) − W
+ 2. ``Two-Arc-CPE``      — Rs − (Rp1 ‖ CPE1) − (Rp2 ‖ CPE2)
+ 3. ``Inductive-CPE``    — Rs − L − (Rp ‖ CPE)
+ 4. ``Coating-CPE``      — Rs − (Rcoat ‖ CPEcoat) − (Rct ‖ CPEdl)
+ 5. ``Warburg-Finite``   — Rs − (Rp ‖ CPE) − Wfinite  [transmissive / tanh]
+ 6. ``ZARC-ZARC-W``      — Rs − ZARC₁ − ZARC₂ − W
+ 7. ``Simple-RC``        — Rs − (Rp ‖ C)
+ 8. ``CPE-Simple``       — Rs − CPE                    [EDLC / blocking electrode]
+ 9. ``Warburg-Short``    — Rs − (Rp ‖ CPE) − Wo        [reflective / coth]
+10. ``Gerischer``        — Rs − (Rp ‖ CPE) − Z_Ger     [SOFC / mixed conductors]
+11. ``Three-ZARC``       — Rs − ZARC₁ − ZARC₂ − ZARC₃ [solid electrolytes]
 
 Public API
 ----------
@@ -29,12 +33,8 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
-from src.circuit_fitting import (
-    CircuitTemplate as _BaseTemplate,
-    _cpe,
-    _warburg,
-    _inductor,
-)
+from src.circuit_fitting import CircuitTemplate as _BaseTemplate
+from src.circuit_fitting import _cpe, _inductor, _warburg
 
 logger = logging.getLogger(__name__)
 
@@ -144,6 +144,7 @@ class CircuitRegistry:
 # Built-in circuit definitions
 # ══════════════════════════════════════════════════════════════════════
 
+
 # Helper for typical init of Rs from high-freq real part
 def _rs_from_z(z: np.ndarray) -> float:
     return float(max(np.nanmin(z.real[-5:]) if z.size >= 5 else z.real[-1], 1e-3))
@@ -152,8 +153,7 @@ def _rs_from_z(z: np.ndarray) -> float:
 # ---------- 1. Randles-CPE-W ------------------------------------------
 def _make_randles_cpe_w() -> CircuitTemplate:
     param_names = ["Rs", "Rp", "Q", "n", "Sigma"]
-    bounds = ([1e-6, 1e-3, 1e-12, 0.3, 1e-10],
-              [1e6,  1e8,  1.0,   1.0, 1e5])
+    bounds = ([1e-6, 1e-3, 1e-12, 0.3, 1e-10], [1e6, 1e8, 1.0, 1.0, 1e5])
 
     def model(p: np.ndarray, omega: np.ndarray) -> np.ndarray:
         Rs, Rp, Q, n, sigma = p
@@ -199,8 +199,10 @@ def _make_randles_cpe_w() -> CircuitTemplate:
 # ---------- 2. Two-Arc-CPE -------------------------------------------
 def _make_two_arc_cpe() -> CircuitTemplate:
     param_names = ["Rs", "Rp1", "Q1", "n1", "Rp2", "Q2", "n2"]
-    bounds = ([1e-6, 1e-3, 1e-12, 0.3, 1e-3, 1e-12, 0.3],
-              [1e6,  1e8,  1.0,   1.0, 1e8,  1.0,   1.0])
+    bounds = (
+        [1e-6, 1e-3, 1e-12, 0.3, 1e-3, 1e-12, 0.3],
+        [1e6, 1e8, 1.0, 1.0, 1e8, 1.0, 1.0],
+    )
 
     def model(p: np.ndarray, omega: np.ndarray) -> np.ndarray:
         Rs, Rp1, Q1, n1, Rp2, Q2, n2 = p
@@ -248,8 +250,7 @@ def _make_two_arc_cpe() -> CircuitTemplate:
 # ---------- 3. Inductive-CPE -----------------------------------------
 def _make_inductive_cpe() -> CircuitTemplate:
     param_names = ["Rs", "L", "Rp", "Q", "n"]
-    bounds = ([1e-6, 1e-9, 1e-3, 1e-12, 0.3],
-              [1e6,  1.0,  1e8,  1.0,   1.0])
+    bounds = ([1e-6, 1e-9, 1e-3, 1e-12, 0.3], [1e6, 1.0, 1e8, 1.0, 1.0])
 
     def model(p: np.ndarray, omega: np.ndarray) -> np.ndarray:
         Rs, L, Rp, Q, n = p
@@ -293,8 +294,10 @@ def _make_inductive_cpe() -> CircuitTemplate:
 # ---------- 4. Coating-CPE (NEW) -------------------------------------
 def _make_coating_cpe() -> CircuitTemplate:
     param_names = ["Rs", "Rcoat", "Qcoat", "ncoat", "Rct", "Qdl", "ndl"]
-    bounds = ([1e-6, 1e-3, 1e-12, 0.3, 1e-3, 1e-12, 0.3],
-              [1e6,  1e8,  1.0,   1.0, 1e8,  1.0,   1.0])
+    bounds = (
+        [1e-6, 1e-3, 1e-12, 0.3, 1e-3, 1e-12, 0.3],
+        [1e6, 1e8, 1.0, 1.0, 1e8, 1.0, 1.0],
+    )
 
     def model(p: np.ndarray, omega: np.ndarray) -> np.ndarray:
         Rs, Rcoat, Qcoat, ncoat, Rct, Qdl, ndl = p
@@ -343,8 +346,7 @@ def _make_coating_cpe() -> CircuitTemplate:
 # ---------- 5. Warburg-Finite (NEW) ----------------------------------
 def _make_warburg_finite() -> CircuitTemplate:
     param_names = ["Rs", "Rp", "Q", "n", "Rd", "Td"]
-    bounds = ([1e-6, 1e-3, 1e-12, 0.3, 1e-6, 1e-6],
-              [1e6,  1e8,  1.0,   1.0, 1e8,  1e4])
+    bounds = ([1e-6, 1e-3, 1e-12, 0.3, 1e-6, 1e-6], [1e6, 1e8, 1.0, 1.0, 1e8, 1e4])
 
     def model(p: np.ndarray, omega: np.ndarray) -> np.ndarray:
         Rs, Rp, Q, n, Rd, Td = p
@@ -395,8 +397,10 @@ def _make_warburg_finite() -> CircuitTemplate:
 # ---------- 6. ZARC-ZARC-W (NEW) ------------------------------------
 def _make_zarc_zarc_w() -> CircuitTemplate:
     param_names = ["Rs", "R1", "Q1", "n1", "R2", "Q2", "n2", "Sigma"]
-    bounds = ([1e-6, 1e-3, 1e-12, 0.3, 1e-3, 1e-12, 0.3, 1e-10],
-              [1e6,  1e8,  1.0,   1.0, 1e8,  1.0,   1.0, 1e5])
+    bounds = (
+        [1e-6, 1e-3, 1e-12, 0.3, 1e-3, 1e-12, 0.3, 1e-10],
+        [1e6, 1e8, 1.0, 1.0, 1e8, 1.0, 1.0, 1e5],
+    )
 
     def model(p: np.ndarray, omega: np.ndarray) -> np.ndarray:
         Rs, R1, Q1, n1, R2, Q2, n2, sigma = p
@@ -445,8 +449,7 @@ def _make_zarc_zarc_w() -> CircuitTemplate:
 # ---------- 7. Simple-RC (NEW) — baseline ----------------------------
 def _make_simple_rc() -> CircuitTemplate:
     param_names = ["Rs", "Rp", "C"]
-    bounds = ([1e-6, 1e-3, 1e-15],
-              [1e6,  1e8,  1e-1])
+    bounds = ([1e-6, 1e-3, 1e-15], [1e6, 1e8, 1e-1])
 
     def model(p: np.ndarray, omega: np.ndarray) -> np.ndarray:
         Rs, Rp, C = p
@@ -485,6 +488,227 @@ def _make_simple_rc() -> CircuitTemplate:
     )
 
 
+# ---------- 8. CPE-Simple -------------------------------------------
+def _make_cpe_simple() -> CircuitTemplate:
+    """Rs − CPE: pure constant-phase element (EDLC, blocking electrodes)."""
+    param_names = ["Rs", "Q", "n"]
+    bounds = ([1e-6, 1e-12, 0.5], [1e3, 1e3, 1.0])
+
+    def model(p: np.ndarray, omega: np.ndarray) -> np.ndarray:
+        Rs, Q, n = p
+        return Rs + _cpe(omega, Q, n)
+
+    def init(omega: np.ndarray, z: np.ndarray) -> np.ndarray:
+        rs = _rs_from_z(z)
+        return np.array([rs, 1e-3, 0.95])
+
+    return CircuitTemplate(
+        name="CPE-Simple",
+        param_names=param_names,
+        bounds=bounds,
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − CPE",
+        description=(
+            "Simplest capacitive model: electrolyte resistance in series with "
+            "a single constant-phase element.  Models ideal to near-ideal "
+            "electric double-layer capacitors (EDLC) and blocking electrodes "
+            "where no charge-transfer occurs within the measurement window."
+        ),
+        physical_meaning={
+            "Rs": "Equivalent series resistance — ESR (Ω)",
+            "Q": "CPE pseudo-capacitance (F·s^(n-1)); n=1 → ideal capacitor",
+            "n": "CPE exponent — n→1 ideal EDLC, n=0.85–0.95 real carbon EDLC",
+        },
+        typical_systems=[
+            "Electric double-layer capacitors (EDLC / supercapacitors)",
+            "Blocking platinum or glassy-carbon electrodes in acid",
+            "Ion-blocking electrodes in solid-state cells",
+            "Polymer electrolyte films at high frequency",
+        ],
+    )
+
+
+# ---------- 9. Warburg-Short (reflective / open boundary) -----------
+def _make_warburg_short() -> CircuitTemplate:
+    """Rs − (Rp ‖ CPE) − Wo  [coth Warburg, reflective boundary]."""
+    param_names = ["Rs", "Rp", "Q", "n", "Rd", "Td"]
+    bounds = ([1e-6, 1e-3, 1e-12, 0.3, 1e-6, 1e-6], [1e6, 1e8, 1.0, 1.0, 1e8, 1e4])
+
+    def model(p: np.ndarray, omega: np.ndarray) -> np.ndarray:
+        Rs, Rp, Q, n, Rd, Td = p
+        Zcpe = _cpe(omega, Q, n)
+        Zpar = 1.0 / (1.0 / Rp + 1.0 / Zcpe)
+        # Warburg open (reflective): Rd * coth(s) / s,  s = sqrt(j*omega*Td)
+        s = np.sqrt(1j * omega * Td)
+        s_abs = np.abs(s)
+        safe_s = np.where(s_abs < 1e-10, (1e-10 + 0j) * np.ones_like(s), s)
+        # Clamp |s| ≤ 20 before cosh/sinh to avoid overflow (np.where evaluates both
+        # branches eagerly).  At |s| = 20, coth(20) ≈ 1.0 to 10 sig-figs.
+        s_clamped = np.where(
+            s_abs > 20, safe_s / np.where(s_abs > 0, s_abs, 1.0) * 20, safe_s
+        )
+        coth_s = np.cosh(s_clamped) / np.sinh(s_clamped)
+        Zw_open = Rd * coth_s / safe_s
+        return Rs + Zpar + Zw_open
+
+    def init(omega: np.ndarray, z: np.ndarray) -> np.ndarray:
+        rs = _rs_from_z(z)
+        rp = float(max(z.real[0] - rs, 0.1))
+        return np.array([rs, rp, 1e-4, 0.85, rp * 0.5, 1.0])
+
+    return CircuitTemplate(
+        name="Warburg-Short",
+        param_names=param_names,
+        bounds=bounds,
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − (Rp ‖ CPE) − Wo",
+        description=(
+            "Modified Randles with a finite-length Warburg with reflective "
+            "(open/blocking) boundary condition — coth form.  At low "
+            "frequencies the impedance becomes purely capacitive, unlike the "
+            "transmissive Warburg-Finite (tanh) which flattens to a real "
+            "resistance.  Distinguishable by the upturn toward −Im(Z) axis "
+            "at the lowest measured frequencies."
+        ),
+        physical_meaning={
+            "Rs": "Electrolyte resistance (Ω)",
+            "Rp": "Charge-transfer resistance (Ω)",
+            "Q": "CPE pseudo-capacitance (F·s^(n-1))",
+            "n": "CPE exponent",
+            "Rd": "Diffusion resistance — ohmic equivalent of diffusion layer (Ω)",
+            "Td": "Diffusion time constant (s) = L²/D",
+        },
+        typical_systems=[
+            "Thin-layer cells with blocking counter electrode",
+            "Ion-selective electrodes and polymer membranes",
+            "Porous electrodes with blocked pore tips",
+            "Solid polymer electrolytes (lithium conductors)",
+        ],
+    )
+
+
+# ---------- 10. Gerischer -------------------------------------------
+def _make_gerischer() -> CircuitTemplate:
+    """Rs − (Rp ‖ CPE) − Z_Gerischer  [distributed reaction impedance]."""
+    param_names = ["Rs", "Rp", "Q", "n", "Rg", "Tg"]
+    bounds = ([1e-6, 1e-3, 1e-12, 0.3, 1e-3, 1e-8], [1e6, 1e8, 1.0, 1.0, 1e8, 1e4])
+
+    def model(p: np.ndarray, omega: np.ndarray) -> np.ndarray:
+        Rs, Rp, Q, n, Rg, Tg = p
+        Zcpe = _cpe(omega, Q, n)
+        Zpar = 1.0 / (1.0 / Rp + 1.0 / Zcpe)
+        # Gerischer element: Rg / sqrt(1 + j*omega*Tg)
+        Zg = Rg / np.sqrt(1.0 + 1j * omega * Tg)
+        return Rs + Zpar + Zg
+
+    def init(omega: np.ndarray, z: np.ndarray) -> np.ndarray:
+        rs = _rs_from_z(z)
+        rp = float(max(z.real[0] - rs, 0.1))
+        return np.array([rs, rp * 0.5, 1e-4, 0.85, rp * 0.3, 1e-3])
+
+    return CircuitTemplate(
+        name="Gerischer",
+        param_names=param_names,
+        bounds=bounds,
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − (Rp ‖ CPE) − Z_Gerischer",
+        description=(
+            "Gerischer impedance element models a distributed electrochemical "
+            "reaction coupled to a homogeneous chemical step.  Produces a "
+            "characteristic arc that starts at ~45° and curves toward the "
+            "real axis at low frequency — distinct from the Warburg 45° "
+            "line which remains straight."
+        ),
+        physical_meaning={
+            "Rs": "Electrolyte / series resistance (Ω)",
+            "Rp": "Charge-transfer resistance (Ω)",
+            "Q": "CPE pseudo-capacitance (F·s^(n-1))",
+            "n": "CPE exponent",
+            "Rg": "Gerischer resistance — amplitude of distributed reaction (Ω)",
+            "Tg": "Gerischer time constant = k_f/D (s); k_f = rate constant, D = diffusivity",
+        },
+        typical_systems=[
+            "SOFC cathodes (LSC, LSCF, LSM) — oxygen reduction reaction",
+            "Mixed ionic-electronic conductors (MIEC)",
+            "Oxygen reduction reaction (ORR) in alkaline media",
+            "Porous gas-diffusion electrodes with coupled kinetics",
+        ],
+    )
+
+
+# ---------- 11. Three-ZARC ------------------------------------------
+def _make_three_zarc() -> CircuitTemplate:
+    """Rs − ZARC1 − ZARC2 − ZARC3  [solid electrolytes, ceramics]."""
+    param_names = ["Rs", "R1", "Q1", "n1", "R2", "Q2", "n2", "R3", "Q3", "n3"]
+    bounds = (
+        [1e-6, 1e-3, 1e-15, 0.5, 1e-3, 1e-15, 0.5, 1e-3, 1e-15, 0.4],
+        [1e4, 1e6, 1e-6, 1.0, 1e7, 1e-5, 1.0, 1e8, 1e-3, 1.0],
+    )
+
+    def model(p: np.ndarray, omega: np.ndarray) -> np.ndarray:
+        Rs, R1, Q1, n1, R2, Q2, n2, R3, Q3, n3 = p
+        Zarc1 = 1.0 / (1.0 / R1 + 1.0 / _cpe(omega, Q1, n1))
+        Zarc2 = 1.0 / (1.0 / R2 + 1.0 / _cpe(omega, Q2, n2))
+        Zarc3 = 1.0 / (1.0 / R3 + 1.0 / _cpe(omega, Q3, n3))
+        return Rs + Zarc1 + Zarc2 + Zarc3
+
+    def init(omega: np.ndarray, z: np.ndarray) -> np.ndarray:
+        rs = _rs_from_z(z)
+        span = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array(
+            [
+                rs,
+                span * 0.2,
+                1e-12,
+                0.95,
+                span * 0.3,
+                1e-10,
+                0.85,
+                span * 0.5,
+                1e-7,
+                0.75,
+            ]
+        )
+
+    return CircuitTemplate(
+        name="Three-ZARC",
+        param_names=param_names,
+        bounds=bounds,
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − ZARC₁ − ZARC₂ − ZARC₃",
+        description=(
+            "Three ZARC elements (R‖CPE) in series.  Models solid-state "
+            "systems with three distinct time-constant processes: bulk "
+            "conduction, grain-boundary resistance, and electrode/interface "
+            "polarization — each visible as a separate arc in a different "
+            "frequency decade."
+        ),
+        physical_meaning={
+            "Rs": "Geometrical / instrumental series resistance (Ω)",
+            "R1": "Bulk (grain) resistance (Ω) — high-frequency arc",
+            "Q1": "Bulk CPE parameter (F·s^(n-1))",
+            "n1": "Bulk CPE exponent (close to 1 for ideal ceramics)",
+            "R2": "Grain-boundary resistance (Ω) — mid-frequency arc",
+            "Q2": "Grain-boundary CPE parameter (F·s^(n-1))",
+            "n2": "Grain-boundary CPE exponent",
+            "R3": "Electrode / interface resistance (Ω) — low-frequency arc",
+            "Q3": "Electrode CPE parameter (F·s^(n-1))",
+            "n3": "Electrode CPE exponent",
+        },
+        typical_systems=[
+            "Garnet solid electrolytes (LLZO, Li6.5La3Zr1.5Ta0.5O12)",
+            "NASICON-type conductors (LAGP, LATP)",
+            "Yttria-stabilized zirconia (YSZ) — SOFC electrolyte",
+            "Li-rich glass-ceramics and glass electrolytes",
+            "Polycrystalline ceramics — bulk + grain boundary + electrode",
+        ],
+    )
+
+
 # ── Auto-register all built-in circuits at import time ───────────────
 _BUILTIN_MAKERS = [
     _make_randles_cpe_w,
@@ -494,6 +718,10 @@ _BUILTIN_MAKERS = [
     _make_warburg_finite,
     _make_zarc_zarc_w,
     _make_simple_rc,
+    _make_cpe_simple,
+    _make_warburg_short,
+    _make_gerischer,
+    _make_three_zarc,
 ]
 
 

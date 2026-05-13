@@ -80,12 +80,25 @@
     "ai_analysis": "AI Analysis",
     "settings": "Settings",
     "export_pdf": "Export PDF",
+    "export_all_xlsx": "Export all (.xlsx)",
     "cancel": "Cancel",
     "close": "Close",
     "run": "Run",
     "select_language": "Select language",
     "language_changed": "Language changed to {lang}",
-    "restart_required": "Restart to apply language changes"
+    "restart_required": "Restart to apply language changes",
+    "license_tier_free": "Free edition",
+    "license_tier_pro": "Pro active",
+    "license_tier_lab": "Lab active",
+    "license_tier_oem": "OEM active",
+    "license_activate": "Activate",
+    "license_deactivate": "Deactivate",
+    "license_key_placeholder": "IONFLOW-PRO-XXXXXXXX-XXXXXXXXXX",
+    "license_invalid_key": "Invalid key",
+    "license_activated_ok": "License activated successfully",
+    "license_seats": "Seats: {n}",
+    "no_results_to_export": "No results available to export",
+    "exported_n_sheets": "Exported {n} sheets to {file}"
   },
 
   "pipeline": {

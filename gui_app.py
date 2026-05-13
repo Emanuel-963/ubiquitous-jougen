@@ -754,7 +754,7 @@ class PipelineApp(ctk.CTk):
 
         self.btn_export_xlsx = ctk.CTkButton(
             sidebar,
-            text="📊 " + tr("Exportar tudo (.xlsx)"),
+            text="📊 " + tr("ui.export_all_xlsx"),
             command=self._export_all_xlsx,
         )
         self.btn_export_xlsx.grid(row=13, column=0, padx=16, pady=(0, 8), sticky="ew")
@@ -1648,14 +1648,11 @@ class PipelineApp(ctk.CTk):
             sheets["PCA"] = self.df_pca
 
         if not sheets:
-            self._append_log(
-                "Nenhum resultado disponível para exportar. "
-                "Execute pelo menos um pipeline primeiro."
-            )
+            self._append_log(tr("ui.no_results_to_export"))
             return
 
         dest = filedialog.asksaveasfilename(
-            title="Exportar tudo como Excel",
+            title=tr("ui.export_all_xlsx"),
             initialfile="ionflow_resultados.xlsx",
             initialdir=self._get_initial_dialog_dir("table_save"),
             defaultextension=".xlsx",
@@ -1669,7 +1666,9 @@ class PipelineApp(ctk.CTk):
                 for sheet_name, df in sheets.items():
                     df.to_excel(writer, sheet_name=sheet_name, index=False)
             self._append_log(
-                f"Exportado {len(sheets)} abas para {os.path.basename(dest)}"
+                tr("ui.exported_n_sheets").format(
+                    n=len(sheets), file=os.path.basename(dest)
+                )
             )
         except Exception as exc:
             self._append_log(f"Falha ao exportar XLSX: {exc}")

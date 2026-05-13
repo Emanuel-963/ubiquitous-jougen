@@ -752,7 +752,7 @@ laboratório profissional** com inteligência artificial integrada. Três eixos 
    - Quick start (3 comandos)
    - Seção "Para pesquisadores" com fluxo típico
    - Seção "Agente IA" com exemplos de recomendação
-3. Atualizar tutoriais com novos features
+3. Atualizar tutoriais com arquivos da versão 0.2.0 sem excluir os da versão anterior, incluindo os novos features da nova versão como uma continuação dos tutoriais anteriores.
 
 ---
 
@@ -775,7 +775,7 @@ laboratório profissional** com inteligência artificial integrada. Três eixos 
 ### Dia 29 (Segunda) — Build + Installer + Release candidate
 
 **Tarefas:**
-1. Atualizar `pyproject.toml` com novas dependências:
+1. Atualizar `pyproject.toml` com novas dependências do projeto todo:
    - `fpdf2>=2.7` (PDF)
    - `tqdm>=4.65` (CLI progress)
 2. Atualizar `IonFlow_Pipeline.spec` para PyInstaller:

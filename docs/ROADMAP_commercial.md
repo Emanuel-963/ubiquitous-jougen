@@ -1,7 +1,7 @@
 # IonFlow Pipeline — Commercial Roadmap
 **Objetivo: tornar o IonFlow a referência de mercado em análise de EIS, com fabricantes de potenciostatos querendo acoplar ou licenciar o software.**
 
-> Versão atual: **v0.3.1** — base técnica completa (EIS, DRT, ciclagem, IA, relatório PDF, importação multi-potenciostato, i18n EN/PT/ES).
+> Versão atual: **v0.4.0** — Market Edition lançada.
 
 ---
 
@@ -27,14 +27,14 @@
 
 | ID | Feature | Impacto | Esforço |
 |----|---------|---------|---------|
-| MKT-01 | Adicionar `galvani` ao `pip install ionflow-pipeline[biologic]` | ★★★ | XS |
-| MKT-02 | **Branding PDF**: logo + instituição configuráveis na aba Configurações | ★★★ | S |
-| MKT-03 | Preview do logo no relatório antes de exportar | ★★ | M |
-| MKT-04 | Suporte a `.idf` / `.dfr` (Solartron) | ★★ | M |
-| MKT-05 | Exportação para `.xlsx` com múltiplas abas (EIS + DRT + ciclagem) | ★★★ | S |
-| MKT-06 | Validação KK com score visual (semáforo) na aba principal | ★★ | S |
-| MKT-07 | Assinatura digital do relatório PDF (hash SHA-256 no rodapé) | ★ | XS |
-| MKT-08 | Internacionalização completa: todas as strings pendentes em `i18n_strings/` | ★★ | M |
+| MKT-01 | Adicionar `galvani` ao `pip install ionflow-pipeline[biologic]` | ★★★ | XS | ✅ |
+| MKT-02 | **Branding PDF**: logo + instituição configuráveis na aba Configurações | ★★★ | S | ✅ |
+| MKT-03 | Preview do logo no relatório antes de exportar | ★★ | M | ✅ |
+| MKT-04 | Suporte a `.idf` / `.dfr` (Solartron) | ★★ | M | ✅ |
+| MKT-05 | Exportação para `.xlsx` com múltiplas abas (EIS + DRT + ciclagem) | ★★★ | S | ✅ |
+| MKT-06 | Validação KK com score visual (semáforo) na aba principal | ★★ | S | ✅ |
+| MKT-07 | Assinatura digital do relatório PDF (hash SHA-256 no rodapé) | ★ | XS | ✅ |
+| MKT-08 | Internacionalização completa: todas as strings pendentes em `i18n_strings/` | ★★ | M | ✅ |
 
 > **MKT-01 e MKT-02 já implementados em v0.3.1+.**
 
@@ -42,11 +42,11 @@
 
 | ID | Feature | Descrição |
 |----|---------|-----------|
-| LIC-01 | **Modo Free**: 5 arquivos/sessão, sem PDF branding personalizado | Padrão sem ativação |
-| LIC-02 | **Modo Pro** (licença por e-mail): ilimitado + branding + API | €149/ano |
-| LIC-03 | **Modo Lab** (5 usuários): dashboard compartilhado + cloud sync | €499/ano |
-| LIC-04 | **Modo OEM** (embed): SDK Python + suporte dedicado | contrato |
-| LIC-05 | Servidor de validação leve (Flask, auto-hospedado ou SaaS) | infra mínima |
+| LIC-01 | **Modo Free**: 5 arquivos/sessão, sem PDF branding personalizado | Padrão sem ativação | ✅ |
+| LIC-02 | **Modo Pro** (licença por e-mail): ilimitado + branding + API | €149/ano | ✅ |
+| LIC-03 | **Modo Lab** (5 usuários): dashboard compartilhado + cloud sync | €499/ano | ✅ |
+| LIC-04 | **Modo OEM** (embed): SDK Python + suporte dedicado | contrato | ✅ |
+| LIC-05 | Servidor de validação leve (Flask, auto-hospedado ou SaaS) | infra mínima | ✅ |
 
 ```
 Fluxo de ativação:

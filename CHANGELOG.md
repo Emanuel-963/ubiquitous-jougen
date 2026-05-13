@@ -2,6 +2,41 @@
 
 All notable changes to the IonFlow Pipeline are documented here.
 
+## [0.4.0] — 2026-05-12  _(Market Edition)_
+
+### Added
+
+- **MKT-03** — Logo 80×80 thumbnail preview in Settings tab before PDF export.
+- **MKT-04** — Solartron `.idf` / `.dfr` parser with 13 new tests.
+- **MKT-05** — "Export all (.xlsx)" sidebar button: exports up to 8 result sheets
+  (EIS, DRT, Cycling, Ranking, PCA…) into a single multi-tab workbook via openpyxl.
+- **MKT-07** — SHA-256 fingerprint in PDF report footer
+  (`IonFlow Pipeline {version}  |  SHA-256: {fingerprint[:16]}  Page X / N`).
+- **MKT-08** — i18n completeness: added `ui.export_all_xlsx`, `ui.license_*`,
+  `ui.no_results_to_export`, `ui.exported_n_sheets` keys to all three locale files
+  (pt / en / es).
+- **LIC-03** — Lab tier key format `IONFLOW-LAB-<SERIAL>-<MAC>` with seat-limit
+  constant (`LAB_SEAT_LIMIT = 5`); `is_lab` / `is_oem` properties on `LicenseManager`.
+- **LIC-04** — Headless SDK (`src/sdk.py`): `EISAnalyzer`, `DRTAnalyzer`,
+  `ReportBuilder` classes — no GUI dependency, suitable for embedding in third-party
+  software or REST backends.
+- **LIC-05** — Flask validation server (`scripts/license_server.py`): endpoints
+  `GET /api/v1/ping`, `POST /api/v1/validate`, `POST /api/v1/validate/batch`.
+- **generate_license_key.py** — now accepts `TIER` argument (PRO / LAB / OEM).
+- **44 new tests** in `tests/test_license_manager.py` covering all three tiers.
+
+### Fixed
+
+- PDF footer: replaced U+2022 bullet (outside Helvetica Latin-1 range) with `|`.
+
+### Changed
+
+- `validate_key()` now accepts Pro, Lab, and OEM keys (was Pro-only).
+- `LicenseManager.activate()` auto-detects tier from key prefix.
+- `LicenseManager.status_label()` returns tier-appropriate strings.
+
+---
+
 ## [0.3.1] — 2026-05-07
 
 ### Fixed

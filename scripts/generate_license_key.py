@@ -7,26 +7,34 @@ for customers.
 
 Usage
 -----
-    python scripts/generate_license_key.py [SERIAL]
+    python scripts/generate_license_key.py [SERIAL] [TIER]
 
-If SERIAL is omitted, a random 8-character serial is generated.
+SERIAL   8-char alphanumeric.  Omit for a random serial.
+TIER     One of PRO (default), LAB, OEM.
 
 Examples
 --------
-    # Generate a random key
+    # Generate a random Pro key
     python scripts/generate_license_key.py
 
-    # Generate a key with a specific serial (e.g. for customer #0001)
+    # Generate a specific Pro key
     python scripts/generate_license_key.py CUST0001
+
+    # Generate a Lab key
+    python scripts/generate_license_key.py CUST0001 LAB
+
+    # Generate an OEM key
+    python scripts/generate_license_key.py OEM00001 OEM
 
 Output
 ------
     Serial:  CUST0001
+    Tier:    PRO
     Key:     IONFLOW-PRO-CUST0001-3F8A2C4B9D
 
 Security note
 -------------
-Keep this script and the _SECRET constant in src/license_manager.py
+Keep this script and the _SECRET* constants in src/license_manager.py
 **private** — they are equivalent to a master password.
 """
 
@@ -42,6 +50,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.license_manager import (  # noqa: E402
     _SERIAL_CHARS,
     _SERIAL_LEN,
+    _TIER_SECRETS,
     generate_key,
     validate_key,
 )
@@ -52,13 +61,18 @@ def random_serial() -> str:
 
 
 def main() -> None:
-    if len(sys.argv) > 1:
-        serial = sys.argv[1].strip().upper()
-    else:
-        serial = random_serial()
+    serial = sys.argv[1].strip().upper() if len(sys.argv) > 1 else random_serial()
+    tier = sys.argv[2].strip().upper() if len(sys.argv) > 2 else "PRO"
+
+    if tier not in _TIER_SECRETS:
+        print(
+            f"ERROR: Unknown tier {tier!r}. Must be one of {list(_TIER_SECRETS)}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     try:
-        key = generate_key(serial)
+        key = generate_key(serial, tier)
     except ValueError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -67,6 +81,7 @@ def main() -> None:
     assert validate_key(key), "BUG: generated key failed validation!"
 
     print(f"Serial:  {serial}")
+    print(f"Tier:    {tier}")
     print(f"Key:     {key}")
     print()
     print("Send the 'Key' line to the customer.")

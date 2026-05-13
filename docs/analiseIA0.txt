@@ -1,0 +1,77 @@
+📊 Executive Summary
+────────────────────────────────────────────────
+Análise realizada sobre 10 amostra(s) utilizando os pipelines: eis, cycling, drt. Qualidade geral: BOA (60/100). Anomalias detectadas: 0 crítica(s), 1 aviso(s). Total de 20 recomendação(ões), sendo 3 de alta prioridade. Predicted cycling retention: 60.0% (confidence 30%). Best electrolyte: Na2SO4.
+
+⚙️ Quality Score: 60/100
+
+🔍 Findings
+────────────────────────────────────────────────
+  • Sigma = 1.457e+04 — Coeficiente de Warburg alto — difusão é o principal gargalo.
+  • n = 0.3049 — CPE exponent moderado — dispersão significativa das constantes de tempo.
+  • n = 0.3049 — CPE exponent baixo — interface muito heterogénea ou porosa.
+  • n = 0.3049 — CPE exponent próximo de 0.5 — comportamento dominado por difusão (Warburg).
+  • Sigma = 1.457e+04 — Coeficiente de Warburg moderado — difusão contribui significativamente.
+  • Dispersion = 0.747 — Dispersão alta — ruído significativo nos dados.
+  • Energy_mean = 8.316e-06 — Energia específica muito baixa.
+  • gamma_peak_main = 3.539e+04 — Amplitude DRT alta — contribuição resistiva dominante neste processo.
+  • n = 0.3049 — n baixo + múltiplos picos DRT — interface heterogénea com processos sobrepostos.
+  • Score = -0.08323 — Score composto baixo — esta amostra tem desempenho inferior na maioria das métricas.
+  • Rs = 1.025e-06 — Resistência ôhmica muito baixa — contato elétrico excelente ou eletrólito altamente condutivo.
+  • Rs = 1.025e-06 — Resistência ôhmica baixa — condição favorável para o desempenho.
+  • Rp = 1e-06 — Resistência de transferência de carga muito baixa — cinética eletroquímica extremamente rápida.
+  • Rp = 1e-06 — Resistência de transferência de carga baixa — boa cinética de reação.
+  • C_mean = 1.663e-05 — Capacitância baixa — armazenamento de carga limitado.
+  • tau_peak_main = 0.6237 — Pico DRT principal em média frequência (τ > 10 ms) — transferência de carga moderada.
+  • n + DRT peaks — n baixo (0.30) com 3 picos DRT — interface muito heterogénea com processos sobrepostos.
+  • Sigma + tau_peak — Sigma alto (14574.8) e pico DRT lento (τ = 0.624 s) — sistema dominado por difusão.
+
+⚠️ Anomalies
+────────────────────────────────────────────────
+  • [WARNING] Rs_fit = 2.986 — CV de Rs = 299% — alta variabilidade entre amostras.
+
+💡 Recommendations
+────────────────────────────────────────────────
+  1. [HIGH] Reduzir espessura do eletrodo.
+  2. [HIGH] Aumentar concentração do eletrólito.
+  3. [HIGH] Considerar nanoestruturas para encurtar caminhos de difusão.
+  4. [MEDIUM] Caracterizar morfologia com MEV.
+  5. [MEDIUM] Considerar modelos com múltiplos ZARCs.
+  6. [MEDIUM] Verificar se modelo de circuito é adequado (ZARC duplo?).
+  7. [MEDIUM] Analisar DRT para identificar processos sobrepostos.
+  8. [MEDIUM] Incluir elemento de Warburg no modelo.
+  9. [MEDIUM] Verificar se a faixa de frequência é suficientemente baixa.
+  10. [MEDIUM] Considerar medição a frequências mais baixas (< 10 mHz).
+  11. [MEDIUM] Verificar blindagem dos cabos.
+  12. [MEDIUM] Estabilizar OCP antes da medição (min. 30 min).
+  13. [MEDIUM] Otimizar eletrólito ou janela de potencial.
+  14. [MEDIUM] Correlacionar com Rp do fitting de circuito.
+  15. [MEDIUM] Usar modelo de circuito com múltiplos ZARCs.
+  16. [MEDIUM] Caracterizar morfologia com BET e MEV.
+  17. [MEDIUM] Identificar o parâmetro mais limitante e focar na sua melhoria.
+  18. [LOW] Verificar se o valor é fisicamente razoável (curto-circuito?).
+  19. [LOW] Confirmar que o valor não é artefato (semicírculo mal resolvido).
+  20. [LOW] Considerar deposição de óxidos de metal de transição.
+
+🔮 Predictions
+────────────────────────────────────────────────
+  • Estimated energy: 0.0 µJ
+  • Estimated power: 243899532049.1 µW
+  • Estimated retention: 60.0 %
+  • Confidence: 30% (heuristic)
+  • Predição baseada em regras heurísticas (sem histórico ML suficiente). Energia estimada ≈ 0.00 µJ (proporcional a C_mean) Potência estimada ≈ 243899532049.08 µW (inversamente proporcional a Rs) Retenção estimada ≈ 60.0%
+
+  Suggested improvements:
+    – [P1] Otimizar morfologia: controlar taxa de deposição, tratar superfície. — n mais próximo de 1.0 indica interface mais homogénea.
+    – [P1] Reduzir limitação difusional: aumentar concentração do eletrólito ou reduzir espessura do filme. — Sigma menor melhora resposta em baixas frequências.
+
+🏭 Process Analysis
+────────────────────────────────────────────────
+  Analysed 5 experimental condition(s). Best conditions: electrolyte=Na2SO4, treatment=Steel316, current=Unknown. Primary bottleneck: High Warburg coefficient (σ = 17883.9) — diffusion limited H2SO4_Unknown_Steel316: Score=-0.260, Rs=0.00 Ω. Na2SO4_Unknown_Steel316: Score=0.414, Rs=0.00 Ω. Unknown_Unknown_None: Score=-0.192, Rs=0.00 Ω. Unknown_Unknown_GC: Score=-0.083, Rs=0.00 Ω. H2SO4_Unknown_None: Score=0.043, Rs=0.00 Ω.
+  Best conditions: electrolyte=Na2SO4, treatment=Steel316, current=Unknown
+  Bottleneck: High Warburg coefficient (σ = 17883.9) — diffusion limited
+
+  Production recommendations:
+    – [P1] Prioritise Na2SO4 as electrolyte — Lower ohmic losses and improved energy efficiency
+    – [P1] Apply Steel316 surface treatment in production — Enhanced surface interface and charge transfer
+    – [P2] Address diffusion limitation — reduce electrode thickness or increase porosity — Improved power performance at high rates
+

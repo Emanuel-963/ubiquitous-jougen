@@ -188,10 +188,10 @@ ocorra uma excepção.
 
 ### Release
 - [x] `CHANGELOG.md` actualizado com secção `[0.3.1]`
-- [ ] Tag `v0.3.1` criada no GitHub
-- [ ] Build PyInstaller executado com `python3.11.cmd`
-- [ ] Installer Inno Setup recompilado (`ionflow_setup.iss` versão bump)
-- [ ] GitHub Release publicada com instalador e ZIP portátil
+- [x] Tag `v0.3.1` criada no GitHub
+- [x] Build PyInstaller executado (`dist/IonFlow_Pipeline/`)
+- [x] Installer Inno Setup recompilado (`IonFlow_Pipeline_Setup_0.3.1.exe` ~98 MB)
+- [x] Git push `main` + tag `v0.3.1` → GitHub
 
 ---
 
