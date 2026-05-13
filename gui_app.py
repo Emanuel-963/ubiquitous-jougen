@@ -752,6 +752,13 @@ class PipelineApp(ctk.CTk):
         )
         self.btn_compare.grid(row=12, column=0, padx=16, pady=(0, 8), sticky="ew")
 
+        self.btn_export_xlsx = ctk.CTkButton(
+            sidebar,
+            text="📊 " + tr("Exportar tudo (.xlsx)"),
+            command=self._export_all_xlsx,
+        )
+        self.btn_export_xlsx.grid(row=13, column=0, padx=16, pady=(0, 8), sticky="ew")
+
         self.btn_batch = ctk.CTkButton(
             sidebar,
             text="⚡ " + tr("Batch Processing"),
@@ -1619,6 +1626,53 @@ class PipelineApp(ctk.CTk):
             self._append_log(f"Tabela salva em {dest}")
         except Exception as exc:
             self._append_log(f"Falha ao salvar tabela: {exc}")
+
+    def _export_all_xlsx(self):
+        """Export all available result tables into a single multi-sheet workbook."""
+        sheets: dict[str, "pd.DataFrame"] = {}
+        if self.eis_df is not None and not self.eis_df.empty:
+            sheets["EIS_Resultados"] = self.eis_df
+        if self.circuit_df is not None and not self.circuit_df.empty:
+            sheets["Circuito_Params"] = self.circuit_df
+        if self.drt_summary_df is not None and not self.drt_summary_df.empty:
+            sheets["DRT_Resumo"] = self.drt_summary_df
+        if self.drt_df is not None and not self.drt_df.empty:
+            sheets["DRT_Espectro"] = self.drt_df
+        if self.drt_peaks_df is not None and not self.drt_peaks_df.empty:
+            sheets["DRT_Picos"] = self.drt_peaks_df
+        if self.cic_df is not None and not self.cic_df.empty:
+            sheets["Ciclagem"] = self.cic_df
+        if self.rank_df is not None and not self.rank_df.empty:
+            sheets["Ranking"] = self.rank_df
+        if self.df_pca is not None and not self.df_pca.empty:
+            sheets["PCA"] = self.df_pca
+
+        if not sheets:
+            self._append_log(
+                "Nenhum resultado disponível para exportar. "
+                "Execute pelo menos um pipeline primeiro."
+            )
+            return
+
+        dest = filedialog.asksaveasfilename(
+            title="Exportar tudo como Excel",
+            initialfile="ionflow_resultados.xlsx",
+            initialdir=self._get_initial_dialog_dir("table_save"),
+            defaultextension=".xlsx",
+            filetypes=[("Excel Workbook", "*.xlsx")],
+        )
+        if not dest:
+            return
+        self._remember_dialog_dir("table_save", dest)
+        try:
+            with pd.ExcelWriter(dest, engine="openpyxl") as writer:
+                for sheet_name, df in sheets.items():
+                    df.to_excel(writer, sheet_name=sheet_name, index=False)
+            self._append_log(
+                f"Exportado {len(sheets)} abas para {os.path.basename(dest)}"
+            )
+        except Exception as exc:
+            self._append_log(f"Falha ao exportar XLSX: {exc}")
 
     def _render_fig_on_frame(self, frame, fig: Figure):
         for child in frame.winfo_children():
@@ -5328,11 +5382,36 @@ class PipelineApp(ctk.CTk):
             if path:
                 e.delete(0, "end")
                 e.insert(0, path)
+                _update_logo_preview(path)
+
+        def _update_logo_preview(path: str) -> None:
+            """Refresh the logo thumbnail in the Settings tab."""
+            try:
+                from PIL import Image as _PILImage
+
+                img = _PILImage.open(path).convert("RGBA")
+                img.thumbnail((80, 80), _PILImage.LANCZOS)
+                ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=img.size)
+                logo_preview_label.configure(image=ctk_img, text="")
+                logo_preview_label.image = ctk_img  # keep reference
+            except Exception:
+                logo_preview_label.configure(image=None, text="?")
 
         ctk.CTkButton(outer, text="🖼", width=32, command=_browse_logo).grid(
             row=row_idx, column=2, padx=(0, 8), pady=2
         )
         row_idx += 1
+
+        # Logo thumbnail preview
+        logo_preview_label = ctk.CTkLabel(outer, text="", anchor="w")
+        logo_preview_label.grid(
+            row=row_idx, column=1, sticky="w", padx=(0, 4), pady=(0, 4)
+        )
+        row_idx += 1
+        # Show existing logo if already set
+        _initial_logo = self.gui_settings.get("report_logo_path", "")
+        if _initial_logo:
+            _update_logo_preview(_initial_logo)
 
         # ── Licença ───────────────────────────────────────────────────
         _section("🔑 " + tr("Licença"))

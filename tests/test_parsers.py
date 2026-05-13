@@ -395,3 +395,137 @@ class TestParsedEIS:
         df = pd.DataFrame(columns=["frequency", "zreal", "zimag"])
         with pytest.raises(ValueError, match="empty"):
             self._make(df).validate()
+
+
+# ---------------------------------------------------------------------------
+# Solartron parser tests
+# ---------------------------------------------------------------------------
+
+IDF_FIXTURE = textwrap.dedent(
+    """\
+    SOLARTRON INSTRUMENT 1260
+    File  : sample.idf
+    Date  : 12/05/2026   Time : 09:00:00
+    Operator : Test User
+
+    RESULTS FILE VERSION 2.01
+
+    BEGIN
+    Frequency         Z'              -Z''            |Z|             Phase
+    1.000000E+006     1.234560E+000   5.678900E-001   1.356789E+000   2.456789E+001
+    1.000000E+004     5.432100E+000   2.109870E+000   5.829432E+000   2.123456E+001
+    1.000000E+002     1.876543E+001   8.765432E+000   2.069523E+001   2.499999E+001
+    END
+    """
+)
+
+DFR_FIXTURE = textwrap.dedent(
+    """\
+    Freq (Hz)\tZreal (Ohm)\tZimag (Ohm)
+    100000\t1.2346\t-0.5679
+    10000\t5.4321\t-2.1099
+    100\t18.7654\t-8.7654
+    """
+)
+
+
+@pytest.fixture
+def solartron_idf_file(tmp_path: Path) -> Path:
+    f = tmp_path / "sample.idf"
+    f.write_text(IDF_FIXTURE, encoding="utf-8")
+    return f
+
+
+@pytest.fixture
+def solartron_dfr_file(tmp_path: Path) -> Path:
+    f = tmp_path / "sample.dfr"
+    f.write_text(DFR_FIXTURE, encoding="utf-8")
+    return f
+
+
+class TestSolartronParser:
+    from src.parsers.solartron import SolartronParser
+
+    def test_can_parse_idf(self, solartron_idf_file: Path):
+        from src.parsers.solartron import SolartronParser
+
+        assert SolartronParser.can_parse(solartron_idf_file) is True
+
+    def test_can_parse_dfr(self, solartron_dfr_file: Path):
+        from src.parsers.solartron import SolartronParser
+
+        assert SolartronParser.can_parse(solartron_dfr_file) is True
+
+    def test_cannot_parse_dta(self, gamry_dta_file: Path):
+        from src.parsers.solartron import SolartronParser
+
+        assert SolartronParser.can_parse(gamry_dta_file) is False
+
+    def test_idf_returns_parsed_eis(self, solartron_idf_file: Path):
+        from src.parsers.solartron import SolartronParser
+
+        result = SolartronParser().parse(solartron_idf_file)
+        assert isinstance(result, ParsedEIS)
+        assert "Solartron" in result.instrument
+
+    def test_idf_dataframe_columns(self, solartron_idf_file: Path):
+        from src.parsers.solartron import SolartronParser
+
+        df = SolartronParser().parse(solartron_idf_file).data
+        _required_columns(df)
+        _valid_types(df)
+        _nonempty(df)
+
+    def test_idf_row_count(self, solartron_idf_file: Path):
+        from src.parsers.solartron import SolartronParser
+
+        df = SolartronParser().parse(solartron_idf_file).data
+        assert len(df) == 3
+
+    def test_idf_frequency_positive(self, solartron_idf_file: Path):
+        from src.parsers.solartron import SolartronParser
+
+        df = SolartronParser().parse(solartron_idf_file).data
+        assert (df["frequency"] > 0).all()
+
+    def test_dfr_dataframe_columns(self, solartron_dfr_file: Path):
+        from src.parsers.solartron import SolartronParser
+
+        df = SolartronParser().parse(solartron_dfr_file).data
+        _required_columns(df)
+        _valid_types(df)
+        _nonempty(df)
+
+    def test_dfr_row_count(self, solartron_dfr_file: Path):
+        from src.parsers.solartron import SolartronParser
+
+        df = SolartronParser().parse(solartron_dfr_file).data
+        assert len(df) == 3
+
+    def test_validate_passes_idf(self, solartron_idf_file: Path):
+        from src.parsers.solartron import SolartronParser
+
+        SolartronParser().parse(solartron_idf_file).validate()
+
+    def test_validate_passes_dfr(self, solartron_dfr_file: Path):
+        from src.parsers.solartron import SolartronParser
+
+        SolartronParser().parse(solartron_dfr_file).validate()
+
+    def test_idf_metadata_extracted(self, solartron_idf_file: Path):
+        from src.parsers.solartron import SolartronParser
+
+        result = SolartronParser().parse(solartron_idf_file)
+        assert "operator" in result.extra_meta or "date" in result.extra_meta
+
+    def test_detect_parser_finds_solartron_idf(self, solartron_idf_file: Path):
+        from src.parsers.solartron import SolartronParser
+
+        cls = detect_parser(solartron_idf_file)
+        assert cls is SolartronParser
+
+    def test_detect_parser_finds_solartron_dfr(self, solartron_dfr_file: Path):
+        from src.parsers.solartron import SolartronParser
+
+        cls = detect_parser(solartron_dfr_file)
+        assert cls is SolartronParser

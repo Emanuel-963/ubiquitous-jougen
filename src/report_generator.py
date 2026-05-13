@@ -568,6 +568,37 @@ def generate_markdown(
 # ═══════════════════════════════════════════════════════════════════════
 
 
+def _report_fingerprint(title: str, author: str, institution: str) -> str:
+    """Return a short SHA-256 fingerprint of the report metadata."""
+    import hashlib
+    from datetime import date
+
+    payload = f"{title}|{author}|{institution}|{date.today().isoformat()}"
+    return hashlib.sha256(payload.encode()).hexdigest()[:16].upper()
+
+
+def _make_pdf_class(fingerprint: str, version: str):
+    """Return a custom FPDF subclass with IonFlow page footer."""
+    from fpdf import FPDF
+
+    class _PDF(FPDF):
+        _fingerprint = fingerprint
+        _version = version
+
+        def footer(self) -> None:  # type: ignore[override]
+            self.set_y(-12)
+            self.set_font("Helvetica", "I", 7)
+            self.set_text_color(150, 150, 150)
+            left = (
+                f"IonFlow Pipeline {self._version}" f"  •  SHA-256: {self._fingerprint}"
+            )
+            right = f"Page {self.page_no()} / {{nb}}"
+            self.cell(0, 5, left, align="L")
+            self.cell(0, 5, right, align="R", new_x="LMARGIN", new_y="NEXT")
+
+    return _PDF
+
+
 class _IonFlowPDF:
     """Internal fpdf2 wrapper for IonFlow reports.
 
@@ -576,12 +607,16 @@ class _IonFlowPDF:
     """
 
     def __init__(self, config: ReportConfig):
-        from fpdf import FPDF
+        from src import __version__
+
+        fp = _report_fingerprint(config.title, config.author, config.institution)
+        PDFClass = _make_pdf_class(fp, __version__)
 
         self.cfg = config
-        self.pdf = FPDF(format=config.page_size)
-        self.pdf.set_auto_page_break(auto=True, margin=config.margin)
+        self.pdf = PDFClass(format=config.page_size)
+        self.pdf.set_auto_page_break(auto=True, margin=config.margin + 8)
         self.pdf.set_margins(config.margin, config.margin, config.margin)
+        self.pdf.alias_nb_pages()
         self.pdf.add_page()
         self._setup_fonts()
 

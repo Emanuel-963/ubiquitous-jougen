@@ -28,6 +28,8 @@ Supported formats
 +------------+-------------------+---------------------------------------+
 | Zahner     | .ism, .isc, .txt  | Zahner Elektrik (Thales / IM6)        |
 +------------+-------------------+---------------------------------------+
+| Solartron  | .idf, .dfr        | Solartron / AMETEK (SmartSoft, ZPlot) |
++------------+-------------------+---------------------------------------+
 
 Auto-detection order
 --------------------
@@ -51,6 +53,7 @@ from .autolab import AutolabParser
 from .base import ParsedEIS, PotentiostatParser
 from .biologic import BioLogicParser
 from .gamry import GamryParser
+from .solartron import SolartronParser
 from .zahner import ZahnerParser
 
 logger = logging.getLogger(__name__)
@@ -60,6 +63,7 @@ __all__ = [
     "BioLogicParser",
     "AutolabParser",
     "ZahnerParser",
+    "SolartronParser",
     "GenericCSVParser",
     "parse_eis_file",
     "detect_parser",
@@ -112,6 +116,7 @@ REGISTERED_PARSERS: List[Type[PotentiostatParser]] = [
     BioLogicParser,
     AutolabParser,
     ZahnerParser,
+    SolartronParser,
     GenericCSVParser,
 ]
 
