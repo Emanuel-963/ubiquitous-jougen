@@ -901,6 +901,12 @@ class PipelineApp(ctk.CTk):
             command=self._run_kk_validation_clicked,
         ).pack(side="left", padx=8)
 
+        ctk.CTkButton(
+            kk_top,
+            text="🔎 " + tr("Detectar Ruído 50/100 Hz"),
+            command=self._run_powerline_check_clicked,
+        ).pack(side="left", padx=8)
+
         ctk.CTkLabel(
             kk_top,
             text=tr("Valida causalidade e linearidade dos dados EIS"),
@@ -924,6 +930,19 @@ class PipelineApp(ctk.CTk):
             text=tr("Gerar Diagnósticos de Fitting"),
             command=self._run_fitting_diagnostics_clicked,
         ).pack(side="left", padx=8)
+
+        ctk.CTkButton(
+            diag_top,
+            text="📊 " + tr("Resumo Metrológico χ²/ν"),
+            command=self._run_metrological_summary_clicked,
+        ).pack(side="left", padx=8)
+
+        ctk.CTkLabel(
+            diag_top,
+            text="Orazem & Tribollet 2026",
+            font=ctk.CTkFont(size=10),
+            text_color="gray",
+        ).pack(side="left", padx=4)
 
         self.diag_textbox = ctk.CTkTextbox(
             diag_frame, wrap="word", font=ctk.CTkFont(size=13)
@@ -4352,10 +4371,82 @@ class PipelineApp(ctk.CTk):
 
         threading.Thread(target=worker, daemon=True).start()
 
+    def _run_powerline_check_clicked(self):
+        """Detect powerline interference (50/100 Hz) in raw EIS data.
+
+        Implements Orazem & Tribollet 2026 pre-processing check.
+        """
+        self._append_log(tr("Verificando ruído de rede elétrica (50/100 Hz)..."))
+        self.tabs.set("🔬 " + tr("Validação KK"))
+
+        def worker():
+            try:
+                from src.validation import detect_powerline_noise
+                import numpy as np
+
+                raw = getattr(self, "raw_eis", {}) or {}
+                if not raw:
+                    self.log_queue.put(("kk_result", tr("Nenhum dado EIS carregado.")))
+                    return
+
+                lines = []
+                lines.append("=" * 68)
+                lines.append("  DETECCAO DE RUIDO DE REDE ELETRICA (50/100 Hz)")
+                lines.append("  Orazem & Tribollet, Electrochimica Acta 568, 149009 (2026)")
+                lines.append("=" * 68)
+                n_clean = n_noisy = 0
+                for name, df in raw.items():
+                    try:
+                        freq = df.iloc[:, 0].values.astype(float)
+                        mask = detect_powerline_noise(freq)
+                        n_pts = int(mask.sum())
+                        if n_pts > 0:
+                            affected_freqs = freq[mask]
+                            freqs_str = ", ".join(f"{f:.1f}" for f in affected_freqs)
+                            lines.append(
+                                f"  [!!] {name}: {n_pts} ponto(s) afetado(s)"
+                                f" em {freqs_str} Hz"
+                            )
+                            n_noisy += 1
+                        else:
+                            lines.append(f"  [OK] {name}: sem interferencia detectada")
+                            n_clean += 1
+                    except Exception as exc:
+                        lines.append(f"  [??] {name}: erro — {exc}")
+
+                lines.append("-" * 68)
+                lines.append(
+                    f"  Resultado: {n_clean} limpo(s), {n_noisy} com interferencia"
+                )
+                if n_noisy > 0:
+                    lines.append("")
+                    lines.append("  ACAO RECOMENDADA:")
+                    lines.append("    Execute: ionflow preprocess --no-remove-hf <pasta>")
+                    lines.append("    Ou no Python:")
+                    lines.append("      from src.validation import detect_powerline_noise")
+                lines.append("=" * 68)
+                self.log_queue.put(("kk_result", "\n".join(lines)))
+            except Exception as exc:
+                self.log_queue.put(("kk_result", f"Erro deteccao powerline: {exc}"))
+
+        threading.Thread(target=worker, daemon=True).start()
+
     def _run_fitting_diagnostics_clicked(self):
         """Generate fitting diagnostic plots and quality assessment."""
         self._append_log(tr("Gerando diagnósticos de fitting..."))
         self.tabs.set("🩺 " + tr("Diagnóstico Fitting"))
+
+        def _chi2_emoji(val) -> str:
+            """Return traffic-light emoji for χ²/ν (Orazem criterion)."""
+            try:
+                v = float(val)
+                if v <= 2.0:
+                    return "🟢"
+                if v <= 5.0:
+                    return "🟡"
+                return "🔴"
+            except (TypeError, ValueError):
+                return "⚪"
 
         def worker():
             try:
@@ -4368,11 +4459,19 @@ class PipelineApp(ctk.CTk):
                     )
                     return
                 lines = []
+                lines.append("═" * 70)
+                lines.append("  DIAGNÓSTICO DE FITTING  [Rigor metrológico Orazem 2026]")
+                lines.append("═" * 70)
+                lines.append("  χ²/ν: 🟢 ≤2 excelente | 🟡 2-5 aceitável | 🔴 >5 rejeitar")
+                lines.append("─" * 70)
                 if circuit_table is not None and not circuit_table.empty:
                     for _, row in circuit_table.iterrows():
                         name = row.get("sample", row.get("Arquivo", "?"))
                         best_circuit = row.get("best_circuit", row.get("Circuito", "?"))
                         bic = row.get("bic", row.get("BIC", "?"))
+                        chi2_nu = row.get("chi2_over_nu", None)
+                        chi2_str = f"{float(chi2_nu):.3f}" if chi2_nu is not None else "N/D"
+                        chi2_em = _chi2_emoji(chi2_nu)
                         fit_dict = {
                             "circuit_name": best_circuit,
                             "bic": bic,
@@ -4392,12 +4491,30 @@ class PipelineApp(ctk.CTk):
                         }
                         qi = assess_quality(fit_dict)
                         lines.append(
-                            f"{qi.emoji} {name}: {best_circuit} (BIC={bic}) — {qi.label}"
+                            f"\n{qi.emoji} {name}: {best_circuit}"
+                        )
+                        lines.append(
+                            f"   BIC={bic}  |  {chi2_em} χ²/ν={chi2_str}  |  {qi.label}"
                         )
                         for r in qi.reasons:
                             lines.append(f"    • {r}")
+                        # IC 95% e significância por parâmetro
+                        ci95 = row.get("confidence_interval_95", None)
+                        sig = row.get("param_significance", None)
+                        if isinstance(ci95, dict) and ci95:
+                            lines.append("   IC 95% por parâmetro (Orazem):")
+                            for pname, ci_val in ci95.items():
+                                sig_label = ""
+                                if isinstance(sig, dict):
+                                    sig_label = f" — {sig.get(pname, '')}"
+                                lines.append(
+                                    f"      {pname}: ±{float(ci_val):.4g}{sig_label}"
+                                )
                 else:
                     lines.append(tr("Sem dados de circuitos."))
+                lines.append("")
+                lines.append("─" * 70)
+                lines.append("  Ref: Tribollet & Orazem, Electrochimica Acta 568, 149009 (2026)")
                 self.log_queue.put(("diag_result", "\n".join(lines)))
             except Exception as exc:
                 self.log_queue.put(("diag_result", f"Erro diagnóstico: {exc}"))
@@ -4450,16 +4567,109 @@ class PipelineApp(ctk.CTk):
                             ),
                         }
                         report = gen.generate(fit_result=fit_dict)
+                        sample_name = row.get("sample", row.get("Arquivo", "?"))
                         lines.append(
-                            f"═══ {row.get('sample', row.get('Arquivo', '?'))} ═══"
+                            f"═══ {sample_name} ═══"
                         )
                         lines.append(report.to_text())
+                        # ── Metrologia Orazem (v0.4.1) ──────────────────
+                        chi2_nu = row.get("chi2_over_nu", None)
+                        ci95 = row.get("confidence_interval_95", None)
+                        sig = row.get("param_significance", None)
+                        if chi2_nu is not None:
+                            try:
+                                v = float(chi2_nu)
+                                if v <= 2.0:
+                                    verdict = "🟢 Excelente (≤2)"
+                                elif v <= 5.0:
+                                    verdict = "🟡 Aceitável (2-5)"
+                                else:
+                                    verdict = "🔴 Rejeitar (>5)"
+                            except (TypeError, ValueError):
+                                verdict = "N/D"
+                            lines.append(f"\n  ▶ Metrologia Orazem (Electrochimica Acta 2026):")
+                            lines.append(f"    χ²/ν = {chi2_nu:.4f} → {verdict}")
+                        if isinstance(ci95, dict) and ci95:
+                            lines.append("    IC 95% ponderado por estrutura de erro:")
+                            for pname, ci_val in ci95.items():
+                                sig_label = ""
+                                if isinstance(sig, dict):
+                                    sig_label = f" | {sig.get(pname, '')}"
+                                lines.append(
+                                    f"      {pname}: ±{float(ci_val):.4g}{sig_label}"
+                                )
                         lines.append("")
                 else:
                     lines.append(tr("Sem dados de circuitos."))
                 self.log_queue.put(("fitting_report_result", "\n".join(lines)))
             except Exception as exc:
                 self.log_queue.put(("fitting_report_result", f"Erro relatório: {exc}"))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _run_metrological_summary_clicked(self):
+        """Show chi2/nu traffic-light summary (Orazem & Tribollet 2026)."""
+        self._append_log(tr("Gerando resumo metrológico..."))
+        self.tabs.set("🩺 " + tr("Diagnóstico Fitting"))
+
+        def worker():
+            try:
+                circuit_table = getattr(self, "circuit_df", None)
+                if circuit_table is None or (
+                    hasattr(circuit_table, "empty") and circuit_table.empty
+                ):
+                    self.log_queue.put(
+                        ("diag_result", tr("Execute o pipeline EIS primeiro."))
+                    )
+                    return
+
+                lines = []
+                lines.append("=" * 72)
+                lines.append("  RESUMO METROLOGICO — Orazem & Tribollet, Electrochimica Acta 2026")
+                lines.append("  Estrutura de erro: sigma = 0.001216472*|Zj| + 0.0003333912*|Zr|")
+                lines.append("=" * 72)
+                lines.append(f"  {'Arquivo':<32} {'Circuito':<22} {'chi2/nu':>8}  Status")
+                lines.append("-" * 72)
+
+                n_ok = n_warn = n_bad = n_na = 0
+                for _, row in circuit_table.iterrows():
+                    name = str(row.get("Arquivo", row.get("sample", "?")))[:32]
+                    circuit = str(row.get("Circuito", row.get("best_circuit", "?")))[:22]
+                    chi2_nu = row.get("chi2_over_nu", None)
+                    try:
+                        v = float(chi2_nu)
+                        chi2_str = f"{v:8.3f}"
+                        if v <= 2.0:
+                            status = "[OK] Excelente"
+                            n_ok += 1
+                        elif v <= 5.0:
+                            status = "[!!] Aceitavel"
+                            n_warn += 1
+                        else:
+                            status = "[XX] Rejeitar"
+                            n_bad += 1
+                    except (TypeError, ValueError):
+                        chi2_str = "     N/D"
+                        status = "[--] N/D"
+                        n_na += 1
+                    lines.append(f"  {name:<32} {circuit:<22} {chi2_str}  {status}")
+
+                lines.append("-" * 72)
+                total = len(circuit_table)
+                lines.append(
+                    f"  Total: {total}  |  OK:{n_ok}  !!:{n_warn}  XX:{n_bad}  --:{n_na}"
+                )
+                lines.append("")
+                lines.append("  INTERPRETACAO DO chi2/nu (reduzido):")
+                lines.append("    <= 2.0 -> fitting excelente — erro domina dados")
+                lines.append("    2-5    -> aceitavel — revisar parametros limitrofes")
+                lines.append("    > 5.0  -> fitting rejeitado — mudar modelo ou pre-processar")
+                lines.append("")
+                lines.append("  [EIS-6] Tribollet & Orazem, Electrochimica Acta 568, 149009 (2026)")
+                lines.append("          DOI: 10.1016/j.electacta.2026.149009")
+                self.log_queue.put(("diag_result", "\n".join(lines)))
+            except Exception as exc:
+                self.log_queue.put(("diag_result", f"Erro resumo metrologico: {exc}"))
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -4932,6 +5142,23 @@ class PipelineApp(ctk.CTk):
         self._update_status_bar(
             pipeline_status="idle", samples_loaded=len(self.raw_eis)
         )
+        # ── Metrological summary after EIS (Orazem 2026) ──────────────────
+        if self.circuit_df is not None and not self.circuit_df.empty:
+            col = "chi2_over_nu"
+            if col in self.circuit_df.columns:
+                import contextlib as _cl
+                vals = []
+                for v in self.circuit_df[col]:
+                    with _cl.suppress(Exception):
+                        vals.append(float(v))
+                n_ok = sum(1 for v in vals if v <= 2.0)
+                n_warn = sum(1 for v in vals if 2.0 < v <= 5.0)
+                n_bad = sum(1 for v in vals if v > 5.0)
+                self._append_log(
+                    f"Metrologia Orazem — χ²/ν: 🟢 {n_ok} OK  🟡 {n_warn} aceitável  "
+                    f"🔴 {n_bad} rejeitar  "
+                    f"(use 'Diagnóstico Fitting' > 'Resumo Metrológico' para detalhes)"
+                )
         self._refresh_compare_sample_list()
         # Atualiza janela interativa se estiver aberta
         if self.interactive_win is not None and self.interactive_win.winfo_exists():
