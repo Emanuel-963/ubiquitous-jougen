@@ -326,12 +326,72 @@ def _bic_aic(rss: float, n: int, k: int) -> Tuple[float, float]:
     return bic, aic
 
 
-def fit_template(template: CircuitTemplate, freq: np.ndarray, z: np.ndarray) -> Dict:
+def orazem_sigma(
+    z: np.ndarray, *, alpha: float = 0.001216, beta: float = 0.000333
+) -> np.ndarray:
+    """Per-point noise standard deviation from the Orazem/Tribollet error structure.
+
+    σ(ω) = alpha·|Z_imag| + beta·|Z_real|
+
+    Default coefficients match the values from:
+    Tribollet & Orazem, Electrochimica Acta 568 (2026) 149009, Eq. (9).
+    They can be fitted from replicated measurements; the defaults are good
+    starting estimates for aqueous EIS in the 10 mHz – 100 kHz range.
+
+    Parameters
+    ----------
+    z : complex ndarray
+        Measured impedance spectrum.
+    alpha : float
+        Coefficient for |Z_imag| contribution (default 0.001216).
+    beta : float
+        Coefficient for |Z_real| contribution (default 0.000333).
+
+    Returns
+    -------
+    np.ndarray
+        Per-point σ, shape (N,).  Floored at 1 % of |Z| to prevent
+        zero-division at very low impedances.
+    """
+    sigma = alpha * np.abs(z.imag) + beta * np.abs(z.real)
+    floor = 0.01 * np.abs(z)
+    return np.maximum(sigma, floor)
+
+
+def fit_template(
+    template: CircuitTemplate,
+    freq: np.ndarray,
+    z: np.ndarray,
+    *,
+    sigma: np.ndarray | None = None,
+) -> Dict:
+    """Fit a circuit template to impedance data.
+
+    Parameters
+    ----------
+    template : CircuitTemplate
+        Circuit to fit.
+    freq : np.ndarray
+        Frequency vector (Hz).
+    z : np.ndarray
+        Complex impedance data.
+    sigma : np.ndarray | None
+        Per-point standard deviation for error-structure weighting.
+        If *None*, :func:`orazem_sigma` is used (Orazem/Tribollet model).
+        Pass ``np.ones(len(freq))`` for unweighted (legacy) behaviour.
+    """
     omega = 2 * np.pi * freq
+
+    # ── Error-structure weights (Orazem/Tribollet) ────────────────
+    if sigma is None:
+        sigma = orazem_sigma(z)
+    # sigma_stacked: [real part errors, imag part errors]
+    sigma_stacked = np.concatenate([sigma, sigma])
 
     def residuals(p: np.ndarray) -> np.ndarray:
         z_model = template.model_fn(p, omega)
-        return np.concatenate([(z_model.real - z.real), (z_model.imag - z.imag)])
+        raw = np.concatenate([(z_model.real - z.real), (z_model.imag - z.imag)])
+        return raw / sigma_stacked
 
     p0_base = template.init_fn(omega, z)
     lb, ub = np.array(template.bounds[0]), np.array(template.bounds[1])
@@ -404,25 +464,49 @@ def fit_template(template: CircuitTemplate, freq: np.ndarray, z: np.ndarray) -> 
                     continue
 
     res = best_res
-    rss = float(np.sum(res.fun**2))
+    # weighted RSS (dimensionless χ²)
+    chi2 = float(np.sum(res.fun**2))
     n_points = len(res.fun)
     k_params = len(p0_base)
+    nu = max(n_points - k_params, 1)
+    chi2_over_nu = chi2 / nu
+    # unweighted RSS for BIC/AIC (re-compute from raw residuals)
+    z_best = template.model_fn(res.x, omega)
+    raw_res = np.concatenate([(z_best.real - z.real), (z_best.imag - z.imag)])
+    rss = float(np.sum(raw_res**2))
     bic, aic = _bic_aic(rss, n_points, k_params)
 
-    # Covariance and parameter std dev
-    params_std = {}
+    # Covariance and parameter std dev (from weighted Jacobian)
+    params_std: Dict[str, float] = {}
+    confidence_interval_95: Dict[str, float] = {}
+    rel_uncertainty_pct: Dict[str, float] = {}
+    param_significance: Dict[str, str] = {}
     try:
         if res.jac is not None and res.jac.shape[0] > res.jac.shape[1]:
             jtj = res.jac.T @ res.jac
             inv = np.linalg.inv(jtj)
-            sigma2 = rss / max(n_points - k_params, 1)
-            cov = inv * sigma2
-            params_std = {
-                name: float(np.sqrt(abs(cov[i, i])))
-                for i, name in enumerate(template.param_names)
-            }
+            # For weighted fit, residual variance ≈ chi2/nu; if chi2/nu > 1
+            # the model is over-dispersed; scale covariance accordingly.
+            scale = max(chi2_over_nu, 1.0)
+            cov = inv * scale
+            for i, name in enumerate(template.param_names):
+                se = float(np.sqrt(abs(cov[i, i])))
+                val = float(res.x[i])
+                params_std[name] = se
+                # 95 % CI half-width (≈ 2σ)
+                confidence_interval_95[name] = 2.0 * se
+                # Relative uncertainty %
+                rel_pct = 200.0 * se / abs(val) if abs(val) > 1e-30 else np.inf
+                rel_uncertainty_pct[name] = float(rel_pct)
+                # Significance decision
+                if rel_pct > 100.0:
+                    param_significance[name] = "não-significativo (CI inclui zero)"
+                elif rel_pct > 30.0:
+                    param_significance[name] = "marginalmente significativo"
+                else:
+                    param_significance[name] = "significativo"
     except LinAlgError:
-        params_std = {}
+        pass
 
     # Residual diagnostics
     fun = res.fun
@@ -447,6 +531,10 @@ def fit_template(template: CircuitTemplate, freq: np.ndarray, z: np.ndarray) -> 
         "diagram": template.diagram,
         "params": {k: v for k, v in zip(template.param_names, res.x)},
         "params_std": params_std,
+        "confidence_interval_95": confidence_interval_95,
+        "rel_uncertainty_pct": rel_uncertainty_pct,
+        "param_significance": param_significance,
+        "chi2_over_nu": chi2_over_nu,
         "success": bool(res.success),
         "message": res.message,
         "rss": rss,

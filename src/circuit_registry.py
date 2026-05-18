@@ -16,6 +16,7 @@ Built-in circuits (registered at import time)
  9. ``Warburg-Short``    — Rs − (Rp ‖ CPE) − Wo        [reflective / coth]
 10. ``Gerischer``        — Rs − (Rp ‖ CPE) − Z_Ger     [SOFC / mixed conductors]
 11. ``Three-ZARC``       — Rs − ZARC₁ − ZARC₂ − ZARC₃ [solid electrolytes]
+12. ``Porous-Coating-TLM`` — Rs − (Rcoat ‖ Cpore) − (Rct ‖ CPEdl)  [TLM porous coating]
 
 Public API
 ----------
@@ -709,6 +710,87 @@ def _make_three_zarc() -> CircuitTemplate:
     )
 
 
+# ---------- 12. Porous-Coating-TLM -----------------------------------
+def _make_porous_coating_tlm() -> CircuitTemplate:
+    """Transmission-Line Model for a porous coating with double-layer.
+
+    Circuit topology
+    ~~~~~~~~~~~~~~~~
+    Rs − [Rcoat ‖ Cpore] − [Rct ‖ CPEdl]
+
+    This is a simplified two-element TLM (De Levie, Tribollet/Orazem §15):
+    - The outer RC branch (Rcoat‖Cpore) models the resistive/capacitive
+      response of the coating itself at mid frequencies.
+    - The inner ZARC branch (Rct‖CPEdl) models the porous interface charge-
+      transfer at lower frequencies.
+
+    The key feature that distinguishes this from ``Coating-CPE`` is that
+    the coating capacitance ``Cpore`` is a pure capacitor (CPE exponent = 1)
+    while the double-layer is a CPE (n_dl < 1), capturing the physical fact
+    that pore geometry distorts the double-layer uniformity far more than
+    the dielectric of the intact film.
+
+    Parameters
+    ----------
+    Rs      — solution resistance (Ω)
+    Rcoat   — coating / pore resistance (Ω)
+    Cpore   — coating capacitance (F); ideal capacitor, not CPE
+    Rct     — charge-transfer resistance at pore bottom (Ω)
+    Qdl     — double-layer CPE prefactor (F·s^(n-1))
+    n_dl    — double-layer CPE exponent  (0.5–1.0)
+    """
+    param_names = ["Rs", "Rcoat", "Cpore", "Rct", "Qdl", "n_dl"]
+    bounds = (
+        [1e-3, 1e-3, 1e-12, 1e-3, 1e-14, 0.50],
+        [1e4, 1e6, 1e-4, 1e7, 1e-3, 1.00],
+    )
+
+    def model(p: np.ndarray, omega: np.ndarray) -> np.ndarray:
+        Rs, Rcoat, Cpore, Rct, Qdl, n_dl = p
+        # Coating branch: R ‖ C  (ideal capacitor)
+        Zcoating = 1.0 / (1.0 / Rcoat + 1j * omega * Cpore)
+        # Double-layer branch: Rct ‖ CPEdl
+        Zdl = 1.0 / (1.0 / Rct + 1.0 / _cpe(omega, Qdl, n_dl))
+        return Rs + Zcoating + Zdl
+
+    def init(omega: np.ndarray, z: np.ndarray) -> np.ndarray:
+        rs = _rs_from_z(z)
+        span = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array([rs, span * 0.3, 1e-9, span * 0.7, 1e-11, 0.85])
+
+    return CircuitTemplate(
+        name="Porous-Coating-TLM",
+        param_names=param_names,
+        bounds=bounds,
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − (Rcoat ‖ Cpore) − (Rct ‖ CPEdl)",
+        description=(
+            "Transmission-line model for a porous organic or oxide coating "
+            "over a metal substrate.  Separates the dielectric capacitance "
+            "of the coating from the double-layer CPE at the pore tips, "
+            "giving physically distinct time constants visible at mid and "
+            "low frequencies respectively.  Preferred over Coating-CPE when "
+            "both arcs are clearly resolved."
+        ),
+        physical_meaning={
+            "Rs": "Electrolyte / uncompensated resistance (Ω)",
+            "Rcoat": "Ionic resistance through pore electrolyte (Ω)",
+            "Cpore": "Geometric (dielectric) capacitance of intact coating (F)",
+            "Rct": "Charge-transfer resistance at pore base (Ω)",
+            "Qdl": "Double-layer CPE prefactor at pore surface (F·s^(n-1))",
+            "n_dl": "DL CPE exponent — deviation from ideal capacitance (0.5–1)",
+        },
+        typical_systems=[
+            "Epoxy / polyurethane coatings on steel after immersion",
+            "Anodised aluminium (Type II/III) with pore-filling",
+            "Phosphated steel — dual porosity corrosion product",
+            "Li-ion SEI on graphite anode (simplified 2-layer model)",
+            "Cerium-conversion coatings on AA2024",
+        ],
+    )
+
+
 # ── Auto-register all built-in circuits at import time ───────────────
 _BUILTIN_MAKERS = [
     _make_randles_cpe_w,
@@ -722,6 +804,7 @@ _BUILTIN_MAKERS = [
     _make_warburg_short,
     _make_gerischer,
     _make_three_zarc,
+    _make_porous_coating_tlm,
 ]
 
 

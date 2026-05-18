@@ -44,6 +44,7 @@ from src.batch_processor import (  # noqa: F401
 
 # Convenience re-exports so users can do ``from src import tr, check_for_updates``
 from src.circuit_composer import CircuitBlock, CircuitComposer  # noqa: F401
+from src.circuit_fitting import fit_template, orazem_sigma  # noqa: F401
 from src.cli import main as cli_main  # noqa: F401
 from src.config import PipelineConfig  # noqa: F401
 from src.db import FeatureStoreV2, IonFlowRepository  # noqa: F401
@@ -111,6 +112,10 @@ from src.uncertainty import (  # noqa: F401
 from src.updater import check_for_updates  # noqa: F401
 from src.validation import (  # noqa: F401
     ValidationResult,
+    detect_powerline_noise,
+    estimate_critical_frequency,
+    remove_highest_frequency_point,
+    truncate_above_fc,
     validate_cycling_dataframe,
     validate_eis_dataframe,
     validate_eis_full,

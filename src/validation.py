@@ -268,9 +268,7 @@ def validate_impedance_quality(
 
     n = min(len(zr), len(zi))
     if n < 10:
-        vr.add_warning(
-            f"Only {n} impedance points — quality check skipped."
-        )
+        vr.add_warning(f"Only {n} impedance points — quality check skipped.")
         return vr
 
     zr = zr[:n].astype(float)
@@ -306,3 +304,139 @@ def validate_eis_full(df: pd.DataFrame) -> ValidationResult:
         vr.merge(validate_frequency_range(df))
         vr.merge(validate_impedance_quality(df))
     return vr
+
+
+# ── Metrological preprocessing helpers ───────────────────────────────
+
+
+def detect_powerline_noise(
+    freq: np.ndarray,
+    *,
+    targets: tuple[float, ...] = (50.0, 100.0),
+    tolerance: float = 3.0,
+) -> np.ndarray:
+    """Return a boolean mask of points contaminated by power-line harmonics.
+
+    Following Orazem & Tribollet (2017) §2.2.2: impedance values in the
+    range ``target ± tolerance`` Hz should be removed before regression
+    because 50/100 Hz noise from the power line is inadequately filtered
+    by most FRA instruments.
+
+    Parameters
+    ----------
+    freq : np.ndarray
+        Frequency vector (Hz).
+    targets : tuple of float
+        Power-line frequencies to flag (default: 50 and 100 Hz).
+    tolerance : float
+        Half-width in Hz around each target (default: ±3 Hz).
+
+    Returns
+    -------
+    np.ndarray
+        Boolean mask, ``True`` where frequency is within a noise band.
+        Pass ``~mask`` to keep only clean points.
+    """
+    freq = np.asarray(freq, dtype=float)
+    mask = np.zeros(len(freq), dtype=bool)
+    for f0 in targets:
+        mask |= np.abs(freq - f0) <= tolerance
+    return mask
+
+
+def remove_highest_frequency_point(
+    freq: np.ndarray,
+    z: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Drop the single highest-frequency point to eliminate transient artefacts.
+
+    When the instrument switches from DC to its first AC frequency a brief
+    transient corrupts the first measured point.  Orazem & Tribollet (2026)
+    §2.2.2 explicitly remove it before KK and model analysis.
+
+    Parameters
+    ----------
+    freq, z : np.ndarray
+        Frequency vector and complex impedance.
+
+    Returns
+    -------
+    freq_clean, z_clean : np.ndarray
+        Arrays with the highest-frequency point removed (sorted descending
+        to highest first, so index 0 is removed).
+    """
+    freq = np.asarray(freq, dtype=float)
+    z = np.asarray(z, dtype=complex)
+    if len(freq) <= 1:
+        return freq, z
+    idx_max = int(np.argmax(freq))
+    keep = np.ones(len(freq), dtype=bool)
+    keep[idx_max] = False
+    return freq[keep], z[keep]
+
+
+def estimate_critical_frequency(
+    re_ohm: float,
+    c_inf_farad: float,
+) -> float:
+    """Estimate the characteristic frequency *f_c* above which the ohmic
+    impedance dominates the spectrum.
+
+    .. math::
+        f_c = \\frac{1}{2\\pi R_e C_\\infty}
+
+    Above *f_c* the ohmic drop confounds capacitive and faradaic features.
+    The frequency range should be truncated to ``f ≤ f_c`` before regression
+    of process models (Orazem & Tribollet, Electrochimica Acta 568, 2026).
+
+    Parameters
+    ----------
+    re_ohm : float
+        Ohmic (solution) resistance in Ω (or Ω·cm²).
+    c_inf_farad : float
+        High-frequency capacitance in F (or F/cm²) — typically obtained
+        from the measurement model or the high-frequency limit of Re(C).
+
+    Returns
+    -------
+    float
+        Critical frequency *f_c* in Hz.
+    """
+    if re_ohm <= 0 or c_inf_farad <= 0:
+        return np.inf
+    return 1.0 / (2.0 * np.pi * re_ohm * c_inf_farad)
+
+
+def truncate_above_fc(
+    freq: np.ndarray,
+    z: np.ndarray,
+    fc: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Remove all frequency points above the critical frequency *f_c*.
+
+    Parameters
+    ----------
+    freq, z : np.ndarray
+        Frequency vector (Hz) and complex impedance.
+    fc : float
+        Critical frequency in Hz (from :func:`estimate_critical_frequency`).
+
+    Returns
+    -------
+    freq_clean, z_clean : np.ndarray
+        Only the points with ``freq <= fc``.
+    """
+    freq = np.asarray(freq, dtype=float)
+    z = np.asarray(z, dtype=complex)
+    keep = freq <= fc
+    if not np.any(keep):
+        logger.warning(
+            "truncate_above_fc: fc=%.3g Hz removed all points — returning original", fc
+        )
+        return freq, z
+    n_removed = int(np.sum(~keep))
+    if n_removed:
+        logger.debug(
+            "truncate_above_fc: removed %d points above fc=%.3g Hz", n_removed, fc
+        )
+    return freq[keep], z[keep]

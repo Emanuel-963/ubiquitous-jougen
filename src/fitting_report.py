@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 # FittingReport dataclass
 # =====================================================================
 
+
 @dataclass
 class FittingReport:
     """Structured textual report for a single circuit fitting result.
@@ -199,13 +200,20 @@ _PARAM_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
 # Map common suffixed parameter names to their canonical root
 _CANONICAL_MAP: Dict[str, str] = {
-    "Rp1": "Rp", "Rp2": "Rp",
-    "Q1": "Q", "Q2": "Q",
-    "n1": "n", "n2": "n",
-    "R1": "Rp", "R2": "Rp",
-    "Rcoat": "Rp", "Rct": "Rp",
-    "Qcoat": "Q", "Qdl": "Q",
-    "ncoat": "n", "ndl": "n",
+    "Rp1": "Rp",
+    "Rp2": "Rp",
+    "Q1": "Q",
+    "Q2": "Q",
+    "n1": "n",
+    "n2": "n",
+    "R1": "Rp",
+    "R2": "Rp",
+    "Rcoat": "Rp",
+    "Rct": "Rp",
+    "Qcoat": "Q",
+    "Qdl": "Q",
+    "ncoat": "n",
+    "ndl": "n",
 }
 
 
@@ -228,6 +236,7 @@ def _canonical(param_name: str) -> str:
 # =====================================================================
 # FittingReportGenerator
 # =====================================================================
+
 
 class FittingReportGenerator:
     """Generate intelligent textual reports for circuit fitting results.
@@ -282,15 +291,20 @@ class FittingReportGenerator:
         report = FittingReport(
             summary=self._build_summary(fit_result, quality),
             circuit_justification=self._build_justification(
-                fit_result, all_results, registry_template,
+                fit_result,
+                all_results,
+                registry_template,
             ),
             parameter_interpretation=self._build_param_interpretation(
-                fit_result, registry_template,
+                fit_result,
+                registry_template,
             ),
             quality_assessment=self._build_quality_text(fit_result, quality),
             recommendations=self._build_recommendations(fit_result, quality),
             comparison_with_similar=self._build_comparison(
-                fit_result, history, spectral_features,
+                fit_result,
+                history,
+                spectral_features,
             ),
         )
 
@@ -313,6 +327,7 @@ class FittingReportGenerator:
         diagram = fit_result.get("diagram", "")
         rss = fit_result.get("rss", np.nan)
         bic = fit_result.get("bic", np.nan)
+        chi2_nu = fit_result.get("chi2_over_nu", np.nan)
         n_params = fit_result.get("n_params", 0)
         n_points = fit_result.get("n_points", 0)
         confidence = fit_result.get("confidence", np.nan)
@@ -324,7 +339,16 @@ class FittingReportGenerator:
 
         if np.isfinite(rss):
             parts.append(f"RSS = {rss:.4f}.")
-        if np.isfinite(bic):
+        if np.isfinite(chi2_nu):
+            # χ²/ν close to 1 indicates good agreement with error model
+            if chi2_nu <= 2.0:
+                chi2_str = f"χ²/ν = {chi2_nu:.3f} ✓ (modelo consistente com estrutura de erro)."
+            elif chi2_nu <= 5.0:
+                chi2_str = f"χ²/ν = {chi2_nu:.3f} ⚠ (sobre-dispersão moderada — revisar modelo de erro)."
+            else:
+                chi2_str = f"χ²/ν = {chi2_nu:.3f} ⛔ (sobre-dispersão severa — modelo inadequado)."
+            parts.append(chi2_str)
+        elif np.isfinite(bic):
             parts.append(f"BIC = {bic:.2f}.")
         if np.isfinite(confidence):
             parts.append(f"Confiança relativa = {confidence:.1%}.")
@@ -353,9 +377,7 @@ class FittingReportGenerator:
         if registry_template and hasattr(registry_template, "typical_systems"):
             systems = getattr(registry_template, "typical_systems", [])
             if systems:
-                parts.append(
-                    f"Sistemas típicos: {', '.join(systems[:4])}."
-                )
+                parts.append(f"Sistemas típicos: {', '.join(systems[:4])}.")
 
         # Ranking context
         if all_results and len(all_results) > 1:
@@ -371,8 +393,7 @@ class FittingReportGenerator:
                 )
             # Delta BIC to runner-up
             bics_valid = [
-                r["bic"] for r in all_results
-                if np.isfinite(r.get("bic", np.inf))
+                r["bic"] for r in all_results if np.isfinite(r.get("bic", np.inf))
             ]
             if len(bics_valid) >= 2:
                 bics_sorted = sorted(bics_valid)
@@ -383,9 +404,7 @@ class FittingReportGenerator:
                         f"(forte evidência a favor)."
                     )
                 elif delta > 2:
-                    parts.append(
-                        f"ΔBIC = {delta:.1f} (evidência moderada a favor)."
-                    )
+                    parts.append(f"ΔBIC = {delta:.1f} (evidência moderada a favor).")
                 else:
                     parts.append(
                         f"ΔBIC = {delta:.1f} (pouca diferença entre candidatos)."
@@ -406,6 +425,7 @@ class FittingReportGenerator:
         """Interpret each fitted parameter using templates."""
         params = fit_result.get("params", {})
         params_std = fit_result.get("params_std", {})
+        param_significance = fit_result.get("param_significance", {})
         if not params:
             return {}
 
@@ -413,6 +433,10 @@ class FittingReportGenerator:
         phys_meaning: Dict[str, str] = {}
         if registry_template and hasattr(registry_template, "physical_meaning"):
             phys_meaning = getattr(registry_template, "physical_meaning", {}) or {}
+
+        # Build a set of parameter names that hit their bounds
+        # bound_hits is an int count — not per-param. Use rel_uncertainty as proxy.
+        rel_unc = fit_result.get("rel_uncertainty_pct", {})
 
         interp: Dict[str, str] = {}
         for pname, value in params.items():
@@ -445,6 +469,53 @@ class FittingReportGenerator:
                     parts.append(tpl["mid"])
             else:
                 parts.insert(0, f"{val_str}")
+
+            # ── CPE exponent (n) physical significance rules ─────────
+            # Names typically: n, n1, n2, n_dl, n_coat, etc.
+            if canon in ("n", "n1", "n2", "n3", "n_dl", "n_coat"):
+                n_val = float(value)
+                if abs(n_val - 0.5) <= 0.05:
+                    parts.append(
+                        "⚠ n ≈ 0.5 — comportamento Warburg; "
+                        "verifique se elemento de difusão está faltando"
+                    )
+                elif 0.75 <= n_val < 0.85:
+                    parts.append(
+                        "CPE moderado — distribuição de constantes de tempo "
+                        "por rugosidade ou composição lateral heterogênea"
+                    )
+                elif 0.85 <= n_val < 0.95:
+                    parts.append(
+                        "CPE típico — distribuição superficial normal; "
+                        "fisicamente coerente para superfícies policristalinas"
+                    )
+                elif n_val >= 0.95:
+                    parts.append(
+                        "n ≈ 1 — quase-capacitor ideal; "
+                        "considere substituir CPE por C puro para parcimônia"
+                    )
+                elif n_val < 0.5:
+                    parts.append(
+                        "⛔ n < 0.5 — fisicamente improvável; "
+                        "indício de modelo inadequado ou dados ruidosos"
+                    )
+
+            # ── Zombie parameter: CI includes zero ───────────────────
+            sig_label = param_significance.get(pname, "")
+            if "não-significativo" in sig_label:
+                parts.append(
+                    "⚠ parâmetro zumbi estatístico — IC 95 % inclui zero; "
+                    "considere remover do modelo"
+                )
+            elif "marginalmente" in sig_label:
+                parts.append("atenção: incerteza relativa > 30 %")
+
+            # ── Bound-hit heuristic via high relative uncertainty ────
+            if rel_unc.get(pname, 0.0) > 150.0:
+                parts.append(
+                    "parâmetro possivelmente no limite do domínio — "
+                    "considere modelo alternativo ou restrição adicional"
+                )
 
             interp[pname] = " — ".join(parts)
 
@@ -511,9 +582,7 @@ class FittingReportGenerator:
             )
 
         if quality.level == "green" and not recs:
-            recs.append(
-                "O ajuste está excelente. Nenhuma acção adicional necessária."
-            )
+            recs.append("O ajuste está excelente. Nenhuma acção adicional necessária.")
 
         return recs
 

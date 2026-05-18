@@ -44,6 +44,7 @@ logger = logging.getLogger(__name__)
 # Result dataclasses
 # =====================================================================
 
+
 @dataclass
 class MonteCarloResult:
     """Outcome of a Monte Carlo uncertainty analysis.
@@ -103,6 +104,7 @@ class BootstrapResult:
 # UncertaintyAnalyzer
 # =====================================================================
 
+
 class UncertaintyAnalyzer:
     """Estimate parameter uncertainty via MC and bootstrap methods.
 
@@ -154,8 +156,9 @@ class UncertaintyAnalyzer:
 
         def _residuals(p: np.ndarray) -> np.ndarray:
             z_model = model_fn(p, omega)
-            return np.concatenate([z_model.real - z_target.real,
-                                   z_model.imag - z_target.imag])
+            return np.concatenate(
+                [z_model.real - z_target.real, z_model.imag - z_target.imag]
+            )
 
         try:
             res = least_squares(_residuals, p0, bounds=bounds, max_nfev=3000)
@@ -187,9 +190,17 @@ class UncertaintyAnalyzer:
         hi_pct = (1.0 - alpha) * 100
 
         mean = {k: float(np.mean(samples[:, i])) for i, k in enumerate(param_names)}
-        std = {k: float(np.std(samples[:, i], ddof=1)) for i, k in enumerate(param_names)}
-        ci_low = {k: float(np.percentile(samples[:, i], lo_pct)) for i, k in enumerate(param_names)}
-        ci_high = {k: float(np.percentile(samples[:, i], hi_pct)) for i, k in enumerate(param_names)}
+        std = {
+            k: float(np.std(samples[:, i], ddof=1)) for i, k in enumerate(param_names)
+        }
+        ci_low = {
+            k: float(np.percentile(samples[:, i], lo_pct))
+            for i, k in enumerate(param_names)
+        }
+        ci_high = {
+            k: float(np.percentile(samples[:, i], hi_pct))
+            for i, k in enumerate(param_names)
+        }
         return samples, mean, std, ci_low, ci_high
 
     # ------------------------------------------------------------------
@@ -228,9 +239,18 @@ class UncertaintyAnalyzer:
         p0 = np.asarray(p0, dtype=float)
 
         mag = np.abs(z_data)
-        sigma_noise = self.noise_pct * mag  # per-point noise σ
-        # Ensure sigma_noise is at least a small floor to avoid zero noise
-        sigma_noise = np.maximum(sigma_noise, 1e-12)
+        # Orazem/Tribollet error-structure model:
+        #   σ(ω) = α·|Z_imag| + β·|Z_real|
+        # This is physically motivated: real and imaginary channels
+        # have independent but correlated noise proportional to their
+        # respective magnitudes (not just |Z|).  The self.noise_pct
+        # parameter now scales α (and β = noise_pct/3.65 to preserve
+        # the original ~1:1 ratio).
+        alpha = self.noise_pct
+        beta = self.noise_pct / 3.65  # ≈ Orazem ratio 0.001216/0.000333
+        sigma_noise = alpha * np.abs(z_data.imag) + beta * np.abs(z_data.real)
+        # Floor at 1 % of |Z| to avoid zero noise at low impedances
+        sigma_noise = np.maximum(sigma_noise, 0.01 * mag)
 
         successful: List[np.ndarray] = []
         for _ in range(self.n_iter):
@@ -306,7 +326,9 @@ class UncertaintyAnalyzer:
             idx = self._rng.integers(0, n_pts, size=n_pts)
             z_boot = z_model + residuals_real[idx] + 1j * residuals_imag[idx]
 
-            result = self._refit(template.model_fn, p_fit, omega, z_boot, template.bounds)
+            result = self._refit(
+                template.model_fn, p_fit, omega, z_boot, template.bounds
+            )
             if result is not None:
                 successful.append(result)
 
@@ -437,8 +459,9 @@ class UncertaintyAnalyzer:
         n_params = len(result.param_names)
         if n_params == 0 or result.samples.size == 0:
             fig, ax = plt.subplots()
-            ax.text(0.5, 0.5, "No samples", ha="center", va="center",
-                    transform=ax.transAxes)
+            ax.text(
+                0.5, 0.5, "No samples", ha="center", va="center", transform=ax.transAxes
+            )
             return fig
 
         cols = min(n_params, 3)
@@ -449,10 +472,21 @@ class UncertaintyAnalyzer:
         for idx, pname in enumerate(result.param_names):
             ax = axes[idx]
             data = result.samples[:, idx]
-            ax.hist(data, bins="auto", density=True, alpha=0.6, color="steelblue",
-                    edgecolor="white")
-            ax.axvline(result.mean[pname], color="crimson", ls="--", lw=1.5,
-                       label=f"μ = {result.mean[pname]:.4g}")
+            ax.hist(
+                data,
+                bins="auto",
+                density=True,
+                alpha=0.6,
+                color="steelblue",
+                edgecolor="white",
+            )
+            ax.axvline(
+                result.mean[pname],
+                color="crimson",
+                ls="--",
+                lw=1.5,
+                label=f"μ = {result.mean[pname]:.4g}",
+            )
             ax.axvline(result.ci_low[pname], color="grey", ls=":", lw=1)
             ax.axvline(result.ci_high[pname], color="grey", ls=":", lw=1)
             ax.set_title(pname, fontsize=11)
@@ -506,8 +540,14 @@ class UncertaintyAnalyzer:
         n_params = len(result.param_names)
         if n_params < 2 or result.samples.size == 0:
             fig, ax = plt.subplots()
-            ax.text(0.5, 0.5, "Insufficient parameters/samples",
-                    ha="center", va="center", transform=ax.transAxes)
+            ax.text(
+                0.5,
+                0.5,
+                "Insufficient parameters/samples",
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+            )
             return fig
 
         if pairs is None:
@@ -522,19 +562,34 @@ class UncertaintyAnalyzer:
         for idx, (pi, pj) in enumerate(pairs):
             ax = axes[idx]
             # Scatter samples
-            ax.scatter(result.samples[:, pi], result.samples[:, pj],
-                       s=8, alpha=0.3, color="steelblue")
+            ax.scatter(
+                result.samples[:, pi],
+                result.samples[:, pj],
+                s=8,
+                alpha=0.3,
+                color="steelblue",
+            )
             # Confidence ellipse
             ex, ey = self.confidence_ellipse(
                 result.samples, pi, pj, ci_level=self.ci_level
             )
             if ex.size > 0:
-                ax.plot(ex, ey, color="crimson", lw=1.5,
-                        label=f"{self.ci_level * 100:.0f}% CI")
+                ax.plot(
+                    ex,
+                    ey,
+                    color="crimson",
+                    lw=1.5,
+                    label=f"{self.ci_level * 100:.0f}% CI",
+                )
             # Mark mean
-            ax.plot(result.mean[result.param_names[pi]],
-                    result.mean[result.param_names[pj]],
-                    "x", color="black", ms=8, mew=2)
+            ax.plot(
+                result.mean[result.param_names[pi]],
+                result.mean[result.param_names[pj]],
+                "x",
+                color="black",
+                ms=8,
+                mew=2,
+            )
             ax.set_xlabel(result.param_names[pi])
             ax.set_ylabel(result.param_names[pj])
             ax.legend(fontsize=8)

@@ -23,7 +23,7 @@ def _reset_registry():
 
 class TestRegistryCRUD:
     def test_count_at_import(self):
-        assert CircuitRegistry.count() == 11
+        assert CircuitRegistry.count() == 12
 
     def test_names_at_import(self):
         expected = {
@@ -38,13 +38,14 @@ class TestRegistryCRUD:
             "Gerischer",
             "Three-ZARC",
             "Warburg-Short",
+            "Porous-Coating-TLM",
         }
         assert set(CircuitRegistry.names()) == expected
 
     def test_all_returns_list(self):
         all_circuits = CircuitRegistry.all()
         assert isinstance(all_circuits, list)
-        assert len(all_circuits) == 11
+        assert len(all_circuits) == 12
 
     def test_get_known_circuit(self):
         tmpl = CircuitRegistry.get("Randles-CPE-W")
@@ -66,7 +67,7 @@ class TestRegistryCRUD:
         )
         CircuitRegistry.register(custom)
         assert "My-Test" in CircuitRegistry.names()
-        assert CircuitRegistry.count() == 12
+        assert CircuitRegistry.count() == 13
         assert CircuitRegistry.get("My-Test") is custom
 
     def test_register_overwrite(self):
@@ -81,7 +82,7 @@ class TestRegistryCRUD:
         CircuitRegistry.register(custom)
         assert CircuitRegistry.get("Simple-RC") is custom
         # Count unchanged
-        assert CircuitRegistry.count() == 11
+        assert CircuitRegistry.count() == 12
 
     def test_clear(self):
         CircuitRegistry.clear()
@@ -89,7 +90,7 @@ class TestRegistryCRUD:
 
     def test_from_config_all(self):
         result = CircuitRegistry.from_config(None)
-        assert len(result) == 11
+        assert len(result) == 12
 
     def test_from_config_filtered(self):
         result = CircuitRegistry.from_config(None, names=["Randles-CPE-W", "Simple-RC"])
@@ -186,10 +187,11 @@ class TestCatalogDelegation:
         from src.circuit_fitting import circuit_catalog
 
         cat = circuit_catalog()
-        assert len(cat) == 11
+        assert len(cat) == 12
         names = {c.name for c in cat}
         assert "Simple-RC" in names
         assert "ZARC-ZARC-W" in names
+        assert "Porous-Coating-TLM" in names
 
 
 # ══════════════════════════════════════════════════════════════════════
