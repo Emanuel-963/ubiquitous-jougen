@@ -2,6 +2,58 @@
 
 All notable changes to the IonFlow Pipeline are documented here.
 
+## [0.4.1] — 2026-05-18  _(Metrological Rigor Edition)_
+
+### Added
+
+- **Orazem σ-model** (`src/circuit_fitting.py` — `orazem_sigma()`):
+  weighted error structure `σ = α·|Zⱼ| + β·|Zᵣ|` with
+  α=0.001216, β=0.000333 per Tribollet & Orazem (2026), Eq. 9.
+- **Weighted fitting** (`fit_template()`): now accepts `sigma=` keyword;
+  residuals are normalised by σ(f) for statistically correct χ²/ν.
+- **New output fields** in `fit_template()`: `chi2_over_nu`, `confidence_interval_95`,
+  `rel_uncertainty_pct`, `param_significance` (significativo / marginalmente / não-significativo).
+- **Orazem noise model in Monte Carlo** (`src/uncertainty.py`): replaced
+  flat `noise_pct·|Z|` with `α·|Zⱼ| + β·|Zᵣ|` matching the Tribollet & Orazem structure.
+- **Four metrological helpers** (`src/validation.py`):
+  - `detect_powerline_noise(freq)` — boolean mask for 50±3 Hz / 100±3 Hz points.
+  - `remove_highest_frequency_point(freq, z)` — removes the turn-on-transient artefact.
+  - `estimate_critical_frequency(Re, C_inf)` — fc = 1/(2πRe·C∞).
+  - `truncate_above_fc(freq, z, fc)` — drops frequencies above fc.
+- **Porous-Coating-TLM** (`src/circuit_registry.py`): 12th built-in circuit
+  `Rs − (Rcoat‖Cpore) − (Rct‖CPEdl)` based on de Levie (1967) / Gabrielli (1997)
+  and Tribollet & Orazem (2026) Eqs. 16–18.
+- **CPE-n physical rules** and **zombie-parameter detection** in
+  `src/fitting_report.py` (n≈0.5 Warburg warning; IC_95>100% → zombie flag;
+  chi2/nu tiered summary ✓/⚠/⛔).
+- **`ionflow preprocess` CLI subcommand** (`src/cli.py`): applies powerline filter,
+  HF-point removal, and fc-truncation in batch. Supports `--json` output.
+- **Powerline check in `ionflow validate`**: now reports count and frequencies of
+  50/100 Hz noise points per file.
+- **Tutorial 24** (`tutoriais/24_metrologia_orazem_tribollet.txt`): complete walkthrough
+  of the Orazem/Tribollet metrological workflow (7 sections, code examples).
+- **Reference [EIS-6]** (`tutoriais/08_referencias_bibliograficas.txt`):
+  Tribollet & Orazem, Electrochimica Acta 568, 149009 (2026),
+  DOI: 10.1016/j.electacta.2026.149009. Added to module reference maps.
+
+### Changed
+
+- Tutorial 02 (Pipeline EIS): added §2.3 "Pré-processamento metrológico" and updated
+  circuit table description with `chi2_over_nu`, `confidence_interval_95` fields.
+- Tutorial 07 (Interpretação Científica): added metrological pre-check step;
+  workflow updated with PASSO 0 (preprocess) and PASSO 1b (χ²/ν check).
+- Tutorial 12 (CLI): completely rewritten for v0.4.x CLI syntax (`ionflow` not `ionflow-cli`);
+  added `preprocess`, `validate`, `config`, `version` subcommands; JSON integration examples.
+- References file: bumped to v0.4.1, added [EIS-6], updated module and tutorial maps.
+
+### Tests
+
+- `tests/test_circuit_registry.py`: updated 7 count assertions from 11→12 for
+  the new Porous-Coating-TLM circuit; added `"Porous-Coating-TLM"` to expected names.
+- **235 tests passing** (7 files).
+
+---
+
 ## [0.4.0] — 2026-05-12  _(Market Edition)_
 
 ### Added

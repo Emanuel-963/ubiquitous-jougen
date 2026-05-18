@@ -556,8 +556,13 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
     from src.loader import load_eis_file
     from src.preprocessing import preprocess
-    from src.validation import validate_eis_full
+    from src.validation import (
+        validate_eis_full,
+        detect_powerline_noise,
+    )
     from src.kramers_kronig import KramersKronigValidator
+
+    import numpy as np
 
     kk_validator = KramersKronigValidator()
 
@@ -584,6 +589,16 @@ def cmd_validate(args: argparse.Namespace) -> int:
             file_result["kk_classification"] = kk_result.classification
             file_result["kk_mean_residual"] = round(kk_result.mean_residual, 6)
             file_result["kk_max_residual"] = round(kk_result.max_residual, 6)
+
+            # Powerline noise check (Tribollet & Orazem 2026, Eq. 9 context)
+            freq = df["frequency"].values.astype(float)
+            pl_mask = detect_powerline_noise(freq)
+            n_pl = int(np.sum(pl_mask))
+            file_result["powerline_points"] = n_pl
+            if n_pl:
+                file_result["powerline_freqs"] = [
+                    round(float(f), 2) for f in freq[pl_mask]
+                ]
 
             if vr.ok and kk_result.kk_valid:
                 n_valid += 1
@@ -639,10 +654,184 @@ def cmd_validate(args: argparse.Namespace) -> int:
                     parts.append(f"{r.get('validation_errors', 0)} validation errors")
                 if not r.get("kk_valid", True):
                     parts.append(f"KK {r.get('kk_classification', 'suspeito')}")
+                if r.get("powerline_points", 0):
+                    parts.append(f"{r['powerline_points']} powerline pts")
                 extra = f" ({', '.join(parts)})"
             elif s == "error":
                 extra = f" ({r.get('error', '')})"
             print(f"  {icon_f} {r['file']}{extra}")
+
+    return rc
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Subcommand: preprocess  (Orazem/Tribollet 2026 metrological filters)
+# ═══════════════════════════════════════════════════════════════════════
+
+def cmd_preprocess(args: argparse.Namespace) -> int:
+    """Apply Orazem/Tribollet 2026 metrological pre-processing to EIS files.
+
+    Steps applied (each can be skipped via flags):
+
+    1. Remove highest-frequency point — eliminates turn-on transient
+       artefact (Katırcı et al. 2022; Pollard & Comte 1989).
+    2. Powerline noise filter — removes impedance values at 50±3 Hz
+       and 100±3 Hz where mains interference is inadequately filtered.
+    3. Critical-frequency truncation — drops frequencies > fc where
+       the ohmic impedance confounds the spectrum (fc = 1/2πRe·C∞).
+
+    Reference: Tribollet & Orazem, Electrochimica Acta 568, 149009 (2026).
+               DOI: 10.1016/j.electacta.2026.149009
+    """
+    cfg = _load_config(args)
+    json_mode = _use_json(args)
+
+    data_dir = Path(getattr(args, "data_dir", None) or cfg.data_dir)
+    if not data_dir.exists():
+        msg = f"Directory not found: {data_dir}"
+        if json_mode:
+            _print_json({"status": "error", "error": msg})
+        else:
+            print(f"❌ {msg}", file=sys.stderr)
+        return RC_ERROR
+
+    output_dir = Path(
+        getattr(args, "output", None)
+        or (data_dir.parent / "preprocessed")
+    )
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    remove_hf = not getattr(args, "no_remove_hf", False)
+    filter_powerline = not getattr(args, "no_powerline_filter", False)
+    do_fc_truncate = getattr(args, "fc_truncate", False)
+    re_val = getattr(args, "re", None)
+    cinf_val = getattr(args, "cinf", None)
+
+    from src.loader import load_eis_file
+    from src.preprocessing import preprocess
+    from src.validation import (
+        detect_powerline_noise,
+        estimate_critical_frequency,
+        remove_highest_frequency_point,
+        truncate_above_fc,
+    )
+
+    txt_files = sorted(f for f in os.listdir(data_dir) if f.lower().endswith(".txt"))
+    if not txt_files:
+        msg = f"No .txt files in {data_dir}"
+        if json_mode:
+            _print_json({"status": "error", "error": msg})
+        else:
+            print(f"❌ {msg}", file=sys.stderr)
+        return RC_ERROR
+
+    import numpy as np
+
+    progress = _ProgressReporter(len(txt_files), "Pre-processing", use_json=json_mode)
+    results: List[Dict[str, Any]] = []
+    n_ok = 0
+    n_errors = 0
+
+    for filename in txt_files:
+        filepath = str(data_dir / filename)
+        file_result: Dict[str, Any] = {
+            "file": filename,
+            "removed_hf": False,
+            "powerline_removed": 0,
+            "fc_truncated": False,
+            "points_in": 0,
+            "points_out": 0,
+        }
+        try:
+            df = preprocess(load_eis_file(filepath))
+            freq = df["frequency"].values.astype(float)
+            z = (df["zreal"].values + 1j * df["zimag"].values).astype(complex)
+            file_result["points_in"] = len(freq)
+
+            # Step 1 — remove highest-frequency point
+            if remove_hf and len(freq) > 1:
+                freq, z = remove_highest_frequency_point(freq, z)
+                file_result["removed_hf"] = True
+
+            # Step 2 — powerline noise filter
+            if filter_powerline:
+                mask = detect_powerline_noise(freq)
+                n_pl = int(np.sum(mask))
+                if n_pl:
+                    freq = freq[~mask]
+                    z = z[~mask]
+                    file_result["powerline_removed"] = n_pl
+
+            # Step 3 — fc truncation
+            if do_fc_truncate:
+                if re_val is not None and cinf_val is not None:
+                    fc = estimate_critical_frequency(re_val, cinf_val)
+                    if np.isfinite(fc):
+                        freq, z = truncate_above_fc(freq, z, fc)
+                        file_result["fc_truncated"] = True
+                        file_result["fc_hz"] = round(fc, 4)
+                else:
+                    logger.warning(
+                        "fc truncation requested but --re / --cinf not provided; "
+                        "skipping for %s",
+                        filename,
+                    )
+
+            file_result["points_out"] = len(freq)
+
+            # Write cleaned file (tab-separated, same columns)
+            import pandas as pd
+
+            out_df = pd.DataFrame(
+                {
+                    "frequency": freq,
+                    "zreal": z.real,
+                    "zimag": z.imag,
+                }
+            )
+            out_path = output_dir / filename
+            out_df.to_csv(out_path, sep="\t", index=False)
+
+            file_result["status"] = "ok"
+            n_ok += 1
+
+        except Exception as exc:
+            file_result["status"] = "error"
+            file_result["error"] = str(exc)
+            n_errors += 1
+
+        results.append(file_result)
+        progress.update(
+            msg=f"{filename}: {file_result['points_in']}→{file_result['points_out']} pts"
+        )
+
+    progress.close()
+    rc = RC_OK if n_errors == 0 else RC_WARNING
+
+    if json_mode:
+        _print_json(
+            {
+                "status": "success" if rc == RC_OK else "warning",
+                "files_processed": n_ok,
+                "files_failed": n_errors,
+                "output_dir": str(output_dir),
+                "files": results,
+            }
+        )
+    else:
+        icon = "✅" if rc == RC_OK else "⚠️"
+        print(f"\n{icon} Pre-processing complete — {n_ok} OK, {n_errors} errors")
+        print(f"   Output: {output_dir}")
+        print()
+        for r in results:
+            s = r["status"]
+            icon_f = "✓" if s == "ok" else "✗"
+            pts = f"{r['points_in']}→{r['points_out']} pts"
+            pl = f", -{r['powerline_removed']} PL" if r["powerline_removed"] else ""
+            hf = ", -HF" if r["removed_hf"] else ""
+            fc_note = f", fc={r.get('fc_hz', '?')} Hz" if r.get("fc_truncated") else ""
+            err = f" ({r.get('error', '')})" if s == "error" else ""
+            print(f"  {icon_f} {r['file']}  [{pts}{hf}{pl}{fc_note}]{err}")
 
     return rc
 
@@ -687,6 +876,8 @@ def build_parser() -> argparse.ArgumentParser:
             "  ionflow analyze --all --ai\n"
             "  ionflow config --init\n"
             "  ionflow validate --data-dir data/raw\n"
+            "  ionflow preprocess --data-dir data/raw --output data/clean\n"
+            "  ionflow preprocess --data-dir data/raw --fc-truncate --re 68.5 --cinf 3e-7\n"
         ),
     )
 
@@ -824,6 +1015,47 @@ def build_parser() -> argparse.ArgumentParser:
         "version", help="Show version information",
     )
     sp_version.set_defaults(func=cmd_version)
+
+    # ── preprocess ───────────────────────────────────────────────
+    sp_pre = subparsers.add_parser(
+        "preprocess",
+        help=(
+            "Apply Orazem/Tribollet metrological pre-processing to EIS files "
+            "(powerline filter, highest-frequency point removal, fc truncation)"
+        ),
+    )
+    sp_pre.add_argument(
+        "--data-dir", type=str, default=None,
+        help="Directory containing raw EIS .txt files",
+    )
+    sp_pre.add_argument(
+        "--output", type=str, default=None,
+        help="Directory to write cleaned files (default: <data-dir>/../preprocessed/)",
+    )
+    sp_pre.add_argument(
+        "--no-remove-hf", action="store_true", default=False,
+        help="Skip removal of the highest-frequency point",
+    )
+    sp_pre.add_argument(
+        "--no-powerline-filter", action="store_true", default=False,
+        help="Skip 50/100 Hz powerline noise filter",
+    )
+    sp_pre.add_argument(
+        "--fc-truncate", action="store_true", default=False,
+        help=(
+            "Truncate frequencies above fc = 1/(2πRe·C∞). "
+            "Requires --re and --cinf to be supplied."
+        ),
+    )
+    sp_pre.add_argument(
+        "--re", type=float, default=None, metavar="OHMS",
+        help="Ohmic resistance Re (Ω) for fc calculation",
+    )
+    sp_pre.add_argument(
+        "--cinf", type=float, default=None, metavar="FARADS",
+        help="High-frequency capacitance C∞ (F) for fc calculation",
+    )
+    sp_pre.set_defaults(func=cmd_preprocess)
 
     return parser
 

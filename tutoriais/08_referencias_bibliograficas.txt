@@ -1,9 +1,9 @@
 ================================================================================
-    REFERÊNCIAS BIBLIOGRÁFICAS — IONFLOW PIPELINE v0.3.0
+    REFERÊNCIAS BIBLIOGRÁFICAS — IONFLOW PIPELINE v0.4.1
 ================================================================================
 
-Versão: 0.3.0
-Última atualização: Abril 2026
+Versão: 0.4.1
+Última atualização: Maio 2026
 
 Este documento lista as referências científicas, livros e documentação
 técnica que fundamentam as análises implementadas no IonFlow Pipeline
@@ -27,6 +27,21 @@ PARTE I — ESPECTROSCOPIA DE IMPEDÂNCIA ELETROQUÍMICA (EIS)
         ISBN: 978-1-118-52739-9
         → Teoria detalhada de impedância, CPE, Warburg, modelos de
           transferência de carga, interpretação de semicírculos.
+
+[EIS-6] Tribollet, B.; Orazem, M.E.
+        "On interpretation of impedance spectra"
+        Electrochimica Acta, v. 568, 149009, 2026.
+        DOI: 10.1016/j.electacta.2026.149009
+        → Artigo de referência DIRETA desta implementação.
+          Define a estrutura de erro estocástico (Eq. 9):
+            σ = 0.001216472·|Zj| + 0.0003333912·|Zr|
+          Implementada em src/circuit_fitting.py (orazem_sigma()) e
+          src/uncertainty.py (monte_carlo()).
+          Também fundamenta: remoção do ponto de maior frequência,
+          filtro de 50±3 Hz / 100±3 Hz (ruído de linha), truncamento
+          acima de fc = 1/(2πRe·C∞), e o modelo de eletrodo poroso
+          TLM (circuito Porous-Coating-TLM, Eqs. 16-18).
+          Artigo publicado como parte do Special Issue EMCR2025.
 
 [EIS-3] Lvovich, V.F.
         "Impedance Spectroscopy: Applications to Electrochemical
@@ -499,7 +514,7 @@ MAPA DE REFERÊNCIAS POR TUTORIAL
 │ Tutorial                       │ Referências principais                   │
 ├────────────────────────────────┼──────────────────────────────────────────┤
 │ 01 — Início Rápido             │ [SW-1..6], [EIS-1]                       │
-│ 02 — Pipeline EIS              │ [EIS-1..5], [CPE-1..3], [FIT-1..6],     │
+│ 02 — Pipeline EIS              │ [EIS-1..6], [CPE-1..3], [FIT-1..6],     │
 │                                │ [PCA-1..2], [KM-1..2], [STAB-1..2],     │
 │                                │ [RANK-1..2], [STAT-1..3]                │
 │ 03 — Pipeline Ciclagem         │ [CYC-1..5], [RAG-1..2], [NRM-1..2]     │
@@ -508,7 +523,7 @@ MAPA DE REFERÊNCIAS POR TUTORIAL
 │                                │ [RAG-1], [STAT-1]                       │
 │ 06 — Tabelas e Exportação      │ [SW-3], [SW-6], [STAT-2..3]            │
 │ 07 — Interpretação Científica  │ [CPE-1], [DRT-3], [CYC-4..5],          │
-│                                │ [STAT-1], [NRM-2], [RANK-1]            │
+│                                │ [STAT-1], [NRM-2], [RANK-1], [EIS-6]   │
 └────────────────────────────────┴──────────────────────────────────────────┘
 
 ================================================================================
@@ -519,7 +534,7 @@ MAPA DE REFERÊNCIAS POR MÓDULO DO CÓDIGO
 │ Módulo (src/)             │ Referências                                  │
 ├───────────────────────────┼──────────────────────────────────────────────┤
 │ physics_metrics.py        │ [CPE-1], [CPE-2], [EIS-2]                   │
-│ circuit_fitting.py        │ [FIT-1..6], [CPE-3], [W-1..2]              │
+│ circuit_fitting.py        │ [FIT-1..6], [CPE-3], [W-1..2], [EIS-6]    │
 │ cpe_fit.py                │ [CPE-1..3], [EIS-4]                         │
 │ ranking.py                │ [KM-1..2], [RANK-1..2]                      │
 │ stability.py              │ [STAB-1..2]                                  │
@@ -533,6 +548,10 @@ MAPA DE REFERÊNCIAS POR MÓDULO DO CÓDIGO
 │ eis_plots.py              │ [VIS-1..3], [EIS-1]                         │
 │ loader.py                 │ [SW-3]                                       │
 │ preprocessing.py          │ [EIS-2], [STAT-2]                            │
+│ uncertainty.py            │ [EIS-6]                                      │
+│ validation.py             │ [EIS-6], [EIS-2]                             │
+│ circuit_registry.py       │ [EIS-6], [FIT-5]                            │
+│ fitting_report.py         │ [EIS-6], [CPE-1..3]                         │
 │ i18n.py                   │ [SW-1]                                       │
 │ metadata.py               │ [SW-1]                                       │
 │ updater.py                │ [SW-1]                                       │
@@ -555,5 +574,5 @@ NOTA SOBRE ACESSO ÀS REFERÊNCIAS
   ou adquiridos via editoras (Wiley, Springer, Elsevier).
 
 ================================================================================
-               FIM DAS REFERÊNCIAS — IONFLOW PIPELINE v0.3.0
+               FIM DAS REFERÊNCIAS — IONFLOW PIPELINE v0.4.1
 ================================================================================

@@ -3,10 +3,10 @@
 **Plataforma profissional de análise eletroquímica** — EIS, ciclagem galvanostática, DRT — com agente IA, relatórios PDF, CLI e GUI interativa.
 
 [![CI](https://github.com/Emanuel-963/ubiquitous-jougen/actions/workflows/ci.yml/badge.svg)](https://github.com/Emanuel-963/ubiquitous-jougen/actions/workflows/ci.yml)
-![Version](https://img.shields.io/badge/version-0.3.0-blue)
+![Version](https://img.shields.io/badge/version-0.4.1-blue)
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License MIT](https://img.shields.io/badge/license-MIT-green)
-![Tests](https://img.shields.io/badge/tests-220%2B%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-235%2B%20passing-brightgreen)
 
 ---
 
@@ -20,23 +20,25 @@ pip install -e .
 # 2. GUI
 python gui_app.py
 
-# 3. CLI
-ionflow-cli eis --data-dir data/raw --output outputs/
-ionflow-cli analyze --all --ai --export-pdf report.pdf
+# 3. CLI — pré-processar e analisar (workflow metrológico recomendado)
+ionflow preprocess --data-dir data/raw --output data/clean
+ionflow eis --data-dir data/clean --output outputs/
+ionflow analyze --all --ai --export-pdf report.pdf
 ```
 
 ---
 
-## ✨ Funcionalidades (v0.3.0)
+## ✨ Funcionalidades (v0.4.1)
 
 | Módulo | Descrição |
 |---|---|
-| **Pipeline EIS** | 7 circuitos equivalentes, ML shortlist, Monte Carlo, Kramers-Kronig |
+| **Pipeline EIS** | 12 circuitos equivalentes, ML shortlist, Monte Carlo, Kramers-Kronig |
+| **Metrologia Orazem** | σ = α\|Zⱼ\|+β\|Zᵣ\|, χ²/ν, IC 95%, parâmetro-zumbi, Porous-TLM |
 | **Pipeline DRT** | Tikhonov regularisation, detecção de picos, overlay multi-amostra |
 | **Pipeline Ciclagem** | Ragone com zonas de referência, gap analysis vs targets |
 | **🤖 Agente IA** | 50+ regras eletroquímicas + LLM generativo (OpenAI / Ollama) |
 | **📄 PDF Reports** | Relatório automático com capa, secções EIS/Ciclagem/DRT/IA |
-| **CLI** | `ionflow-cli eis / cycling / drt / analyze / validate / config` |
+| **CLI** | `ionflow eis / cycling / drt / analyze / preprocess / validate / config` |
 | **GUI** | MVC, 9 abas, atalhos teclado, 3 idiomas (PT/EN/ES) |
 | **Batch** | Processamento paralelo com `ProcessPoolExecutor` |
 | **i18n** | 3 idiomas com troca em tempo real |
@@ -51,26 +53,40 @@ ionflow-cli analyze --all --ai --export-pdf report.pdf
 
 ## 🔬 Para Pesquisadores
 
-### Fluxo típico de análise
+### Fluxo típico de análise (v0.4.1 — estilo Orazem & Tribollet 2026)
 
 1. **Preparar dados** — Colocar ficheiros EIS (`.csv`/`.txt`) em `data/raw/`
-2. **Executar** — `python gui_app.py` ou `ionflow-cli eis --data-dir data/raw`
-3. **Pipeline automático:**
-   - Carregamento → Validação (Kramers-Kronig) → Fitting (7 circuitos × multi-seed)
-   - Ranking por BIC → PCA → Heatmaps de produção → Classificação
-4. **Análise IA** — Clique em "🤖 Análise IA" para obter:
-   - Resumo executivo dos resultados
-   - Anomalias detectadas (ex: "Rs do Na₂SO₄ é 4.5× maior que H₂SO₄")
-   - Recomendações priorizadas (ex: "Polir eletrodo para reduzir Rs")
-   - Previsões: energia e retenção estimadas
-5. **Exportar** — PDF com 1 clique, ou `ionflow-cli analyze --export-pdf report.pdf`
+2. **Pré-processar** (recomendado):
+   ```bash
+   ionflow preprocess --data-dir data/raw --output data/clean
+   ```
+   Remove ponto HF, filtra 50/100 Hz, opcionalmente trunca em fc.
+3. **Executar** — `python gui_app.py` ou `ionflow eis --data-dir data/clean`
+4. **Pipeline automático:**
+   - Carregamento → Validação (KK + powerline check) → Fitting ponderado por σ(f)
+   - χ²/ν + IC 95% por parâmetro → Ranking por BIC → PCA → Heatmaps
+5. **Análise IA** — Clique em "🤖 Análise IA" ou `ionflow analyze --all --ai`
+6. **Exportar** — PDF com 1 clique, ou `ionflow analyze --export-pdf report.pdf`
 
 ### Métricas extraídas
 
 - **Rs** (resistência série), **Rp** (resistência de polarização)
 - **CPE** (n, Q), **Sigma** (Warburg), **Tau** (constante de tempo)
 - **Capacitância efetiva**, **Energia armazenada**, **Dispersion Index**
-- **Incerteza:** Monte Carlo (N=100) + Bootstrap → intervalos de confiança 95%
+- **χ²/ν** (goodness-of-fit ponderado pela estrutura de erro estocástico)
+- **IC 95%** por parâmetro, **significância estatística** (significativo / zumbi)
+- **Incerteza:** Monte Carlo Orazem-weighted (N=100) + Bootstrap
+
+### Rigor metrológico (Tribollet & Orazem 2026)
+
+O pipeline implementa a metodologia de [Tribollet & Orazem, *Electrochimica Acta* 568, 149009 (2026)](https://doi.org/10.1016/j.electacta.2026.149009):
+
+- **Estrutura de erro**: σ(f) = 0.001216·|Zⱼ| + 0.000333·|Zᵣ| (Eq. 9 do artigo)
+- **Remoção de ponto HF**: elimina transitório de comutação
+- **Filtro 50/100 Hz**: remove ruído de rede elétrica inadequadamente filtrado
+- **Truncamento em fc**: elimina influência da impedância ôhmica acima de fc = 1/(2πRe·C∞)
+- **Circuito Porous-Coating-TLM**: eletrodo poroso (TLM) quando n ≈ 0.5 (Eqs. 16–18)
+- **Tutorial 24**: [tutoriais/24_metrologia_orazem_tribollet.txt](tutoriais/24_metrologia_orazem_tribollet.txt)
 
 ---
 

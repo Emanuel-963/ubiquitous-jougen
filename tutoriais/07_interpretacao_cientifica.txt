@@ -2,25 +2,41 @@
     TUTORIAL 7 — INTERPRETAÇÃO CIENTÍFICA: CORRELAÇÕES E CONCLUSÕES
 ================================================================================
 
-Versão: 0.1.0
-Última atualização: Abril 2026
+Versão: 0.4.1
+Última atualização: Maio 2026
 
 Este tutorial ensina como combinar os resultados dos três pipelines
 (EIS, Ciclagem, DRT) para tirar conclusões científicas significativas.
 
+NOVIDADE v0.4.1 — Rigor metrológico (Tribollet & Orazem 2026):
+  Antes de correlacionar resultados, certifique-se de que o fitting EIS
+  foi feito com ponderação pela estrutura de erro e que χ²/ν foi verificado.
+  Parâmetros com IC_95 > 100% (parâmetros-zumbi) NÃO devem ser usados
+  em correlações — eles não foram extraídos com significância estatística.
+  → Ver Tutorial 24 para o protocolo metrológico completo.
+
 --------------------------------------------------------------------------------
-1. FLUXO DE ANÁLISE CIENTÍFICA COMPLETA
+1. FLUXO DE ANÁLISE CIENTÍFICA COMPLETA (ATUALIZADO)
 --------------------------------------------------------------------------------
 
+  PASSO 0: Pré-processar espectros (NOVO — recomendado)
+  │         ionflow preprocess --data-dir data/raw --output data/clean
+  │
   PASSO 1: Obter dados
   │
-  ├── EIS: Importar para data/raw/ → Rodar Pipeline EIS
+  ├── EIS: Importar para data/clean/ → Rodar Pipeline EIS
   ├── Ciclagem: Importar para data/processed/ → Rodar Pipeline Ciclagem
   └── DRT: Mesmos dados EIS → Rodar Pipeline DRT
 
+  PASSO 1b: Verificar qualidade do fitting (NOVO — essencial)
+  │
+  ├── χ²/ν ≤ 2: ✓ prosseguir com análise
+  ├── χ²/ν 2-5: ⚠ considerar circuito mais rico antes de correlacionar
+  └── χ²/ν > 5 e n ≈ 0.5: tentar Porous-Coating-TLM
+
   PASSO 2: Análise individual
   │
-  ├── EIS: Rs, Rp, C, ranking, PCA, circuitos
+  ├── EIS: Rs, Rp, C, ranking, PCA, circuitos, χ²/ν, IC_95
   ├── Ciclagem: Energia, potência, retenção cíclica
   └── DRT: Processos de relaxação, picos, constantes de tempo
 

@@ -1,0 +1,422 @@
+================================================================================
+    TUTORIAL 24 — RIGOR METROLÓGICO ESTILO ORAZEM & TRIBOLLET (v0.4.1)
+================================================================================
+
+Versão: 0.4.1
+Última atualização: Maio 2026
+
+Referência primária deste tutorial:
+  [EIS-6] Tribollet, B.; Orazem, M.E.
+          "On interpretation of impedance spectra"
+          Electrochimica Acta, v. 568, 149009, 2026.
+          DOI: 10.1016/j.electacta.2026.149009
+
+Este tutorial descreve a abordagem metrológica implementada no IonFlow
+Pipeline v0.4.1, baseada diretamente no artigo de Tribollet & Orazem (2026).
+A filosofia central é que a INTERPRETAÇÃO de espectros EIS exige:
+
+  1. Avaliação QUANTITATIVA da estrutura de erro da medição
+  2. Seleção criteriosa do intervalo de frequências analisado
+  3. Regressão com ponderação pela estrutura de erro estocástico
+  4. Interpretação física dos parâmetros com intervalos de confiança
+
+--------------------------------------------------------------------------------
+1. ESTRUTURA DE ERRO ESTOCÁSTICO (ORAZEM σ-MODEL)
+--------------------------------------------------------------------------------
+
+1.1 O que é a estrutura de erro?
+
+Cada medição de impedância Z(f) contém um erro estocástico σ(f) que
+depende da frequência. Tribollet & Orazem (2026, Eq. 9) determinaram
+experimentalmente que:
+
+  σ(f) = α·|Z_j(f)| + β·|Z_r(f)|
+
+onde:
+  • |Z_j| = |parte imaginária de Z|
+  • |Z_r| = |parte real de Z|
+  • α = 0.001216472   (≈ 0.12% de |Z_j|)
+  • β = 0.0003333912  (≈ 0.033% de |Z_r|)
+
+Esta fórmula captura que o erro é proporcional à magnitude, mas com
+contribuições DIFERENTES da parte real e imaginária.
+
+1.2 Implementação no IonFlow Pipeline
+
+A função orazem_sigma() em src/circuit_fitting.py calcula σ(f):
+
+  from src.circuit_fitting import orazem_sigma
+  import numpy as np
+
+  # z = array complexo de impedâncias
+  freq = np.logspace(-2, 5, 60)
+  z = np.array([...])   # medições complexas
+
+  sigma = orazem_sigma(z)
+  # → sigma(f) = α·|Z_j| + β·|Z_r|, com piso em 1% de |Z|
+
+  # Inspecionar:
+  print(f"σ_min = {sigma.min():.4f} Ω")
+  print(f"σ_max = {sigma.max():.4f} Ω")
+  print(f"σ/|Z| médio = {(sigma / np.abs(z)).mean()*100:.2f}%")
+
+1.3 Por que isso importa?
+
+  • Sem ponderação: o fitting minimiza RSS sem considerar que pontos
+    em baixa frequência (|Z| grande) têm erros maiores em magnitude.
+  • Com ponderação por σ: o fitting penaliza igualmente, em unidades
+    de desvio-padrão, cada resíduo normalizado — mais justo.
+
+  Usando o modelo:   min Σ [(Z_model - Z_data)² / σ²]
+  Em vez de:         min Σ |Z_model - Z_data|²
+
+--------------------------------------------------------------------------------
+2. PRÉ-PROCESSAMENTO METROLÓGICO DO ESPECTRO
+--------------------------------------------------------------------------------
+
+Tribollet & Orazem (2026) descrevem três etapas de filtragem que devem
+ser aplicadas ANTES de qualquer fitting ou análise DRT.
+
+2.1 Etapa 1 — Remover ponto de maior frequência
+
+MOTIVO: Quando o potenciostato muda de modo estacionário para sinal
+senoidal (ou de uma frequência para outra), há um transitório de resposta
+que contamina o PRIMEIRO ponto medido (maior frequência).
+
+  from src.validation import remove_highest_frequency_point
+  freq_clean, z_clean = remove_highest_frequency_point(freq, z)
+
+REFERÊNCIA: Katırcı et al. (2022), Pollard & Comte (1989).
+
+2.2 Etapa 2 — Filtrar ruído de linha (50 Hz e 100 Hz)
+
+MOTIVO: A frequência de rede elétrica (50 Hz na Europa; 60 Hz nos EUA)
+e seu 1º harmônico (100 Hz / 120 Hz) introduzem ruído sistemático nos
+instrumentos de EIS. Os filtros internos dos potenciostatos NÃO eliminam
+completamente este ruído.
+
+  from src.validation import detect_powerline_noise
+  mask = detect_powerline_noise(freq)           # tolerância ±3 Hz
+  freq_clean = freq[~mask]
+  z_clean    = z[~mask]
+
+  print(f"Pontos removidos: {mask.sum()} ({mask.mean()*100:.1f}%)")
+
+ATENÇÃO: Remover estes pontos é CORRETO metrológicamente. Não indica
+falha no material — é uma limitação do instrumento.
+
+DICA PRÁTICA: Use `ionflow validate --data-dir data/raw` para verificar
+quantos pontos de linha-de-força existem em seus arquivos.
+
+2.3 Etapa 3 — Truncar acima da frequência crítica fc
+
+MOTIVO: A impedância ôhmica Re causa dispersão não-uniforme de corrente
+em frequências > fc = 1/(2πRe·C∞). Analisar acima de fc conflate a
+resposta do eletrodo com artefactos da impedância ôhmica.
+
+  from src.validation import estimate_critical_frequency, truncate_above_fc
+
+  Re   = 68.5e-4  # Ω cm²  — obtido do modelo de medição
+  Cinf = 0.300e-6 # F cm⁻² — capacitância a frequência infinita
+
+  fc = estimate_critical_frequency(Re, Cinf)
+  print(f"fc = {fc:.2f} Hz")
+
+  freq_trunc, z_trunc = truncate_above_fc(freq_clean, z_clean, fc)
+
+COMO OBTER Re e C∞?
+  → Via Modelo de Medição (fit com elementos de Voigt)
+  → Via análise gráfica: Re ≈ Z'(f → ∞), C∞ ≈ planalto de C_complexa
+
+2.4 Usando o CLI para pré-processar em lote
+
+  # Filtros básicos (remover HF + remover 50/100 Hz)
+  ionflow preprocess --data-dir data/raw --output data/clean
+
+  # Com truncamento por fc (Re = 68.5 Ω, C∞ = 300 nF)
+  ionflow preprocess --data-dir data/raw --output data/clean \
+    --fc-truncate --re 68.5 --cinf 3e-7
+
+  # Só remover ruído de linha (manter ponto HF)
+  ionflow preprocess --data-dir data/raw --no-remove-hf
+
+  # Saída JSON para integração programática
+  ionflow preprocess --data-dir data/raw --json
+
+--------------------------------------------------------------------------------
+3. FITTING COM PONDERAÇÃO PELA ESTRUTURA DE ERRO
+--------------------------------------------------------------------------------
+
+3.1 Modelo de erro no fitting de circuitos
+
+O IonFlow Pipeline usa scipy.optimize.least_squares com ponderação por σ:
+
+  from src.circuit_fitting import fit_template, orazem_sigma
+  from src.circuit_registry import CircuitRegistry
+
+  tmpl = CircuitRegistry.get("Randles-CPE-W")
+  freq = np.logspace(-2, 5, 60)
+  z    = ...  # dados medidos
+
+  # Calcular σ automaticamente (Orazem/Tribollet 2026)
+  sigma = orazem_sigma(z)
+
+  # Fitting ponderado
+  result = fit_template(tmpl, freq, z, sigma=sigma)
+
+  print(f"χ²/ν  = {result['chi2_over_nu']:.2f}")
+  print(f"Params: {result['params']}")
+  print(f"CI 95%: {result['confidence_interval_95']}")
+
+3.2 Interpretação do χ²/ν (chi-quadrado reduzido)
+
+O statístico χ²/ν = Σ[(resíduo_normalizado)²] / (N - k) indica a
+qualidade do fitting relativa à estrutura de erro:
+
+  ┌──────────────┬─────────────────────────────────────────────┐
+  │ χ²/ν         │ Interpretação                               │
+  ├──────────────┼─────────────────────────────────────────────┤
+  │ ≈ 1.0        │ Perfeito — modelo explicado dentro do ruído │
+  │ 1.0 – 2.0    │ ✓ Excelente — modelo adequado              │
+  │ 2.0 – 5.0    │ ⚠ Aceitável — considerar circuito mais rico │
+  │ > 5.0        │ ⛔ Inadequado — modelo não captura física   │
+  │ < 0.5        │ ⚠ Sobreajuste — muitos parâmetros           │
+  └──────────────┴─────────────────────────────────────────────┘
+
+EXEMPLO DO ARTIGO:
+  • Modelo de medição (Voigt):  χ²/ν ≈ 7.4   (17 parâmetros)
+  • Modelo R-CPE:               χ²/ν ≈ 29.6  ( 6 parâmetros)
+  • Modelo de eletrodo poroso:  χ²/ν ≈ 34.6  ( 7 parâmetros)
+
+  Nota: todos os modelos de processo deram χ²/ν > 1, o que é NORMAL.
+  O modelo de medição Voigt é mais flexível e serve como benchmark.
+
+3.3 Intervalo de confiança (IC 95%) e significância dos parâmetros
+
+O IC 95% para cada parâmetro xk é dado por:
+
+  IC_95 = 2·σ_xk / xk × 100%   [em percentagem]
+
+  (Onde σ_xk é o desvio-padrão obtido pela regressão,
+   escalado por max(χ²/ν, 1) quando χ²/ν > 1)
+
+Regras de significância (fitting_report.py):
+
+  IC_95 > 100% → "não-significativo (CI inclui zero)" — parâmetro ZUMBI
+  IC_95 30-100% → "marginalmente significativo"
+  IC_95 < 30%  → "significativo"
+
+PARÂMETRO ZUMBI: Um parâmetro é "zumbi" quando o IC inclui o zero,
+i.e. não pode ser distinguido de zero com os dados disponíveis.
+Solução: remover o parâmetro do modelo (como Rpore no artigo).
+
+ATENÇÃO (Tribollet & Orazem 2026):
+  "This result does not mean that the model with Rpore is incorrect,
+   it means only that the parameter could not be extracted from the
+   impedance data."
+
+--------------------------------------------------------------------------------
+4. REGRAS FÍSICAS PARA O EXPOENTE CPE (n)
+--------------------------------------------------------------------------------
+
+O expoente n do CPE (Elemento de Fase Constante) tem interpretação física:
+
+  n = 1.0      → Capacitor ideal puro (dupla-camada perfeita)
+  0.95 ≤ n < 1 → Quase-capacitor ideal (distribuição de tempo de relaxação
+                  estreita). Considere substituir CPE por C simples.
+  0.85 ≤ n < 0.95 → CPE típico (distribuição normal de time constants).
+                     Comportamento esperado para eletrodos rugosos.
+  0.75 ≤ n < 0.85 → CPE moderado (distribuição mais ampla).
+                     Verificar heterogeneidade superficial.
+  n ≈ 0.5 (±0.05) → ⚠ Warburg-like: pode indicar DIFUSÃO ou ELETRODO
+                     POROSO — e NÃO uma CPE "normal".
+                     Verificar modelo de difusão ou TLM.
+  n < 0.5         → ⛔ Fisicamente improvável para CPE de dupla-camada.
+                     Verificar dados, bounds do fitting, ou modelo errado.
+
+REGRA PRÁTICA (Tribollet & Orazem 2026, Conclusões):
+  "Normal and surface distributions of time constants generally result
+   in CPE exponents between 0.75 and unity."
+  → Se n ≈ 0.5: o circuito está INCOMPLETO. Use eletrodo poroso (TLM).
+
+--------------------------------------------------------------------------------
+5. MODELO DE ELETRODO POROSO (POROUS-COATING-TLM)
+--------------------------------------------------------------------------------
+
+5.1 Quando usar?
+
+Se o expoente CPE αp ≈ 0.5 e você sabe que o sistema NÃO tem difusão
+de massa limitante (e.g. correntes altas em filmes de prata, Fe2O3, etc.),
+o modelo correto é o de eletrodo poroso (Transmission Line Model).
+
+5.2 O circuito Porous-Coating-TLM
+
+Topologia (de Levie 1967; Gabrielli et al. 1997):
+
+  Z = Rs − [Rcoat ‖ Cpore] − [Rct ‖ CPEdl]
+
+No IonFlow Pipeline:
+
+  from src.circuit_registry import CircuitRegistry
+  tmpl = CircuitRegistry.get("Porous-Coating-TLM")
+
+  Parâmetros:
+    Rs    — Resistência ôhmica fora da camada (Ω)
+    Rcoat — Resistência do eletrólito nos poros (Ω)
+    Cpore — Capacitância da parede dos poros (F)
+    Rct   — Resistência de transferência de carga (Ω)
+    Qdl   — CPE da dupla-camada (F·s^(n-1))
+    n_dl  — Expoente CPE da dupla-camada
+
+  Bounds padrão:
+    Rs:    [1e-3, 1e4]  Ω
+    Rcoat: [1e-3, 1e6]  Ω
+    Cpore: [1e-12, 1e-4] F
+    Rct:   [1e-3, 1e7]  Ω
+    Qdl:   [1e-14, 1e-3] F·s^(n-1)
+    n_dl:  [0.50, 1.00]
+
+5.3 Resultado esperado
+
+Com o modelo poroso, αp deve subir de ≈0.5 (R-CPE) para ≈0.9 (TLM),
+indicando que o modelo captura corretamente a física do sistema.
+
+5.4 Fórmula da impedância TLM (Eq. 18 do artigo)
+
+  Z_pore = A1 · √[1/(1+(jω)^αp·A2)] · coth(A3·√[1+(jω)^αp·A2])
+
+  onde:
+    A1 = √(R1·Rt) / n1²    (resistência efetiva do poro)
+    A2 = Rt·Qp             (constante de tempo)
+    A3 = √(R1·L²/Rt)       (parâmetro geométrico do poro)
+
+--------------------------------------------------------------------------------
+6. WORKFLOW COMPLETO RECOMENDADO (PASSO A PASSO)
+--------------------------------------------------------------------------------
+
+PASSO 1 — Pré-processar espectro
+  ionflow preprocess --data-dir data/raw --output data/clean
+
+PASSO 2 — Validar (KK + powerline check)
+  ionflow validate --data-dir data/clean
+
+PASSO 3 — Rodar EIS com espectro limpo
+  ionflow eis --data-dir data/clean --output outputs/
+
+PASSO 4 — Verificar χ²/ν no relatório
+  → Se χ²/ν ≤ 2: fitting excelente
+  → Se χ²/ν 2-5: considerar circuito mais rico
+  → Se χ²/ν > 5 e n ≈ 0.5: tentar Porous-Coating-TLM
+
+PASSO 5 — Interpretar parâmetros com fitting_report
+  from src.fitting_report import FittingReportGenerator
+  gen = FittingReportGenerator(registry=CircuitRegistry)
+  report = gen.generate(circuit_name="Porous-Coating-TLM",
+                        fit_result=result, freq=freq, z=z)
+  print(report.to_text())
+
+PASSO 6 — Verificar parâmetros-zumbi e remover
+  → Parâmetros com IC_95 > 100% são candidatos à remoção
+  → Remova um de cada vez e verifique se χ²/ν melhora
+
+--------------------------------------------------------------------------------
+7. EXEMPLO COMPLETO EM PYTHON
+--------------------------------------------------------------------------------
+
+  import numpy as np
+  from src.circuit_fitting import fit_template, orazem_sigma
+  from src.circuit_registry import CircuitRegistry
+  from src.validation import (
+      remove_highest_frequency_point,
+      detect_powerline_noise,
+      estimate_critical_frequency,
+      truncate_above_fc,
+  )
+
+  # 1 — Carregar dados (exemplo sintético)
+  from src.loader import load_eis_file
+  from src.preprocessing import preprocess
+  df = preprocess(load_eis_file("data/raw/amostra_01.txt"))
+  freq = df["frequency"].values
+  z    = df["zreal"].values + 1j * df["zimag"].values
+
+  # 2 — Pré-processamento metrológico
+  freq, z = remove_highest_frequency_point(freq, z)           # etapa 1
+  mask = detect_powerline_noise(freq)
+  freq, z = freq[~mask], z[~mask]                             # etapa 2
+
+  # Se você conhece Re e C∞:
+  fc = estimate_critical_frequency(re_ohm=68.5e-4, c_inf_farad=3e-7)
+  freq, z = truncate_above_fc(freq, z, fc)                    # etapa 3
+
+  # 3 — Estrutura de erro
+  sigma = orazem_sigma(z)
+
+  # 4 — Fitting ponderado
+  tmpl   = CircuitRegistry.get("Randles-CPE-W")
+  result = fit_template(tmpl, freq, z, sigma=sigma)
+
+  print(f"χ²/ν = {result['chi2_over_nu']:.2f}")
+  for name, val, ci95, sig in zip(
+      tmpl.param_names,
+      result["params"],
+      result["confidence_interval_95"],
+      result["param_significance"],
+  ):
+      print(f"  {name}: {val:.4g}  ±{ci95:.1f}%  [{sig}]")
+
+  # 5 — Se n ≈ 0.5, tentar eletrodo poroso
+  n_idx = tmpl.param_names.index("n")
+  if abs(result["params"][n_idx] - 0.5) < 0.05:
+      print("\n⚠ n ≈ 0.5 — tentando Porous-Coating-TLM...")
+      tmpl2   = CircuitRegistry.get("Porous-Coating-TLM")
+      result2 = fit_template(tmpl2, freq, z, sigma=sigma)
+      print(f"χ²/ν (TLM) = {result2['chi2_over_nu']:.2f}")
+
+--------------------------------------------------------------------------------
+8. DIAGNÓSTICOS AUTOMÁTICOS NO RELATÓRIO
+--------------------------------------------------------------------------------
+
+O FittingReportGenerator (src/fitting_report.py) produz automaticamente:
+
+  • Secção RESUMO: mostra χ²/ν com ✓/⚠/⛔
+  • Secção PARÂMETROS: mostra IC_95 e rótulo de significância
+  • Detecção de parâmetro-zumbi (IC_95 > 100%)
+  • Regras CPE-n: aviso automático quando n ≈ 0.5
+  • Heurística de bound-hit: IC_95 > 150% sugere parâmetro no limite
+
+Exemplo de saída de texto:
+
+  ── RESUMO ──────────────────────────────────────────────────
+  Circuito:   Randles-CPE-W
+  RSS:        4.23e-04
+  χ²/ν:       28.3  ⚠ (> 5: modelo possivelmente inadequado)
+  BIC:        -312.1
+
+  ── PARÂMETROS ──────────────────────────────────────────────
+  Rs:   67.88 Ω   ±1.0%   [significativo]
+  Rp:   62.7 MΩ  ±7.1%   [significativo]
+  Q:    0.135 μF  ±3.8%   [significativo]
+  n:    0.513     ±3.4%   [significativo]
+     ⚠ n ≈ 0.5 — comportamento Warburg. Considere eletrodo poroso.
+  Sigma: 24.3 s^αp  ±16.8% [marginalmente significativo]
+  Rpore: 0.18 MΩ  ±285%  [não-significativo (CI inclui zero)]
+     ⚠ parâmetro zumbi estatístico — remover do modelo
+
+--------------------------------------------------------------------------------
+9. REFERÊNCIAS DESTE TUTORIAL
+--------------------------------------------------------------------------------
+
+[EIS-6] Tribollet, B.; Orazem, M.E. — Electrochimica Acta 568, 2026.
+        DOI: 10.1016/j.electacta.2026.149009   ← REFERÊNCIA PRINCIPAL
+
+[EIS-2] Orazem, M.E.; Tribollet, B. — EIS 2nd ed., Wiley, 2017.
+[CPE-1] Hirschorn et al. — Electrochimica Acta 55, 2010.
+[FIT-2] Boukamp — Solid State Ionics 20, 1986.
+[FIT-3] Schwarz — BIC criterion, Annals of Statistics, 1978.
+
+Ver tutoriais/08_referencias_bibliograficas.txt para lista completa.
+
+================================================================================
+                FIM DO TUTORIAL 24 — IONFLOW PIPELINE v0.4.1
+================================================================================

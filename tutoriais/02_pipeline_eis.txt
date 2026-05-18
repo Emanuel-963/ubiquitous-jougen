@@ -2,8 +2,8 @@
           TUTORIAL 2 — PIPELINE EIS: ANÁLISE DE IMPEDÂNCIA ELETROQUÍMICA
 ================================================================================
 
-Versão: 0.1.0
-Última atualização: Abril 2026
+Versão: 0.4.1
+Última atualização: Maio 2026
 
 Este tutorial detalha todo o fluxo de análise EIS do IonFlow Pipeline,
 desde a importação até a interpretação dos resultados.
@@ -14,11 +14,20 @@ desde a importação até a interpretação dos resultados.
 
 O Pipeline EIS executa automaticamente estas etapas:
 
-  Arquivo .txt → Carregamento → Pré-processamento → Extração de Features →
-  Fit CPE+Warburg → Fit de Circuitos → Classificação K-Means → PCA →
-  Estabilidade → Ranking → Tabelas CSV → Gráficos PNG
+  Arquivo .txt → Carregamento → Pré-processamento Metrológico →
+  Extração de Features → Fit CPE+Warburg → Fit de Circuitos (ponderado) →
+  Classificação K-Means → PCA → Estabilidade → Ranking →
+  Tabelas CSV → Gráficos PNG
 
 Cada etapa é explicada abaixo.
+
+NOVIDADE v0.4.1 — Rigor metrológico (Tribollet & Orazem 2026):
+  • Pré-processamento com remoção de ponto HF e filtro 50/100 Hz
+  • Fitting ponderado pela estrutura de erro σ = α·|Zj| + β·|Zr|
+  • χ²/ν (chi-quadrado reduzido) no relatório de fitting
+  • Intervalos de confiança 95% e significância estatística
+  • Detecção automática de parâmetros-zumbi e n ≈ 0.5 (Warburg)
+  → Ver Tutorial 24 para detalhes completos.
 
 --------------------------------------------------------------------------------
 2. IMPORTAÇÃO E PRÉ-PROCESSAMENTO
@@ -34,6 +43,24 @@ Cada etapa é explicada abaixo.
   • Remove linhas com NaN ou frequência zero/negativa
   • Calcula ω = 2πf (frequência angular)
   • Remove duplicatas de frequência
+
+2.3 PRÉ-PROCESSAMENTO METROLÓGICO (src/validation.py) — NOVO v0.4.1:
+  Os seguintes filtros são recomendados antes do fitting principal
+  (Tribollet & Orazem 2026, DOI: 10.1016/j.electacta.2026.149009):
+
+  a) Remover ponto de maior frequência (transitório de comutação):
+       freq, z = remove_highest_frequency_point(freq, z)
+
+  b) Filtrar ruído de linha elétrica em 50±3 Hz e 100±3 Hz:
+       mask = detect_powerline_noise(freq)
+       freq, z = freq[~mask], z[~mask]
+
+  c) Truncar acima da frequência crítica fc = 1/(2πRe·C∞):
+       fc = estimate_critical_frequency(Re, Cinf)
+       freq, z = truncate_above_fc(freq, z, fc)
+
+  → Use `ionflow preprocess --data-dir data/raw` para aplicar em lote.
+  → Use `ionflow validate --data-dir data/raw` para inspecionar antes.
 
 DICA: Se o pipeline reportar "0 arquivos processados", verifique se seus
 arquivos têm as colunas corretas (frequency, zreal, zimag).
@@ -136,6 +163,10 @@ TABELA DE CIRCUITOS (outputs/tables/circuit_fits.csv):
   • BIC / BIC_penalizado: critério de seleção (menor = melhor)
   • AIC: critério alternativo
   • RSS: soma dos resíduos ao quadrado
+  • chi2_over_nu: χ²/ν — qualidade relativa à estrutura de erro (NOVO v0.4.1)
+    → ≤ 2: ✓ excelente  |  2-5: ⚠ aceitável  |  > 5: ⛔ inadequado
+  • confidence_interval_95: IC 95% de cada parâmetro em % (NOVO v0.4.1)
+  • param_significance: significativo / marginalmente / não-significativo
   • Confiança: probabilidade relativa (0 a 1)
   • Res_autocorr: autocorrelação dos resíduos (< 0.3 = bom)
   • Bound_hits: parâmetros no limite (0 = ideal)
