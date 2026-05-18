@@ -2,6 +2,48 @@
 
 All notable changes to the IonFlow Pipeline are documented here.
 
+## [0.4.2] — 2026-05-18  _(Physical Circuits Edition)_
+
+### Added
+
+- **`fit_verdict` in `fit_template()`** (`src/circuit_fitting.py`): automatic
+  three-level rejection verdict (`OK` / `WARNING` / `REJECTED`) based on Orazem 2026
+  criteria — `REJECTED` when χ²/ν > 10 OR IC95 > 200% of any parameter OR optimizer
+  did not converge; `WARNING` when 5 < χ²/ν ≤ 10 OR IC95 > 100% OR parameter at
+  bounds OR structured residuals (autocorr > 0.3).  Now the pipeline **judges**
+  fit quality automatically, not just reports it.
+- **`MXene-Intercalation` circuit** (13th built-in, `circuit_registry.py`):
+  `Rs − (Rsei‖CPEsei) − (Rct‖CPEdl) − Wfinite` — physically grounded model for
+  Ti₃C₂Tₓ and Nb₂CTₓ in H₂SO₄/Na₂SO₄.  Three resolved frequency regions:
+  surface termination layer (high ω), charge-transfer (mid ω), finite diffusion
+  of H⁺/Na⁺ into interlayer spacing (low ω, tanh boundary condition).
+- **`De-Levie-TLM` circuit** (14th built-in): full transmission-line model
+  `Rs + sqrt(Ri/Ydl)·coth(L·sqrt(Ri·Ydl))` for porous electrodes (MXene films,
+  activated carbon, CNTs). Correctly predicts 45° high-ω line transitioning to
+  near-vertical capacitive response.  Ref: De Levie (1963) / Tribollet & Orazem §15.
+- **`Pseudo-Capacitance-CPE` circuit** (15th built-in):
+  `Rs − (Rct‖CPEdl) − (Rads‖Cads)` — adsorption pseudocapacitance model
+  for RuO₂, MnO₂, Nb₂O₅, UPD systems.  Distinguishable from Two-Arc-CPE by
+  the ideal capacitor Cads (n=1) in the adsorption branch.
+- **`fit_verdict` + `fit_verdict_reasons` propagated to `circuit_df`** (`main.py`):
+  these fields now appear in the circuit table and are used by the GUI metrological
+  summary (previously only chi²/ν threshold was used).
+- **GUI metrological summary upgraded** (`gui_app.py`): now prefers `fit_verdict`
+  field over raw chi²/ν threshold; shows first reason for WARNING/REJECTED per row;
+  criteria legend expanded to show all three verdict levels.
+
+### Changed
+
+- Exception rows in `build_circuit_tables` now carry `fit_verdict=REJECTED` and
+  `fit_verdict_reasons=[str(exc)]` for consistent downstream handling.
+
+### Tests
+
+- `tests/test_circuit_registry.py`: updated count assertions 12→15; added
+  `MXene-Intercalation`, `De-Levie-TLM`, `Pseudo-Capacitance-CPE` to expected names.
+
+---
+
 ## [0.4.1] — 2026-05-18  _(Metrological Rigor Edition)_
 
 ### Added

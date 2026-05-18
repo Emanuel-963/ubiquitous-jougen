@@ -526,6 +526,49 @@ def fit_template(
             hits.append(True)
     bound_hits = len(hits)
 
+    # ── Automatic fit verdict (Orazem 2026 criteria) ──────────────
+    # REJECTED: chi²/ν > 10 (fit is statistically invalid) OR
+    #           optimizer failed OR any parameter has IC95 > 200 % of value
+    #           (parameter is completely undetermined — posterior is wider
+    #           than the parameter itself)
+    # WARNING : 5 < chi²/ν ≤ 10 OR any IC95 > 100 % OR bound_hits > 0
+    #           OR structured residuals (autocorr > 0.3)
+    # OK      : everything else
+    reject_reasons: list[str] = []
+    warning_reasons: list[str] = []
+
+    if not res.success:
+        reject_reasons.append("optimizer did not converge")
+    if chi2_over_nu > 10.0:
+        reject_reasons.append(f"chi²/ν={chi2_over_nu:.2f} > 10 (statistically invalid)")
+    elif chi2_over_nu > 5.0:
+        warning_reasons.append(f"chi²/ν={chi2_over_nu:.2f} in 5–10 range")
+
+    for name, rel_pct in rel_uncertainty_pct.items():
+        if rel_pct > 200.0:
+            reject_reasons.append(
+                f"{name}: IC95={rel_pct:.0f}% > 200% (parameter undetermined)"
+            )
+        elif rel_pct > 100.0:
+            warning_reasons.append(
+                f"{name}: IC95={rel_pct:.0f}% > 100% (non-significant)"
+            )
+
+    if bound_hits > 0:
+        warning_reasons.append(f"{bound_hits} parameter(s) at bounds")
+    if structured:
+        warning_reasons.append(f"structured residuals (autocorr={r_auto:.2f})")
+
+    if reject_reasons:
+        fit_verdict = "REJECTED"
+        fit_verdict_reasons = reject_reasons + warning_reasons
+    elif warning_reasons:
+        fit_verdict = "WARNING"
+        fit_verdict_reasons = warning_reasons
+    else:
+        fit_verdict = "OK"
+        fit_verdict_reasons = []
+
     return {
         "template": template.name,
         "diagram": template.diagram,
@@ -535,6 +578,8 @@ def fit_template(
         "rel_uncertainty_pct": rel_uncertainty_pct,
         "param_significance": param_significance,
         "chi2_over_nu": chi2_over_nu,
+        "fit_verdict": fit_verdict,
+        "fit_verdict_reasons": fit_verdict_reasons,
         "success": bool(res.success),
         "message": res.message,
         "rss": rss,

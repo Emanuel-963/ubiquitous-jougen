@@ -5,18 +5,21 @@ Every circuit is registered as a :class:`CircuitTemplate` with rich metadata
 
 Built-in circuits (registered at import time)
 ----------------------------------------------
- 1. ``Randles-CPE-W``    — Rs − (Rp ‖ CPE) − W
- 2. ``Two-Arc-CPE``      — Rs − (Rp1 ‖ CPE1) − (Rp2 ‖ CPE2)
- 3. ``Inductive-CPE``    — Rs − L − (Rp ‖ CPE)
- 4. ``Coating-CPE``      — Rs − (Rcoat ‖ CPEcoat) − (Rct ‖ CPEdl)
- 5. ``Warburg-Finite``   — Rs − (Rp ‖ CPE) − Wfinite  [transmissive / tanh]
- 6. ``ZARC-ZARC-W``      — Rs − ZARC₁ − ZARC₂ − W
- 7. ``Simple-RC``        — Rs − (Rp ‖ C)
- 8. ``CPE-Simple``       — Rs − CPE                    [EDLC / blocking electrode]
- 9. ``Warburg-Short``    — Rs − (Rp ‖ CPE) − Wo        [reflective / coth]
-10. ``Gerischer``        — Rs − (Rp ‖ CPE) − Z_Ger     [SOFC / mixed conductors]
-11. ``Three-ZARC``       — Rs − ZARC₁ − ZARC₂ − ZARC₃ [solid electrolytes]
-12. ``Porous-Coating-TLM`` — Rs − (Rcoat ‖ Cpore) − (Rct ‖ CPEdl)  [TLM porous coating]
+ 1. ``Randles-CPE-W``       — Rs − (Rp ‖ CPE) − W
+ 2. ``Two-Arc-CPE``         — Rs − (Rp1 ‖ CPE1) − (Rp2 ‖ CPE2)
+ 3. ``Inductive-CPE``       — Rs − L − (Rp ‖ CPE)
+ 4. ``Coating-CPE``         — Rs − (Rcoat ‖ CPEcoat) − (Rct ‖ CPEdl)
+ 5. ``Warburg-Finite``      — Rs − (Rp ‖ CPE) − Wfinite  [transmissive / tanh]
+ 6. ``ZARC-ZARC-W``         — Rs − ZARC₁ − ZARC₂ − W
+ 7. ``Simple-RC``           — Rs − (Rp ‖ C)
+ 8. ``CPE-Simple``          — Rs − CPE                    [EDLC / blocking electrode]
+ 9. ``Warburg-Short``       — Rs − (Rp ‖ CPE) − Wo        [reflective / coth]
+10. ``Gerischer``           — Rs − (Rp ‖ CPE) − Z_Ger     [SOFC / mixed conductors]
+11. ``Three-ZARC``          — Rs − ZARC₁ − ZARC₂ − ZARC₃ [solid electrolytes]
+12. ``Porous-Coating-TLM``  — Rs − (Rcoat ‖ Cpore) − (Rct ‖ CPEdl)
+13. ``MXene-Intercalation`` — Rs − (Rsei ‖ CPEsei) − (Rct ‖ CPEdl) − Wfinite
+14. ``De-Levie-TLM``        — Rs + sqrt(Ri/Ydl)·coth(L·sqrt(Ri·Ydl))
+15. ``Pseudo-Capacitance-CPE`` — Rs − (Rct ‖ CPEdl) − (Rads ‖ Cads)
 
 Public API
 ----------
@@ -791,6 +794,305 @@ def _make_porous_coating_tlm() -> CircuitTemplate:
     )
 
 
+# ---------- 13. MXene-Intercalation -----------------------------------
+def _make_mxene_intercalation() -> CircuitTemplate:
+    """EIS model for MXene intercalation pseudocapacitance in aqueous acid.
+
+    Circuit topology
+    ~~~~~~~~~~~~~~~~
+    Rs − (RSEI ‖ CPSEI) − (Rct ‖ CPEdl) − Wfinite
+
+    Physical description
+    ~~~~~~~~~~~~~~~~~~~~
+    - **RSEI ‖ CPSEI** (high frequency): surface termination passivation
+      layer on Nb₂CTₓ/Ti₃C₂Tₓ.  The *termination groups* (=O, −OH, −F)
+      form a disordered thin film whose EIS response is a depressed
+      semicircle at high ω.
+    - **Rct ‖ CPEdl** (mid frequency): charge-transfer + double-layer at
+      the MXene/electrolyte interface.  CPE exponent n < 1 captures
+      geometric roughness of delaminated flakes.
+    - **Wfinite** (low frequency): bounded (finite-length) diffusion of
+      protons / cations into the 2D interlayer spacing.  The finite
+      boundary condition (tanh model) is correct because the interlayer
+      is a closed medium of thickness d.
+
+    This circuit is appropriate for:
+    - Ti₃C₂Tₓ and Nb₂CTₓ in H₂SO₄ (proton intercalation)
+    - Ti₃C₂Tₓ in Na₂SO₄ / NaCl (sodium intercalation)
+    - Post-cycling characterisation to track RSEI evolution
+
+    Parameters
+    ----------
+    Rs      — electrolyte resistance (Ω)
+    Rsei    — surface termination layer resistance (Ω)
+    Qsei    — surface layer CPE prefactor (F·s^(n-1))
+    n_sei   — surface layer CPE exponent (0.6–1.0)
+    Rct     — charge-transfer resistance (Ω)
+    Qdl     — double-layer CPE prefactor (F·s^(n-1))
+    n_dl    — double-layer CPE exponent (0.6–1.0)
+    AW      — finite Warburg coefficient (Ω·s^(-1/2))
+    tau_d   — diffusion time constant τ = d²/D (s)
+    """
+    param_names = ["Rs", "Rsei", "Qsei", "n_sei", "Rct", "Qdl", "n_dl", "AW", "tau_d"]
+    bounds = (
+        [1e-3, 1e-3, 1e-14, 0.50, 1e-3, 1e-14, 0.50, 1e-4, 1e-4],
+        [500.0, 1e5,  1e-5,  1.00, 1e6,  1e-3,  1.00, 1e4,  1e4],
+    )
+
+    def model(p: np.ndarray, omega: np.ndarray) -> np.ndarray:
+        Rs, Rsei, Qsei, n_sei, Rct, Qdl, n_dl, AW, tau_d = p
+        # Surface termination layer: RSEI ‖ CPSEI
+        Zsei = 1.0 / (1.0 / Rsei + 1.0 / _cpe(omega, Qsei, n_sei))
+        # Charge-transfer: Rct ‖ CPEdl
+        Zdl = 1.0 / (1.0 / Rct + 1.0 / _cpe(omega, Qdl, n_dl))
+        # Finite-length Warburg (tanh): Z = AW/sqrt(jω) * tanh(sqrt(jω·τ_d))
+        # For large |x|: tanh(x)→1 so Z→AW/sqrt(jω); at ω→0 use Taylor: Z→AW*sqrt(τ_d)
+        jw_eps = 1j * omega + 1e-30
+        sqrt_jomega = np.sqrt(jw_eps)
+        gamma = np.sqrt(jw_eps * tau_d)
+        with np.errstate(over="ignore", invalid="ignore"):
+            tanh_gamma = np.where(
+                np.abs(gamma.real) > 20,
+                np.ones_like(gamma, dtype=complex),
+                np.tanh(gamma),
+            )
+        Zw = AW / sqrt_jomega * tanh_gamma
+        return Rs + Zsei + Zdl + Zw
+
+    def init(omega: np.ndarray, z: np.ndarray) -> np.ndarray:
+        rs = _rs_from_z(z)
+        span = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array([rs, span * 0.05, 1e-9, 0.85, span * 0.5, 1e-10, 0.80, 10.0, 0.1])
+
+    return CircuitTemplate(
+        name="MXene-Intercalation",
+        param_names=param_names,
+        bounds=bounds,
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − (Rsei ‖ CPEsei) − (Rct ‖ CPEdl) − Wfinite",
+        description=(
+            "Equivalent circuit for MXene (Ti₃C₂Tₓ, Nb₂CTₓ) intercalation "
+            "pseudocapacitance in aqueous electrolytes.  Three frequency regions: "
+            "(1) surface termination layer response at high ω, (2) charge-transfer "
+            "at mid ω, (3) finite diffusion of intercalating ions (H⁺, Na⁺) into "
+            "2D interlayer spacing at low ω (tanh/Warburg model with closed boundary)."
+        ),
+        physical_meaning={
+            "Rs": "Electrolyte / uncompensated resistance (Ω)",
+            "Rsei": "Surface termination passivation resistance (Ω); "
+                    "increases after cycling in acid → tracks degradation",
+            "Qsei": "Surface layer CPE prefactor (F·s^(n-1))",
+            "n_sei": "Surface layer CPE exponent; n < 0.8 → disordered terminations",
+            "Rct": "Charge-transfer resistance at MXene/electrolyte interface (Ω)",
+            "Qdl": "Double-layer CPE prefactor (F·s^(n-1)); proportional to ECSA",
+            "n_dl": "Double-layer CPE exponent; n < 0.85 → rough delaminated surface",
+            "AW": "Finite Warburg coefficient Aw (Ω·s^(-1/2)); related to diffusivity",
+            "tau_d": "Diffusion time constant τ=d²/D (s); d=interlayer spacing",
+        },
+        typical_systems=[
+            "Ti₃C₂Tₓ in 1 M H₂SO₄ (proton intercalation pseudocapacitance)",
+            "Nb₂CTₓ in 1 M H₂SO₄ (Nb⁵⁺/Nb⁴⁺ redox + proton insertion)",
+            "Ti₃C₂Tₓ in 1 M Na₂SO₄ (sodium intercalation)",
+            "Delaminated MXene films post-cycling — track RSEI evolution",
+            "MXene/CNT composites with electrolyte accessible pores",
+        ],
+    )
+
+
+# ---------- 14. De-Levie-TLM ------------------------------------------
+def _make_de_levie_tlm() -> CircuitTemplate:
+    """Full De Levie transmission-line for a porous electrode.
+
+    Circuit topology
+    ~~~~~~~~~~~~~~~~
+    Rs + Z_TLM  where  Z_TLM = sqrt(Ri/Ydl) · coth(L·sqrt(Ri·Ydl))
+
+    Physical description
+    ~~~~~~~~~~~~~~~~~~~~
+    The De Levie model (1963) treats a porous electrode as a cylindrical
+    pore of length L filled with electrolyte.  Along the pore:
+    - **Ri** (Ω/cm) is the ionic resistance per unit length of the pore
+      electrolyte
+    - **Ydl** = CPE admittance of the pore wall per unit length
+
+    At **high frequencies** the TLM impedance approaches Rs + sqrt(Ri/Ydl)
+    (semi-infinite diffusion into the pore → 45° line in Nyquist).
+    At **low frequencies** the coth approaches 1/x and the response is
+    dominated by the total double-layer capacitance of all pore walls.
+
+    This is the correct model for:
+    - MXene films used as supercapacitor electrodes (stacked 2D channels)
+    - Activated carbon, CNTs, and other high-surface-area porous carbons
+    - Any EDLC electrode where the geometric capacitance is distributed
+
+    Parameters
+    ----------
+    Rs      — external electrolyte resistance (Ω)
+    Ri      — ionic pore resistance per unit pore length  (Ω·cm⁻¹ or Ω·m⁻¹
+               depending on normalisation; keep consistent with L)
+    Qdl     — CPE prefactor per unit pore length for the pore-wall DL
+    n_dl    — CPE exponent for the pore-wall DL (0.8–1.0 for clean carbon)
+    L       — effective pore length (same units as 1/Ri)
+    """
+    param_names = ["Rs", "Ri", "Qdl", "n_dl", "L"]
+    bounds = (
+        [1e-4, 1e-3, 1e-14, 0.60, 1e-4],
+        [500.0, 1e5,  1e-3,  1.00, 1e2],
+    )
+
+    def model(p: np.ndarray, omega: np.ndarray) -> np.ndarray:
+        Rs, Ri, Qdl, n_dl, L = p
+        # Admittance of pore wall CPE per unit length
+        Ydl_per_L = Qdl * (1j * omega) ** n_dl
+        # Characteristic impedance of the transmission line
+        Zc = np.sqrt(Ri / (Ydl_per_L + 1e-30))
+        # Propagation argument
+        gamma_L = L * np.sqrt(Ri * Ydl_per_L + 1e-30)
+        # De Levie: Z_TLM = Zc * coth(γL)
+        # coth(x) = cosh(x)/sinh(x); guard against overflow for large |x|
+        with np.errstate(over="ignore", invalid="ignore"):
+            coth_gL = np.where(
+                np.abs(gamma_L.real) > 20,
+                np.sign(gamma_L.real),  # limit coth(x)→1 for large x
+                1.0 / np.tanh(gamma_L + 1e-30),
+            )
+        Z_tlm = Zc * coth_gL
+        return Rs + Z_tlm
+
+    def init(omega: np.ndarray, z: np.ndarray) -> np.ndarray:
+        rs = _rs_from_z(z)
+        span = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array([rs, span * 0.1, 1e-8, 0.90, 1.0])
+
+    return CircuitTemplate(
+        name="De-Levie-TLM",
+        param_names=param_names,
+        bounds=bounds,
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs + sqrt(Ri/Ydl)·coth(L·sqrt(Ri·Ydl))",
+        description=(
+            "Full De Levie transmission-line model for a porous electrode "
+            "with distributed ionic resistance and double-layer CPE admittance "
+            "along the pore walls.  Predicts a 45° high-frequency Nyquist line "
+            "transitioning to a near-vertical capacitive response at low ω.  "
+            "Preferred over simplified TLM variants when the porous structure "
+            "and pore length are well-defined (e.g., MXene films, activated carbon, "
+            "CNT electrodes).  "
+            "Ref: De Levie (1963) Electrochim. Acta 9:1231; "
+            "Tribollet & Orazem (2022) §15."
+        ),
+        physical_meaning={
+            "Rs": "External electrolyte / contact resistance (Ω)",
+            "Ri": "Ionic resistance per unit pore length (Ω/length); "
+                  "high Ri → narrow or long pores",
+            "Qdl": "CPE prefactor of pore-wall double-layer per unit length",
+            "n_dl": "CPE exponent (0.8–1.0); n=1 → ideal capacitive pore walls",
+            "L": "Effective pore depth (same length unit as 1/Ri)",
+        },
+        typical_systems=[
+            "Ti₃C₂Tₓ MXene film electrodes (stacked 2D channels)",
+            "Activated carbon EDLC electrodes in KOH / H₂SO₄",
+            "Vertically aligned CNT arrays",
+            "Graphene aerogel supercapacitors",
+            "Ni(OH)₂ / Co₃O₄ porous battery-type electrodes",
+        ],
+    )
+
+
+# ---------- 15. Pseudo-Capacitance-CPE --------------------------------
+def _make_pseudo_capacitance() -> CircuitTemplate:
+    """EIS model for combined double-layer + adsorption pseudocapacitance.
+
+    Circuit topology
+    ~~~~~~~~~~~~~~~~
+    Rs − (Rct ‖ CPEdl) − (Rads ‖ Cads)
+
+    Physical description
+    ~~~~~~~~~~~~~~~~~~~~
+    Two serial time-constant processes:
+    1. **Rct ‖ CPEdl** (high–mid ω): outer-Helmholtz charge-transfer and
+       double-layer capacitance.
+    2. **Rads ‖ Cads** (low ω): adsorption/desorption step.  The ideal
+       capacitor Cads (not CPE) captures adsorption as a surface coverage
+       change at quasi-equilibrium — the Langmuir isotherm gives an
+       ideal capacitive element in the linear limit.
+
+    This circuit is the minimal model for **adsorption pseudocapacitance**,
+    distinguished from intercalation by:
+    - The adsorption time constant (Rads·Cads) is shorter than intercalation
+    - No diffusion element is needed (unlike MXene-Intercalation)
+    - Two arcs in Nyquist without a 45° tail at low ω
+
+    Typical for:
+    - Nb₂O₅ (proton / cation intercalation with surface-limited kinetics)
+    - RuO₂ in H₂SO₄ (proton adsorption pseudocapacitance)
+    - MnO₂ in Na₂SO₄ (surface redox)
+    - Underpotential deposition (UPD) systems
+
+    Parameters
+    ----------
+    Rs      — electrolyte resistance (Ω)
+    Rct     — charge-transfer resistance (Ω)
+    Qdl     — double-layer CPE prefactor (F·s^(n-1))
+    n_dl    — double-layer CPE exponent (0.6–1.0)
+    Rads    — adsorption resistance — kinetics of surface coverage (Ω)
+    Cads    — adsorption pseudo-capacitance (F); ideal (n=1)
+    """
+    param_names = ["Rs", "Rct", "Qdl", "n_dl", "Rads", "Cads"]
+    bounds = (
+        [1e-3, 1e-2, 1e-13, 0.50, 1e-2, 1e-10],
+        [500.0, 1e7,  1e-3,  1.00, 1e7,  1e-1],
+    )
+
+    def model(p: np.ndarray, omega: np.ndarray) -> np.ndarray:
+        Rs, Rct, Qdl, n_dl, Rads, Cads = p
+        # Charge-transfer + DL
+        Zct = 1.0 / (1.0 / Rct + 1.0 / _cpe(omega, Qdl, n_dl))
+        # Adsorption branch: Rads ‖ Cads (ideal capacitor)
+        Zads = 1.0 / (1.0 / Rads + 1j * omega * Cads)
+        return Rs + Zct + Zads
+
+    def init(omega: np.ndarray, z: np.ndarray) -> np.ndarray:
+        rs = _rs_from_z(z)
+        span = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array([rs, span * 0.4, 1e-9, 0.85, span * 0.6, 1e-6])
+
+    return CircuitTemplate(
+        name="Pseudo-Capacitance-CPE",
+        param_names=param_names,
+        bounds=bounds,
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − (Rct ‖ CPEdl) − (Rads ‖ Cads)",
+        description=(
+            "Charge-transfer + double-layer (CPE) in series with an adsorption "
+            "pseudo-capacitance element (ideal RC branch).  Models surface-limited "
+            "faradaic processes (adsorption, underpotential deposition, surface redox) "
+            "where no semi-infinite diffusion tail is observed.  "
+            "Distinguishable from Two-Arc-CPE by the ideal (n=1) capacitor Cads "
+            "vs. a CPE second arc."
+        ),
+        physical_meaning={
+            "Rs": "Electrolyte / uncompensated resistance (Ω)",
+            "Rct": "Outer charge-transfer resistance (Ω)",
+            "Qdl": "Double-layer CPE prefactor (F·s^(n-1))",
+            "n_dl": "DL CPE exponent; n=1 → smooth surface",
+            "Rads": "Adsorption kinetic resistance (Ω); large → slow adsorption",
+            "Cads": "Adsorption pseudo-capacitance (F); proportional to "
+                    "∂θ/∂E at equilibrium surface coverage θ",
+        },
+        typical_systems=[
+            "RuO₂ in H₂SO₄ — prototypical adsorption pseudocapacitance",
+            "MnO₂ in Na₂SO₄ — surface cation redox",
+            "Nb₂O₅ nanocrystals — surface-limited proton insertion",
+            "Underpotential deposition of Cu, Pb, Bi on Au/Pt",
+            "MXene in dilute acid — low-frequency adsorption arc",
+        ],
+    )
+
+
 # ── Auto-register all built-in circuits at import time ───────────────
 _BUILTIN_MAKERS = [
     _make_randles_cpe_w,
@@ -805,6 +1107,9 @@ _BUILTIN_MAKERS = [
     _make_gerischer,
     _make_three_zarc,
     _make_porous_coating_tlm,
+    _make_mxene_intercalation,
+    _make_de_levie_tlm,
+    _make_pseudo_capacitance,
 ]
 
 

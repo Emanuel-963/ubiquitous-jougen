@@ -4624,21 +4624,41 @@ class PipelineApp(ctk.CTk):
                     return
 
                 lines = []
-                lines.append("=" * 72)
+                lines.append("=" * 78)
                 lines.append("  RESUMO METROLOGICO — Orazem & Tribollet, Electrochimica Acta 2026")
-                lines.append("  Estrutura de erro: sigma = 0.001216472*|Zj| + 0.0003333912*|Zr|")
-                lines.append("=" * 72)
-                lines.append(f"  {'Arquivo':<32} {'Circuito':<22} {'chi2/nu':>8}  Status")
-                lines.append("-" * 72)
+                lines.append("  Estrutura de erro: sigma = 0.001216*|Zj| + 0.000333*|Zr|")
+                lines.append("=" * 78)
+                lines.append(
+                    f"  {'Arquivo':<30} {'Circuito':<22} {'chi2/nu':>8}  {'Veredicto':<18}  Razao"
+                )
+                lines.append("-" * 78)
 
                 n_ok = n_warn = n_bad = n_na = 0
                 for _, row in circuit_table.iterrows():
-                    name = str(row.get("Arquivo", row.get("sample", "?")))[:32]
+                    name = str(row.get("Arquivo", row.get("sample", "?")))[:30]
                     circuit = str(row.get("Circuito", row.get("best_circuit", "?")))[:22]
                     chi2_nu = row.get("chi2_over_nu", None)
+                    verdict = row.get("fit_verdict", None)
+                    reasons = row.get("fit_verdict_reasons") or []
                     try:
                         v = float(chi2_nu)
                         chi2_str = f"{v:8.3f}"
+                    except (TypeError, ValueError):
+                        chi2_str = "     N/D"
+                        v = None
+
+                    # Prefer explicit fit_verdict if available
+                    if verdict == "OK":
+                        status = "[OK] OK"
+                        n_ok += 1
+                    elif verdict == "WARNING":
+                        status = "[!!] WARNING"
+                        n_warn += 1
+                    elif verdict == "REJECTED":
+                        status = "[XX] REJECTED"
+                        n_bad += 1
+                    elif v is not None:
+                        # Fallback to chi2/nu threshold
                         if v <= 2.0:
                             status = "[OK] Excelente"
                             n_ok += 1
@@ -4648,22 +4668,27 @@ class PipelineApp(ctk.CTk):
                         else:
                             status = "[XX] Rejeitar"
                             n_bad += 1
-                    except (TypeError, ValueError):
-                        chi2_str = "     N/D"
+                    else:
                         status = "[--] N/D"
                         n_na += 1
-                    lines.append(f"  {name:<32} {circuit:<22} {chi2_str}  {status}")
+                    # First reason (if any)
+                    reason_str = str(reasons[0])[:28] if reasons else ""
+                    lines.append(
+                        f"  {name:<30} {circuit:<22} {chi2_str}  {status:<18}  {reason_str}"
+                    )
 
-                lines.append("-" * 72)
+                lines.append("-" * 78)
                 total = len(circuit_table)
                 lines.append(
-                    f"  Total: {total}  |  OK:{n_ok}  !!:{n_warn}  XX:{n_bad}  --:{n_na}"
+                    f"  Total: {total}  |  OK:{n_ok}  WARNING:{n_warn}  REJECTED:{n_bad}  N/D:{n_na}"
                 )
                 lines.append("")
-                lines.append("  INTERPRETACAO DO chi2/nu (reduzido):")
-                lines.append("    <= 2.0 -> fitting excelente — erro domina dados")
-                lines.append("    2-5    -> aceitavel — revisar parametros limitrofes")
-                lines.append("    > 5.0  -> fitting rejeitado — mudar modelo ou pre-processar")
+                lines.append("  CRITERIOS DE REJEICAO AUTOMATICA (Orazem 2026):")
+                lines.append("    REJECTED: chi2/nu > 10 OU IC95 > 200% de qualquer param")
+                lines.append("              OU optimizer nao convergiu")
+                lines.append("    WARNING : 5 < chi2/nu <= 10 OU IC95 > 100% OU param no limite")
+                lines.append("              OU residuos estruturados (autocorr > 0.3)")
+                lines.append("    OK      : todos os criterios satisfeitos")
                 lines.append("")
                 lines.append("  [EIS-6] Tribollet & Orazem, Electrochimica Acta 568, 149009 (2026)")
                 lines.append("          DOI: 10.1016/j.electacta.2026.149009")
