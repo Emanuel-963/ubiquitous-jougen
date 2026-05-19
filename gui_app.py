@@ -3913,7 +3913,7 @@ class PipelineApp(ctk.CTk):
         Called after _import_files (eis_mode=True) so the Compare tab shows
         the imported samples without needing a full pipeline run (BUG-08).
         """
-        from src.loader import load_eis_file, EIS_EXTENSIONS
+        from src.loader import EIS_EXTENSIONS, load_eis_file
         from src.preprocessing import preprocess
 
         loaded = 0
@@ -4422,8 +4422,9 @@ class PipelineApp(ctk.CTk):
 
         def worker():
             try:
-                from src.validation import detect_powerline_noise
                 import numpy as np
+
+                from src.validation import detect_powerline_noise
 
                 raw = getattr(self, "raw_eis", {}) or {}
                 if not raw:
@@ -4433,7 +4434,9 @@ class PipelineApp(ctk.CTk):
                 lines = []
                 lines.append("=" * 68)
                 lines.append("  DETECCAO DE RUIDO DE REDE ELETRICA (50/100 Hz)")
-                lines.append("  Orazem & Tribollet, Electrochimica Acta 568, 149009 (2026)")
+                lines.append(
+                    "  Orazem & Tribollet, Electrochimica Acta 568, 149009 (2026)"
+                )
                 lines.append("=" * 68)
                 n_clean = n_noisy = 0
                 for name, df in raw.items():
@@ -4462,9 +4465,13 @@ class PipelineApp(ctk.CTk):
                 if n_noisy > 0:
                     lines.append("")
                     lines.append("  ACAO RECOMENDADA:")
-                    lines.append("    Execute: ionflow preprocess --no-remove-hf <pasta>")
+                    lines.append(
+                        "    Execute: ionflow preprocess --no-remove-hf <pasta>"
+                    )
                     lines.append("    Ou no Python:")
-                    lines.append("      from src.validation import detect_powerline_noise")
+                    lines.append(
+                        "      from src.validation import detect_powerline_noise"
+                    )
                 lines.append("=" * 68)
                 self.log_queue.put(("kk_result", "\n".join(lines)))
             except Exception as exc:
@@ -4501,7 +4508,9 @@ class PipelineApp(ctk.CTk):
                     return
                 lines = []
                 lines.append("═" * 70)
-                lines.append("  DIAGNÓSTICO DE FITTING  [Rigor metrológico Orazem 2026]")
+                lines.append(
+                    "  DIAGNÓSTICO DE FITTING  [Rigor metrológico Orazem 2026]"
+                )
                 lines.append("═" * 70)
                 lines.append("  χ²/ν: 🟢 ≤2 excelente | 🟡 2-5 aceitável | 🔴 >5 rejeitar")
                 lines.append("─" * 70)
@@ -4511,7 +4520,9 @@ class PipelineApp(ctk.CTk):
                         best_circuit = row.get("best_circuit", row.get("Circuito", "?"))
                         bic = row.get("bic", row.get("BIC", "?"))
                         chi2_nu = row.get("chi2_over_nu", None)
-                        chi2_str = f"{float(chi2_nu):.3f}" if chi2_nu is not None else "N/D"
+                        chi2_str = (
+                            f"{float(chi2_nu):.3f}" if chi2_nu is not None else "N/D"
+                        )
                         chi2_em = _chi2_emoji(chi2_nu)
                         fit_dict = {
                             "circuit_name": best_circuit,
@@ -4531,9 +4542,7 @@ class PipelineApp(ctk.CTk):
                             "params": row.get("params", row.get("Params", {})),
                         }
                         qi = assess_quality(fit_dict)
-                        lines.append(
-                            f"\n{qi.emoji} {name}: {best_circuit}"
-                        )
+                        lines.append(f"\n{qi.emoji} {name}: {best_circuit}")
                         lines.append(
                             f"   BIC={bic}  |  {chi2_em} χ²/ν={chi2_str}  |  {qi.label}"
                         )
@@ -4555,7 +4564,9 @@ class PipelineApp(ctk.CTk):
                     lines.append(tr("Sem dados de circuitos."))
                 lines.append("")
                 lines.append("─" * 70)
-                lines.append("  Ref: Tribollet & Orazem, Electrochimica Acta 568, 149009 (2026)")
+                lines.append(
+                    "  Ref: Tribollet & Orazem, Electrochimica Acta 568, 149009 (2026)"
+                )
                 self.log_queue.put(("diag_result", "\n".join(lines)))
             except Exception as exc:
                 self.log_queue.put(("diag_result", f"Erro diagnóstico: {exc}"))
@@ -4609,9 +4620,7 @@ class PipelineApp(ctk.CTk):
                         }
                         report = gen.generate(fit_result=fit_dict)
                         sample_name = row.get("sample", row.get("Arquivo", "?"))
-                        lines.append(
-                            f"═══ {sample_name} ═══"
-                        )
+                        lines.append(f"═══ {sample_name} ═══")
                         lines.append(report.to_text())
                         # ── Metrologia Orazem (v0.4.1) ──────────────────
                         chi2_nu = row.get("chi2_over_nu", None)
@@ -4628,7 +4637,9 @@ class PipelineApp(ctk.CTk):
                                     verdict = "🔴 Rejeitar (>5)"
                             except (TypeError, ValueError):
                                 verdict = "N/D"
-                            lines.append(f"\n  ▶ Metrologia Orazem (Electrochimica Acta 2026):")
+                            lines.append(
+                                "\n  ▶ Metrologia Orazem (Electrochimica Acta 2026):"
+                            )
                             lines.append(f"    χ²/ν = {chi2_nu:.4f} → {verdict}")
                         if isinstance(ci95, dict) and ci95:
                             lines.append("    IC 95% ponderado por estrutura de erro:")
@@ -4666,8 +4677,12 @@ class PipelineApp(ctk.CTk):
 
                 lines = []
                 lines.append("=" * 78)
-                lines.append("  RESUMO METROLOGICO — Orazem & Tribollet, Electrochimica Acta 2026")
-                lines.append("  Estrutura de erro: sigma = 0.001216*|Zj| + 0.000333*|Zr|")
+                lines.append(
+                    "  RESUMO METROLOGICO — Orazem & Tribollet, Electrochimica Acta 2026"
+                )
+                lines.append(
+                    "  Estrutura de erro: sigma = 0.001216*|Zj| + 0.000333*|Zr|"
+                )
                 lines.append("=" * 78)
                 lines.append(
                     f"  {'Arquivo':<30} {'Circuito':<22} {'chi2/nu':>8}  {'Veredicto':<18}  Razao"
@@ -4677,7 +4692,9 @@ class PipelineApp(ctk.CTk):
                 n_ok = n_warn = n_bad = n_na = 0
                 for _, row in circuit_table.iterrows():
                     name = str(row.get("Arquivo", row.get("sample", "?")))[:30]
-                    circuit = str(row.get("Circuito", row.get("best_circuit", "?")))[:22]
+                    circuit = str(row.get("Circuito", row.get("best_circuit", "?")))[
+                        :22
+                    ]
                     chi2_nu = row.get("chi2_over_nu", None)
                     verdict = row.get("fit_verdict", None)
                     reasons = row.get("fit_verdict_reasons") or []
@@ -4725,13 +4742,19 @@ class PipelineApp(ctk.CTk):
                 )
                 lines.append("")
                 lines.append("  CRITERIOS DE REJEICAO AUTOMATICA (Orazem 2026):")
-                lines.append("    REJECTED: chi2/nu > 10 OU IC95 > 200% de qualquer param")
+                lines.append(
+                    "    REJECTED: chi2/nu > 10 OU IC95 > 200% de qualquer param"
+                )
                 lines.append("              OU optimizer nao convergiu")
-                lines.append("    WARNING : 5 < chi2/nu <= 10 OU IC95 > 100% OU param no limite")
+                lines.append(
+                    "    WARNING : 5 < chi2/nu <= 10 OU IC95 > 100% OU param no limite"
+                )
                 lines.append("              OU residuos estruturados (autocorr > 0.3)")
                 lines.append("    OK      : todos os criterios satisfeitos")
                 lines.append("")
-                lines.append("  [EIS-6] Tribollet & Orazem, Electrochimica Acta 568, 149009 (2026)")
+                lines.append(
+                    "  [EIS-6] Tribollet & Orazem, Electrochimica Acta 568, 149009 (2026)"
+                )
                 lines.append("          DOI: 10.1016/j.electacta.2026.149009")
                 self.log_queue.put(("diag_result", "\n".join(lines)))
             except Exception as exc:
@@ -5213,6 +5236,7 @@ class PipelineApp(ctk.CTk):
             col = "chi2_over_nu"
             if col in self.circuit_df.columns:
                 import contextlib as _cl
+
                 vals = []
                 for v in self.circuit_df[col]:
                     with _cl.suppress(Exception):
@@ -6157,7 +6181,6 @@ class PipelineApp(ctk.CTk):
                 self.compare_scroll,
                 text=label,
                 variable=var,
-                wraplength=180,
             ).pack(anchor="w", padx=4, pady=2)
 
         if hidden_count > 0:

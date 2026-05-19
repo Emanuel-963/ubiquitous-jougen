@@ -2,6 +2,18 @@
 
 All notable changes to the IonFlow Pipeline are documented here.
 
+## [0.4.4] — 2026-05-20  _(Compare Tab Checklist Fix)_
+
+### Fixed
+
+- **BUG-09b — Compare tab checklist blank after import** (`gui_app.py`
+  `_refresh_compare_sample_list`): `CTkCheckBox` does not accept a
+  `wraplength` keyword — customtkinter raises `ValueError` for unknown
+  kwargs, which was silently swallowed by tkinter's event loop and left
+  the entire checklist empty.  Removed the invalid `wraplength=180`
+  argument; text truncation for long names is already handled by the
+  26-char label truncation above the `CTkCheckBox` call.
+
 ## [0.4.3] — 2026-05-19  _(Mixed-Format & Compare Tab Fix)_
 
 ### Fixed
