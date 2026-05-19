@@ -21,7 +21,7 @@ from src.config import PipelineConfig
 from src.cpe_fit import fit_cpe_warburg
 from src.circuit_fitting import run_shortlist_fit
 from src.feature_store import FeatureStore, FittingHistory, record_from_shortlist_result
-from src.loader import load_eis_file
+from src.loader import load_eis_file, EIS_EXTENSIONS
 from src.ml_circuit_selector import CircuitMLSelector
 from src.logger import setup_logging
 from src.metadata import extract_metadata, extract_material_type, extract_synthesis_process
@@ -84,6 +84,11 @@ def load_and_extract(
 
     for file in sorted(os.listdir(data_dir)):
         path = os.path.join(data_dir, file)
+        if not os.path.isfile(path):
+            continue  # skip subdirectories
+        if os.path.splitext(file)[1].lower() not in EIS_EXTENSIONS:
+            logger.debug("Skipping non-EIS file: %s", file)
+            continue
         try:
             df = preprocess(load_eis_file(path))
             raw_eis[file] = df.copy()

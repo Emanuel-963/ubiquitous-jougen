@@ -3898,6 +3898,47 @@ class PipelineApp(ctk.CTk):
             f"{total} arquivo(s) importado(s) para {target_dir}"
             + (f" ({', '.join(msg_parts)})" if msg_parts else "")
         )
+        # BUG-08: after importing EIS files, quick-load them into self.raw_eis
+        # so the Compare tab is populated without requiring a full pipeline run.
+        if eis_mode and total > 0:
+            threading.Thread(
+                target=self._quick_load_eis_dir,
+                args=(target_dir,),
+                daemon=True,
+            ).start()
+
+    def _quick_load_eis_dir(self, directory: str) -> None:
+        """Background: load EIS files from *directory* into self.raw_eis.
+
+        Called after _import_files (eis_mode=True) so the Compare tab shows
+        the imported samples without needing a full pipeline run (BUG-08).
+        """
+        from src.loader import load_eis_file, EIS_EXTENSIONS
+        from src.preprocessing import preprocess
+
+        loaded = 0
+        target = Path(directory)
+        for f in sorted(target.iterdir()):
+            if not f.is_file():
+                continue
+            if f.suffix.lower() not in EIS_EXTENSIONS:
+                continue
+            if f.name in self.raw_eis:
+                continue  # already loaded
+            try:
+                df = preprocess(load_eis_file(str(f)))
+                self.raw_eis[f.name] = df
+                loaded += 1
+            except Exception:
+                pass
+        if loaded > 0:
+            self.after(0, self._refresh_compare_sample_list)
+            self.after(
+                0,
+                lambda n=loaded: self._append_log(
+                    f"{n} amostra(s) carregada(s) na aba Comparar Amostras."
+                ),
+            )
 
     def _open_rank_interactive(self):
         if self.rank_df is None or self.rank_df.empty:

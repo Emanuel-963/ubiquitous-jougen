@@ -65,7 +65,7 @@ import pandas as pd
 from src.config import PipelineConfig
 from src.drt_analysis import DRTResult, compute_drt
 from src.drt_visualization import plot_drt_spectrum
-from src.loader import load_eis_file
+from src.loader import load_eis_file, EIS_EXTENSIONS
 from src.models import DRTPipelineResult
 from src.preprocessing import preprocess
 from src.validation import validate_eis_full
@@ -150,14 +150,16 @@ def run_drt_pipeline(
     peak_rows: list[dict[str, Any]] = []
     summary_rows: list[dict[str, Any]] = []
 
-    txt_files = sorted(
-        f for f in os.listdir(data_path) if f.lower().endswith(".txt")
+    eis_files = sorted(
+        f for f in os.listdir(str(data_path))
+        if os.path.isfile(os.path.join(str(data_path), f))
+        and os.path.splitext(f)[1].lower() in EIS_EXTENSIONS
     )
 
-    if not txt_files:
-        logger.warning("No .txt files found in %s", data_dir)
+    if not eis_files:
+        logger.warning("No EIS files found in %s", data_dir)
 
-    for filename in txt_files:
+    for filename in eis_files:
         filepath = str(data_path / filename)
         stem = Path(filename).stem
 
@@ -308,7 +310,7 @@ def run_drt_pipeline(
         "lambda_reg": float(lambda_reg),
         "n_taus": int(n_taus),
         "data_dir": str(data_dir),
-        "n_files": int(len(txt_files)),
+        "n_files": int(len(eis_files)),
         "n_success": int(len(per_file_results)),
         "n_failed": int(len(errors)),
         "generated_at": datetime.now().isoformat(timespec="seconds"),

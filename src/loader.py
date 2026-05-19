@@ -6,6 +6,16 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
+# Supported EIS file extensions — used by every pipeline and batch processor
+# to skip non-EIS files (images, spreadsheets, docs…) in mixed-content folders.
+EIS_EXTENSIONS: frozenset = frozenset({
+    ".csv", ".txt", ".dat", ".asc",
+    ".mpt", ".mpr",            # BioLogic
+    ".dta",                    # Gamry
+    ".idf", ".z", ".dfr",     # Solartron / generic
+    ".ism", ".isc",            # Zahner
+})
+
 # OPT-02: in-process cache to avoid re-reading unchanged files.
 # Key = absolute path; value = (mtime_ns, DataFrame copy).
 # The cache lives for the duration of the process — safe because EIS files

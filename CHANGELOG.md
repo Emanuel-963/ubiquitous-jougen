@@ -2,6 +2,32 @@
 
 All notable changes to the IonFlow Pipeline are documented here.
 
+## [0.4.3] — 2026-05-19  _(Mixed-Format & Compare Tab Fix)_
+
+### Fixed
+
+- **BUG-08 — Pipeline skips non-EIS files gracefully** (`main.py`,
+  `main_drt.py`, `src/batch_processor.py`): all three pipelines now filter
+  directory entries by extension before calling `load_eis_file()`, and skip
+  subdirectories explicitly.  Previously, the presence of any non-EIS file
+  (`.xlsx`, `.pdf`, `.png`, JSON, etc.) in the data folder caused silent
+  per-file errors that cluttered logs and could prevent valid EIS files from
+  contributing results.
+  - `EIS_EXTENSIONS` frozenset defined in `src/loader.py` and reused
+    everywhere: `.csv .txt .dat .asc .mpt .mpr .dta .idf .z .dfr .ism .isc`
+- **BUG-08b — DRT pipeline only read `.txt`** (`main_drt.py`): was filtering
+  with `f.lower().endswith(".txt")`; now uses the shared `EIS_EXTENSIONS` set
+  so CSV, DAT and vendor formats are included.
+- **BUG-08c — BatchProcessor only discovered `.txt` files**
+  (`src/batch_processor.py` `_list_files`): same `.txt`-only filter; updated
+  to `EIS_EXTENSIONS`.
+- **BUG-09 — Compare tab empty after "Importar EIS"** (`gui_app.py`): the
+  Import button only copied files to disk; `self.raw_eis` (the source for the
+  Compare tab checklist) was never updated until a full pipeline run.  Now,
+  after a successful EIS import, a background thread quick-loads the imported
+  files into `self.raw_eis` via `_quick_load_eis_dir()` and immediately
+  refreshes the Compare tab — no pipeline run required.
+
 ## [0.4.2] — 2026-05-18  _(Physical Circuits Edition)_
 
 ### Added

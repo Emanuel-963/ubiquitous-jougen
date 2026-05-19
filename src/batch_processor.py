@@ -739,14 +739,15 @@ class BatchProcessor:
 
     @staticmethod
     def _list_files(data_dir: str) -> List[str]:
-        """Return sorted list of .txt files in *data_dir*."""
+        """Return sorted list of EIS files in *data_dir* (all supported formats)."""
+        from src.loader import EIS_EXTENSIONS
         p = Path(data_dir)
         if not p.exists():
             logger.warning("Data directory not found: %s", data_dir)
             return []
         return sorted(
             str(f) for f in p.iterdir()
-            if f.is_file() and f.suffix.lower() == ".txt"
+            if f.is_file() and f.suffix.lower() in EIS_EXTENSIONS
         )
 
     def _config_dict(self) -> Dict[str, Any]:
