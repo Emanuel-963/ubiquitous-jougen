@@ -538,14 +538,15 @@ class TestCancellation:
 
 class TestEdgeCases:
     def test_non_txt_files_ignored(self, tmp_path):
-        """Only .txt files should be picked up."""
+        """Non-EIS files (.pdf, .json, .xlsx) and subdirs must be skipped."""
         from src.batch_processor import BatchProcessor
 
         d = tmp_path / "mixed"
         d.mkdir()
         _write_fake_eis_file(d / "good.txt")
-        (d / "ignore.csv").write_text("a,b,c")
+        (d / "ignore.pdf").write_bytes(b"%PDF-1.4")
         (d / "ignore.json").write_text("{}")
+        (d / "ignore.xlsx").write_bytes(b"PK")  # zip magic bytes
         (d / "subdir").mkdir()
 
         bp = BatchProcessor(n_workers=1)
