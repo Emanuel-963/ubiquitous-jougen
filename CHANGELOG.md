@@ -18,6 +18,15 @@ All notable changes to the IonFlow Pipeline are documented here.
   `self.last_eis_result = eis_result` e
   `self.last_cycling_result = cic_result`.
 
+- **BUG-12 — Logo não aparecia no relatório gerado** (`gui_app.py`
+  `_ask_report_config`, `_generate_report_clicked`): a logo configurada
+  em Configurações (`report_logo_path`) nunca era passada para o diálogo
+  de exportação nem para `ReportConfig.logo_path`, então a capa do PDF
+  ficava sem a imagem. Correção: `_ask_report_config` recebe `logo_path`
+  como parâmetro; o diálogo exibe um checkbox "Incluir logo (das
+  Configurações)" com miniatura da imagem (marcado por padrão se houver
+  logo configurada); ao confirmar, `ReportConfig.logo_path` é preenchido.
+
 ## [0.4.5] — 2026-05-19  _(Configurable Report Dialog + Close-Window Fix)_
 
 ### Added

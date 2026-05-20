@@ -156,6 +156,7 @@ def _ask_report_config(
     has_fitting_text: bool,
     author: str = "",
     institution: str = "",
+    logo_path: str = "",
 ):
     """Modal dialog to configure a PDF/MD/LaTeX report.
 
@@ -201,6 +202,30 @@ def _ask_report_config(
     inst_entry = ctk.CTkEntry(scroll)
     inst_entry.insert(0, institution)
     inst_entry.pack(fill="x", padx=4, pady=(0, 6))
+
+    # ── Logo ──────────────────────────────────────────────────────────
+    var_logo = _tk_inner.BooleanVar(value=bool(logo_path))
+    logo_row = ctk.CTkFrame(scroll, fg_color="transparent")
+    logo_row.pack(fill="x", padx=4, pady=(0, 4))
+    logo_cb = ctk.CTkCheckBox(
+        logo_row,
+        text="Incluir logo (das Configurações)",
+        variable=var_logo,
+    )
+    if not logo_path:
+        var_logo.set(False)
+        logo_cb.configure(state="disabled")
+    logo_cb.pack(side="left")
+    if logo_path:
+        with contextlib.suppress(Exception):
+            from PIL import Image as _PilImg
+            import customtkinter as _ctk_inner2
+            _img = _PilImg.open(logo_path)
+            _img.thumbnail((40, 40))
+            _ctk_img = _ctk_inner2.CTkImage(_img, size=_img.size)
+            _lbl = ctk.CTkLabel(logo_row, text="", image=_ctk_img)
+            _lbl.image = _ctk_img
+            _lbl.pack(side="left", padx=8)
 
     _divider()
 
@@ -309,6 +334,7 @@ def _ask_report_config(
                 or "IonFlow Pipeline — Análise Eletroquímica",
                 author=author_entry.get().strip() or "IonFlow Pipeline",
                 institution=inst_entry.get().strip(),
+                logo_path=logo_path if var_logo.get() else "",
                 include_eis=var_eis.get(),
                 include_cycling=var_cycling.get(),
                 include_drt=var_drt.get(),
@@ -5096,6 +5122,7 @@ class PipelineApp(ctk.CTk):
             has_fitting_text=bool(fitting_text),
             author=self.gui_settings.get("report_author", ""),
             institution=self.gui_settings.get("report_institution", ""),
+            logo_path=self.gui_settings.get("report_logo_path", ""),
         )
         if cfg_result is None:
             return
