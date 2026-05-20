@@ -1036,6 +1036,25 @@ class PipelineApp(ctk.CTk):
             border_width=1,
         ).grid(row=26, column=0, padx=16, pady=(4, 12), sticky="ew")
 
+        # ── Dados sintéticos para IA ──────────────────────────────
+        self.btn_gen_synthetic = ctk.CTkButton(
+            sidebar,
+            text="🧪 " + tr("Gerar Dados Sintéticos"),
+            command=self._generate_synthetic_clicked,
+            fg_color="#2e7d32",
+            hover_color="#1b5e20",
+        )
+        self.btn_gen_synthetic.grid(row=27, column=0, padx=16, pady=(4, 4), sticky="ew")
+
+        self.btn_del_synthetic = ctk.CTkButton(
+            sidebar,
+            text="🗑️ " + tr("Excluir Dados Sintéticos"),
+            command=self._delete_synthetic_clicked,
+            fg_color="#b71c1c",
+            hover_color="#7f0000",
+        )
+        self.btn_del_synthetic.grid(row=28, column=0, padx=16, pady=(0, 12), sticky="ew")
+
         ctk.CTkLabel(sidebar, text=tr("Tema"), anchor="w").grid(
             row=14, column=0, padx=16, pady=(0, 4), sticky="ew"
         )
@@ -4179,6 +4198,199 @@ class PipelineApp(ctk.CTk):
                 args=(data_dir,),
                 daemon=True,
             ).start()
+
+    # ── Synthetic data for AI training ────────────────────────────────────
+
+    def _ask_synthetic_config(self):
+        """Dialog to configure synthetic data generation.
+
+        Returns ``(n_eis_per_class, n_cycling_files)`` or ``None`` if cancelled.
+        """
+        result = [None]
+
+        dlg = ctk.CTkToplevel(self)
+        dlg.title("Gerar Dados Sintéticos para IA")
+        dlg.geometry("400x290")
+        dlg.resizable(False, False)
+        dlg.grab_set()
+        dlg.transient(self)
+        dlg.lift()
+        dlg.focus_force()
+
+        ctk.CTkLabel(
+            dlg,
+            text="Configurar geração de dados sintéticos",
+            font=ctk.CTkFont(weight="bold"),
+        ).pack(pady=(16, 6), padx=16)
+
+        ctk.CTkLabel(
+            dlg,
+            text=(
+                "Arquivos prefixados com SYN_ treinam o RandomForest de\n"
+                "seleção de circuitos (EIS) e o preditor de ciclagem (ML)."
+            ),
+            font=ctk.CTkFont(size=11),
+            justify="left",
+        ).pack(padx=16, pady=(0, 12))
+
+        grid = ctk.CTkFrame(dlg, fg_color="transparent")
+        grid.pack(padx=16, fill="x")
+        grid.grid_columnconfigure(1, weight=1)
+
+        ctk.CTkLabel(grid, text="EIS por circuito (11 circuitos):").grid(
+            row=0, column=0, sticky="w", pady=6, padx=(0, 8)
+        )
+        n_eis_entry = ctk.CTkEntry(grid, width=90)
+        n_eis_entry.insert(0, "20")
+        n_eis_entry.grid(row=0, column=1, sticky="ew", pady=6)
+
+        ctk.CTkLabel(grid, text="Arquivos de Ciclagem:").grid(
+            row=1, column=0, sticky="w", pady=6, padx=(0, 8)
+        )
+        n_cic_entry = ctk.CTkEntry(grid, width=90)
+        n_cic_entry.insert(0, "10")
+        n_cic_entry.grid(row=1, column=1, sticky="ew", pady=6)
+
+        def _ok():
+            try:
+                n_eis = max(1, int(n_eis_entry.get()))
+                n_cic = max(0, int(n_cic_entry.get()))
+            except ValueError:
+                return
+            result[0] = (n_eis, n_cic)
+            dlg.grab_release()
+            dlg.destroy()
+
+        def _cancel():
+            dlg.grab_release()
+            dlg.destroy()
+
+        btns = ctk.CTkFrame(dlg, fg_color="transparent")
+        btns.pack(pady=16, padx=16, fill="x")
+        ctk.CTkButton(btns, text="Gerar", command=_ok).pack(
+            side="left", expand=True, fill="x", padx=(0, 4)
+        )
+        ctk.CTkButton(btns, text="Cancelar", command=_cancel, fg_color="gray50").pack(
+            side="left", expand=True, fill="x", padx=(4, 0)
+        )
+
+        dlg.wait_window()
+        return result[0]
+
+    def _generate_synthetic_clicked(self) -> None:
+        """Open config dialog, then generate synthetic EIS + cycling files."""
+        config = self._ask_synthetic_config()
+        if config is None:
+            return
+        n_eis, n_cic = config
+
+        def _worker():
+            try:
+                from scripts.gen_synthetic_eis import (
+                    generate as _gen_eis,
+                    _MODELS as _EIS_MODELS,
+                )
+                from scripts.gen_synthetic_cycling import generate as _gen_cic
+                from src.config import PipelineConfig
+
+                cfg = PipelineConfig.default()
+                eis_dir = Path(cfg.data_dir)
+                cic_dir = Path(cfg.processed_dir)
+
+                circuits = list(_EIS_MODELS.keys())
+                eis_files = _gen_eis(
+                    circuits=circuits,
+                    n_per_class=n_eis,
+                    out_dir=eis_dir,
+                    noise_level=0.02,
+                    seed=None,
+                )
+                cic_files = _gen_cic(n_files=n_cic, out_dir=cic_dir, seed=None) if n_cic > 0 else []
+
+                n_eis_total = len(eis_files)
+                n_cic_total = len(cic_files)
+                self.after(
+                    0,
+                    lambda: self._append_log(
+                        f"Sintéticos gerados: {n_eis_total} EIS em '{eis_dir}'"
+                        + (f", {n_cic_total} Ciclagem em '{cic_dir}'" if n_cic_total else "")
+                        + ". Execute o Pipeline para treinar o ML."
+                    ),
+                )
+                # Refresh Compare tab with new EIS files
+                self._quick_load_eis_dir(str(eis_dir))
+            except Exception as exc:
+                self.after(
+                    0,
+                    lambda msg=str(exc): self._append_log(
+                        f"Erro ao gerar dados sintéticos: {msg}"
+                    ),
+                )
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _delete_synthetic_clicked(self) -> None:
+        """Confirm and delete all SYN_ files from data/raw and data/processed."""
+        import tkinter.messagebox as _mb
+
+        from src.config import PipelineConfig
+
+        cfg = PipelineConfig.default()
+        eis_dir = Path(cfg.data_dir)
+        cic_dir = Path(cfg.processed_dir)
+
+        eis_count = len(list(eis_dir.glob("SYN_*.txt"))) if eis_dir.exists() else 0
+        cic_count = (
+            len(list(cic_dir.glob("SYN_CIC_*.txt"))) if cic_dir.exists() else 0
+        )
+        total = eis_count + cic_count
+
+        if total == 0:
+            self._append_log(
+                "Nenhum arquivo sintético (SYN_) encontrado para excluir."
+            )
+            return
+
+        confirmed = _mb.askyesno(
+            "Excluir Dados Sintéticos",
+            f"Excluir {eis_count} arquivo(s) EIS de '{eis_dir}'\n"
+            f"e {cic_count} arquivo(s) de Ciclagem de '{cic_dir}'?\n\n"
+            "Esta operação não pode ser desfeita.",
+            icon="warning",
+        )
+        if not confirmed:
+            return
+
+        def _worker():
+            try:
+                from scripts.gen_synthetic_eis import clean_synthetic as _clean_eis
+                from scripts.gen_synthetic_cycling import clean_synthetic as _clean_cic
+
+                n_eis = _clean_eis(eis_dir) if eis_dir.exists() else 0
+                n_cic = _clean_cic(cic_dir) if cic_dir.exists() else 0
+
+                # Remove synthetic entries from the in-memory EIS cache
+                synth_keys = [k for k in list(self.raw_eis) if k.startswith("SYN_")]
+                for k in synth_keys:
+                    del self.raw_eis[k]
+
+                self.after(
+                    0,
+                    lambda: self._append_log(
+                        f"Excluídos: {n_eis} EIS + {n_cic} Ciclagem arquivo(s) sintéticos."
+                    ),
+                )
+                if synth_keys:
+                    self.after(0, self._refresh_compare_sample_list)
+            except Exception as exc:
+                self.after(
+                    0,
+                    lambda msg=str(exc): self._append_log(
+                        f"Erro ao excluir sintéticos: {msg}"
+                    ),
+                )
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     def _open_rank_interactive(self):
         if self.rank_df is None or self.rank_df.empty:

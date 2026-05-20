@@ -2,6 +2,34 @@
 
 All notable changes to the IonFlow Pipeline are documented here.
 
+## [0.4.7] — 2026-05-20  _(Dados Sintéticos para Treino do ML)_
+
+### Added
+
+- **FEAT — Botão "Gerar Dados Sintéticos"** (`gui_app.py` sidebar, row 27):
+  abre diálogo de configuração onde o usuário define quantos arquivos EIS
+  por circuito (padrão: 20 × 11 circuitos → 220 arquivos em `data/raw`) e
+  quantos arquivos de Ciclagem (padrão: 10 em `data/processed`) deseja gerar.
+  A geração roda em segundo plano e popula automaticamente a aba
+  **Comparar Amostras** ao terminar.
+
+- **FEAT — Botão "Excluir Dados Sintéticos"** (`gui_app.py` sidebar, row 28):
+  conta os arquivos `SYN_*` em `data/raw` e `SYN_CIC_*` em `data/processed`,
+  pede confirmação e os remove; atualiza o cache `self.raw_eis` e a checklist
+  da aba Comparar Amostras imediatamente.
+
+- **`scripts/gen_synthetic_cycling.py`** (novo): gerador de ciclagem
+  galvanostática sintética (GCPL). Simula supercapacitores com parâmetros
+  físicos aleatórios (corrente, tensão, capacitância, ESR, taxa de degradação)
+  no formato `Time (s);WE(1).Current (A);WE(1).Potential (V);Cycle` esperado
+  pelo `cycling_loader.py`. Expõe `generate(n_files, out_dir, seed)` e
+  `clean_synthetic(out_dir)`. Também utilizável via CLI:
+  `python scripts/gen_synthetic_cycling.py --n 20 --seed 42`.
+
+- **FEAT — Auto-carregamento EIS na inicialização** (incluído nesta release):
+  `_autoload_eis_on_startup()` carrega automaticamente os arquivos de `data/raw`
+  na abertura do programa (backport do commit `a97c620` introduzido em 0.4.6).
+
 ## [0.4.6] — 2026-05-19  _(Rodar Ambos — Timeline, Health Score, Relatório e Auto-Carregamento)_
 
 ### Added
