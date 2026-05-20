@@ -145,6 +145,197 @@ def _convert_potentiostat_to_csv(src: Path, target_dir: str) -> Optional[str]:
         return None
 
 
+def _ask_report_config(
+    parent,
+    *,
+    has_eis: bool,
+    has_cycling: bool,
+    has_drt: bool,
+    has_ai: bool,
+    has_kk_text: bool,
+    has_fitting_text: bool,
+    author: str = "",
+    institution: str = "",
+):
+    """Modal dialog to configure a PDF/MD/LaTeX report.
+
+    Returns ``(ReportConfig, format_str)`` or ``None`` if cancelled.
+    """
+    import tkinter as _tk_inner
+
+    result: list = [None]
+
+    dlg = ctk.CTkToplevel(parent)
+    dlg.title("Configurar Relatório")
+    dlg.geometry("520x700")
+    dlg.resizable(False, False)
+    dlg.grab_set()
+
+    scroll = ctk.CTkScrollableFrame(dlg)
+    scroll.pack(fill="both", expand=True, padx=12, pady=(8, 0))
+
+    def _section_label(text: str):
+        ctk.CTkLabel(
+            scroll,
+            text=text,
+            font=ctk.CTkFont(size=13, weight="bold"),
+            anchor="w",
+        ).pack(fill="x", padx=4, pady=(10, 2))
+
+    def _divider():
+        ctk.CTkFrame(scroll, height=1, fg_color="gray40").pack(fill="x", padx=4, pady=4)
+
+    # ── Metadata ──────────────────────────────────────────────────────
+    _section_label("Informações do Relatório")
+    ctk.CTkLabel(scroll, text="Título:", anchor="w").pack(fill="x", padx=4)
+    title_entry = ctk.CTkEntry(scroll)
+    title_entry.insert(0, "IonFlow Pipeline — Análise Eletroquímica")
+    title_entry.pack(fill="x", padx=4, pady=(0, 6))
+
+    ctk.CTkLabel(scroll, text="Autor:", anchor="w").pack(fill="x", padx=4)
+    author_entry = ctk.CTkEntry(scroll)
+    author_entry.insert(0, author)
+    author_entry.pack(fill="x", padx=4, pady=(0, 6))
+
+    ctk.CTkLabel(scroll, text="Instituição:", anchor="w").pack(fill="x", padx=4)
+    inst_entry = ctk.CTkEntry(scroll)
+    inst_entry.insert(0, institution)
+    inst_entry.pack(fill="x", padx=4, pady=(0, 6))
+
+    _divider()
+
+    # ── Section checkboxes ────────────────────────────────────────────
+    var_eis = _tk_inner.BooleanVar(value=has_eis)
+    var_cycling = _tk_inner.BooleanVar(value=has_cycling)
+    var_drt = _tk_inner.BooleanVar(value=has_drt)
+    var_corr = _tk_inner.BooleanVar(value=has_eis)
+    var_ai = _tk_inner.BooleanVar(value=has_ai)
+    var_fitting = _tk_inner.BooleanVar(value=has_fitting_text)
+    var_kk = _tk_inner.BooleanVar(value=has_kk_text)
+    var_refs = _tk_inner.BooleanVar(value=True)
+
+    def _apply_preset(eis, cyc, drt, corr, ai, fit, kk, refs):
+        var_eis.set(eis and has_eis)
+        var_cycling.set(cyc and has_cycling)
+        var_drt.set(drt and has_drt)
+        var_corr.set(corr and has_eis)
+        var_ai.set(ai and has_ai)
+        var_fitting.set(fit and has_fitting_text)
+        var_kk.set(kk and has_kk_text)
+        var_refs.set(refs)
+
+    # ── Presets ───────────────────────────────────────────────────────
+    _section_label("Presets Rápidos")
+    preset_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+    preset_frame.pack(fill="x", padx=4, pady=(2, 4))
+    preset_frame.grid_columnconfigure(0, weight=1)
+    preset_frame.grid_columnconfigure(1, weight=1)
+
+    ctk.CTkButton(
+        preset_frame,
+        text="🔬 Análise Completa",
+        command=lambda: _apply_preset(True, True, True, True, True, True, True, True),
+    ).grid(row=0, column=0, padx=2, pady=2, sticky="ew")
+    ctk.CTkButton(
+        preset_frame,
+        text="📊 EIS + DRT",
+        command=lambda: _apply_preset(
+            True, False, True, True, False, False, False, True
+        ),
+    ).grid(row=0, column=1, padx=2, pady=2, sticky="ew")
+    ctk.CTkButton(
+        preset_frame,
+        text="🔋 Ciclagem + Fitting",
+        command=lambda: _apply_preset(
+            False, True, False, False, False, True, False, True
+        ),
+    ).grid(row=1, column=0, padx=2, pady=2, sticky="ew")
+    ctk.CTkButton(
+        preset_frame,
+        text="🤖 IA + KK + EIS",
+        command=lambda: _apply_preset(
+            True, False, False, False, True, False, True, True
+        ),
+    ).grid(row=1, column=1, padx=2, pady=2, sticky="ew")
+
+    _divider()
+
+    # ── Section toggles ───────────────────────────────────────────────
+    _section_label("Seções a Incluir")
+
+    def _checkbox(var, label, available):
+        suffix = "" if available else " (sem dados)"
+        cb = ctk.CTkCheckBox(scroll, text=label + suffix, variable=var)
+        if not available:
+            var.set(False)
+            cb.configure(state="disabled")
+        cb.pack(anchor="w", padx=8, pady=2)
+
+    _checkbox(var_eis, "📈 Análise EIS — gráficos + tabela ranking", has_eis)
+    _checkbox(var_cycling, "🔋 Análise de Ciclagem — energia/potência", has_cycling)
+    _checkbox(var_drt, "📉 Análise DRT — espectros + tabela de picos", has_drt)
+    _checkbox(var_corr, "📊 Correlações estatísticas (Spearman)", has_eis)
+    _checkbox(var_ai, "🤖 Interpretação IA", has_ai)
+    _checkbox(
+        var_fitting, "📝 Relatório de Fitting — parâmetros completos", has_fitting_text
+    )
+    _checkbox(var_kk, "✅ Validação Kramers-Kronig", has_kk_text)
+    _checkbox(var_refs, "📚 Referências bibliográficas", True)
+
+    _divider()
+
+    # ── Output format ─────────────────────────────────────────────────
+    _section_label("Formato de Saída")
+    var_fmt = _tk_inner.StringVar(value="pdf")
+    fmt_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+    fmt_frame.pack(fill="x", padx=4, pady=4)
+    for label, val in [
+        ("PDF (.pdf)", "pdf"),
+        ("Markdown (.md)", "markdown"),
+        ("LaTeX (.tex)", "latex"),
+    ]:
+        ctk.CTkRadioButton(fmt_frame, text=label, variable=var_fmt, value=val).pack(
+            side="left", padx=10
+        )
+
+    # ── OK / Cancel ───────────────────────────────────────────────────
+    btn_frame = ctk.CTkFrame(dlg, fg_color="transparent")
+    btn_frame.pack(fill="x", padx=12, pady=8)
+
+    def _ok():
+        result[0] = (
+            ReportConfig(
+                title=title_entry.get().strip()
+                or "IonFlow Pipeline — Análise Eletroquímica",
+                author=author_entry.get().strip() or "IonFlow Pipeline",
+                institution=inst_entry.get().strip(),
+                include_eis=var_eis.get(),
+                include_cycling=var_cycling.get(),
+                include_drt=var_drt.get(),
+                include_correlations=var_corr.get(),
+                include_ai=var_ai.get(),
+                include_fitting_report=var_fitting.get(),
+                include_kk=var_kk.get(),
+                include_references=var_refs.get(),
+            ),
+            var_fmt.get(),
+        )
+        dlg.destroy()
+
+    def _cancel():
+        dlg.destroy()
+
+    ctk.CTkButton(btn_frame, text="Cancelar", fg_color="gray40", command=_cancel).pack(
+        side="left", padx=4
+    )
+    ctk.CTkButton(btn_frame, text="✔ Gerar Relatório", command=_ok).pack(
+        side="right", padx=4
+    )
+
+    parent.wait_window(dlg)
+    return result[0]
+
+
 def _ask_export_format(parent) -> Optional[str]:
     """Show a modal dialog and return the selected export format key.
 
@@ -279,8 +470,8 @@ class PipelineApp(ctk.CTk):
         self._restore_ui_preferences()
         self._restore_language()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
-        self.after(100, self._process_queue)
-        self.after(2000, self._check_for_updates_async)
+        self._after_queue_id = self.after(100, self._process_queue)
+        self._after_update_id = self.after(2000, self._check_for_updates_async)
 
         # MVC layer (Day 13) — will progressively absorb PipelineApp logic
         self._mvc = _MVCWindow(settings_path=self.settings_path)
@@ -562,7 +753,12 @@ class PipelineApp(ctk.CTk):
             self.gui_settings["language"] = get_language()
 
         self._save_gui_settings()
+        with contextlib.suppress(Exception):
+            self.after_cancel(self._after_queue_id)
+        with contextlib.suppress(Exception):
+            self.after_cancel(self._after_update_id)
         self.destroy()
+        self.quit()
 
     def _build_layout(self):
         self.grid_columnconfigure(1, weight=1)
@@ -4878,47 +5074,102 @@ class PipelineApp(ctk.CTk):
         threading.Thread(target=worker, daemon=True).start()
 
     def _generate_report_clicked(self):
-        """Generate a PDF report from current pipeline results."""
+        """Generate a PDF/MD/LaTeX report with user-selected sections."""
+        # Read textbox content on the main thread (CTk widgets are not thread-safe)
+        fitting_text = ""
+        kk_text = ""
+        ai_text = ""
+        with contextlib.suppress(Exception):
+            fitting_text = self.fitting_report_textbox.get("1.0", "end").strip()
+        with contextlib.suppress(Exception):
+            kk_text = self.kk_textbox.get("1.0", "end").strip()
+        with contextlib.suppress(Exception):
+            ai_text = self.ai_textbox.get("1.0", "end").strip()
+
+        cfg_result = _ask_report_config(
+            self,
+            has_eis=getattr(self, "last_eis_result", None) is not None,
+            has_cycling=getattr(self, "last_cycling_result", None) is not None,
+            has_drt=getattr(self, "last_drt_result", None) is not None,
+            has_ai=bool(ai_text),
+            has_kk_text=bool(kk_text),
+            has_fitting_text=bool(fitting_text),
+            author=self.gui_settings.get("report_author", ""),
+            institution=self.gui_settings.get("report_institution", ""),
+        )
+        if cfg_result is None:
+            return
+        report_cfg, fmt = cfg_result
+
+        # Persist author/institution for next run
+        self.gui_settings["report_author"] = report_cfg.author
+        self.gui_settings["report_institution"] = report_cfg.institution
+        self._save_gui_settings()
+
+        ext_map = {"pdf": ".pdf", "markdown": ".md", "latex": ".tex"}
+        fmt_label_map = {"pdf": "PDF", "markdown": "Markdown", "latex": "LaTeX"}
+        ext = ext_map.get(fmt, ".pdf")
         out_path = filedialog.asksaveasfilename(
-            defaultextension=".pdf",
-            filetypes=[("PDF", "*.pdf"), ("Markdown", "*.md")],
+            defaultextension=ext,
+            filetypes=[
+                (fmt_label_map.get(fmt, "PDF"), f"*{ext}"),
+                ("All files", "*.*"),
+            ],
             initialdir="outputs",
             title=tr("Salvar Relatório"),
         )
         if not out_path:
             return
 
-        self._append_log(f"Gerando relatório: {out_path}")
+        self._append_log(f"Gerando relatório ({fmt.upper()}): {out_path}")
+
+        # Capture for thread closure
+        _fitting = fitting_text
+        _kk = kk_text
+        _ai = ai_text
+        _rcfg = report_cfg
+        _fmt = fmt
 
         def worker():
             try:
-                # Build ReportConfig with branding from gui_settings
-                report_cfg = ReportConfig(
-                    author=self.gui_settings.get("report_author", "IonFlow Pipeline")
-                    or "IonFlow Pipeline",
-                    institution=self.gui_settings.get("report_institution", ""),
-                    logo_path=self.gui_settings.get("report_logo_path", ""),
-                )
-                gen = ReportGenerator(report_config=report_cfg)
+                gen = ReportGenerator(report_config=_rcfg)
                 results: Dict[str, Any] = {}
-                if getattr(self, "last_eis_result", None) is not None:
+                if (
+                    _rcfg.include_eis
+                    and getattr(self, "last_eis_result", None) is not None
+                ):
                     results["eis"] = self.last_eis_result
-                if getattr(self, "last_cycling_result", None) is not None:
+                if (
+                    _rcfg.include_cycling
+                    and getattr(self, "last_cycling_result", None) is not None
+                ):
                     results["cycling"] = self.last_cycling_result
-                if getattr(self, "last_drt_result", None) is not None:
+                if (
+                    _rcfg.include_drt
+                    and getattr(self, "last_drt_result", None) is not None
+                ):
                     results["drt"] = self.last_drt_result
 
-                if not results:
+                if (
+                    not results
+                    and not _rcfg.include_fitting_report
+                    and not _rcfg.include_kk
+                ):
                     self.log_queue.put(
-                        (
-                            "log",
-                            "Nenhum resultado de pipeline disponível para o relatório.",
-                        )
+                        ("log", "Nenhum resultado disponível para o relatório.")
                     )
                     return
 
-                fmt = ["pdf"] if out_path.endswith(".pdf") else ["markdown"]
-                paths = gen.generate(out_path, results, formats=fmt)
+                paths = gen.generate(
+                    out_path,
+                    results,
+                    formats=[_fmt],
+                    ai_summary=_ai if _rcfg.include_ai else None,
+                    fitting_report_text=_fitting
+                    if _rcfg.include_fitting_report
+                    else None,
+                    kk_text=_kk if _rcfg.include_kk else None,
+                )
                 self.log_queue.put(("log", f"Relatório gerado: {', '.join(paths)}"))
             except Exception as exc:
                 self.log_queue.put(("log", f"Erro ao gerar relatório: {exc}"))
@@ -5196,7 +5447,7 @@ class PipelineApp(ctk.CTk):
                 self._append_log(f"Erro no processamento da fila: {exc}")
                 traceback.print_exc()
 
-        self.after(100, self._process_queue)
+        self._after_queue_id = self.after(100, self._process_queue)
 
     def _handle_eis_done(self, result: Optional[dict]):
         if result is None:

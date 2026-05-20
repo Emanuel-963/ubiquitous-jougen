@@ -88,6 +88,10 @@ class ReportConfig:
     include_drt: bool = True
     include_correlations: bool = True
     include_ai: bool = True
+    include_fitting_report: bool = False
+    """Include the textual fitting-report section (circuit parameter analysis)."""
+    include_kk: bool = False
+    """Include the Kramers-Kronig validation section."""
     include_references: bool = True
     max_table_rows: int = 30
     max_images_per_section: int = 3
@@ -447,6 +451,8 @@ def generate_markdown(
     pipeline_results: Dict[str, Any],
     ai_summary: Optional[str] = None,
     config: Optional[ReportConfig] = None,
+    fitting_report_text: Optional[str] = None,
+    kk_text: Optional[str] = None,
 ) -> str:
     """Generate a complete Markdown report.
 
@@ -529,6 +535,18 @@ def generate_markdown(
                 .to_markdown(index=False)
             )
             sections.append("")
+
+    # Fitting Report
+    if cfg.include_fitting_report and fitting_report_text:
+        sections.append("## Fitting Report\n")
+        sections.append(fitting_report_text)
+        sections.append("")
+
+    # Kramers-Kronig
+    if cfg.include_kk and kk_text:
+        sections.append("## Kramers-Kronig Validation\n")
+        sections.append(kk_text)
+        sections.append("")
 
     # Correlations
     if cfg.include_correlations:
@@ -1006,6 +1024,8 @@ class ReportGenerator:
         *,
         ai_summary: Optional[str] = None,
         formats: Optional[List[str]] = None,
+        fitting_report_text: Optional[str] = None,
+        kk_text: Optional[str] = None,
     ) -> List[str]:
         """Generate reports in one or more formats.
 
@@ -1044,6 +1064,10 @@ class ReportGenerator:
             sections_included.append("correlations")
         if cfg.include_ai and ai_summary:
             sections_included.append("ai")
+        if cfg.include_fitting_report and fitting_report_text:
+            sections_included.append("fitting_report")
+        if cfg.include_kk and kk_text:
+            sections_included.append("kk")
         if cfg.include_references:
             sections_included.append("references")
 
@@ -1063,6 +1087,8 @@ class ReportGenerator:
                         output_path,
                         pipeline_results,
                         ai_summary,
+                        fitting_report_text=fitting_report_text,
+                        kk_text=kk_text,
                     )
                     generated.append(path)
                 elif fmt == "markdown":
@@ -1071,6 +1097,8 @@ class ReportGenerator:
                         pipeline_results,
                         ai_summary,
                         cfg,
+                        fitting_report_text=fitting_report_text,
+                        kk_text=kk_text,
                     )
                     base.parent.mkdir(parents=True, exist_ok=True)
                     base.write_text(md, encoding="utf-8")
@@ -1122,6 +1150,8 @@ class ReportGenerator:
         output_path: str,
         pipeline_results: Dict[str, Any],
         ai_summary: Optional[str],
+        fitting_report_text: Optional[str] = None,
+        kk_text: Optional[str] = None,
     ) -> str:
         """Build the full PDF document."""
         path = str(Path(output_path).with_suffix(".pdf"))
@@ -1198,18 +1228,36 @@ class ReportGenerator:
             for i, img_path in enumerate(drt_data.get("image_paths", [])):
                 doc.add_image(img_path, caption=f"DRT Figure {i + 1}")
 
-        # 5. Correlations
+        # 5. Fitting Report
+        if cfg.include_fitting_report and fitting_report_text:
+            doc.add_section_header("Fitting Report")
+            # Chunk into pages to avoid overflowing a single cell
+            chunk = fitting_report_text[:6000]
+            doc.add_text(chunk)
+            if len(fitting_report_text) > 6000:
+                doc.add_text(
+                    "[output truncated — see full text in the Fitting Report tab]"
+                )
+
+        # 6. Kramers-Kronig Validation
+        if cfg.include_kk and kk_text:
+            doc.add_section_header("Kramers-Kronig Validation")
+            doc.add_text(kk_text[:4000])
+            if len(kk_text) > 4000:
+                doc.add_text("[output truncated — see full text in the KK tab]")
+
+        # 7. Correlations
         if cfg.include_correlations and "eis" in pipeline_results:
             doc.add_section_header("Correlations")
             corr_text = build_correlation_text(pipeline_results)
             doc.add_text(corr_text)
 
-        # 6. AI Interpretation
+        # 8. AI Interpretation
         if cfg.include_ai and ai_summary:
             doc.add_section_header("AI Interpretation")
             doc.add_text(ai_summary)
 
-        # 7. References
+        # 9. References
         if cfg.include_references:
             doc.add_section_header("References")
             refs = [
