@@ -1057,7 +1057,16 @@ class PipelineApp(ctk.CTk):
             fg_color="#b71c1c",
             hover_color="#7f0000",
         )
-        self.btn_del_synthetic.grid(row=28, column=0, padx=16, pady=(0, 12), sticky="ew")
+        self.btn_del_synthetic.grid(row=28, column=0, padx=16, pady=(0, 4), sticky="ew")
+
+        self.btn_train_classifier = ctk.CTkButton(
+            sidebar,
+            text="🤖 " + tr("Treinar Classificador"),
+            command=self._train_classifier_clicked,
+            fg_color="#1565c0",
+            hover_color="#0d47a1",
+        )
+        self.btn_train_classifier.grid(row=29, column=0, padx=16, pady=(0, 12), sticky="ew")
 
         ctk.CTkLabel(sidebar, text=tr("Tema"), anchor="w").grid(
             row=14, column=0, padx=16, pady=(0, 4), sticky="ew"
@@ -4395,6 +4404,90 @@ class PipelineApp(ctk.CTk):
                 )
 
         threading.Thread(target=_worker, daemon=True).start()
+
+    def _train_classifier_clicked(self) -> None:
+        """Train the ML circuit classifier from synthetic EIS files."""
+        from src.config import PipelineConfig
+
+        cfg = PipelineConfig.default()
+        eis_dir = Path(cfg.data_dir)
+        syn_count = len(list(eis_dir.glob("SYN_*.txt"))) if eis_dir.exists() else 0
+
+        if syn_count == 0:
+            self._append_log(
+                "Nenhum arquivo sintético (SYN_*.txt) em 'data/raw'. "
+                "Use 'Gerar Dados Sintéticos' primeiro."
+            )
+            return
+
+        self.btn_train_classifier.configure(text="⏳ " + tr("Treinando..."), state="disabled")
+
+        def _worker():
+            try:
+                from src.ml_circuit_selector import CircuitMLSelector
+
+                result = CircuitMLSelector.train_from_synthetic(
+                    data_dir=eis_dir,
+                    model_path=Path("data/knowledge/ml_classifier.joblib"),
+                )
+
+                n_s = result["n_samples"]
+                n_c = result["n_classes"]
+                acc = result["cv_accuracy"]
+                mp = result["model_path"]
+                skipped = result["skipped"]
+
+                msg = (
+                    f"Classificador treinado: {n_s} amostras, {n_c} classes"
+                    + (f", acurácia CV={acc:.1%}" if acc > 0 else "")
+                    + f". Modelo salvo em '{mp}'."
+                )
+                if skipped:
+                    msg += f" ({skipped} arquivos ignorados)"
+
+                self.after(0, lambda: self._append_log(msg))
+                self.after(
+                    0,
+                    lambda: self.btn_train_classifier.configure(
+                        text="🤖 " + tr("Treinar Classificador"), state="normal"
+                    ),
+                )
+                # Show result dialog on main thread
+                self.after(
+                    0,
+                    lambda n_s=n_s, n_c=n_c, acc=acc, mp=mp: self._show_train_result(
+                        n_s, n_c, acc, mp
+                    ),
+                )
+            except Exception as exc:
+                self.after(
+                    0,
+                    lambda msg=str(exc): self._append_log(
+                        f"Erro ao treinar classificador: {msg}"
+                    ),
+                )
+                self.after(
+                    0,
+                    lambda: self.btn_train_classifier.configure(
+                        text="🤖 " + tr("Treinar Classificador"), state="normal"
+                    ),
+                )
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _show_train_result(self, n_samples: int, n_classes: int, cv_accuracy: float, model_path: str) -> None:
+        """Show a small dialog with training results."""
+        import tkinter.messagebox as _mb
+
+        acc_str = f"{cv_accuracy:.1%}" if cv_accuracy > 0 else "N/A (poucas amostras)"
+        _mb.showinfo(
+            "Classificador Treinado",
+            f"Treinamento concluído!\n\n"
+            f"  Amostras:    {n_samples}\n"
+            f"  Classes:     {n_classes}\n"
+            f"  Acurácia CV: {acc_str}\n\n"
+            f"Modelo salvo em:\n  {model_path}",
+        )
 
     def _open_rank_interactive(self):
         if self.rank_df is None or self.rank_df.empty:

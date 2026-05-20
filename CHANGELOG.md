@@ -2,6 +2,37 @@
 
 All notable changes to the IonFlow Pipeline are documented here.
 
+## [0.4.8] — 2026-05-20  _(Treino do Classificador ML + Parsers de Potenciostatos)_
+
+### Added
+
+- **FEAT — Botão "Treinar Classificador"** (`gui_app.py` sidebar, row 29, azul):
+  lê os arquivos `SYN_*.txt` de `data/raw`, extrai features espectrais,
+  treina um `RandomForestClassifier` com validação cruzada estratificada
+  (5-fold) e salva o modelo em `data/knowledge/ml_classifier.joblib`.
+  Exibe diálogo com número de amostras, classes e acurácia CV ao terminar.
+
+- **FEAT — `CircuitMLSelector.train_from_synthetic(data_dir, model_path)`**
+  (`src/ml_circuit_selector.py`): novo classmethod que escaneia `SYN_*.txt`,
+  decodifica o rótulo do nome do arquivo (`SYN_{circuit}_{NNN}.txt`),
+  extrai os 9 features espectrais via `extract_eis_features_for_ml()`,
+  exclui classes com < 5 amostras e ajusta o RandomForest.  Retorna dict
+  com `n_samples`, `n_classes`, `classes`, `cv_accuracy`, `model_path`.
+
+- **FEAT — `CircuitMLSelector.save_model(path)` / `load_model(path)`**
+  (`src/ml_circuit_selector.py`): persistência do modelo via `joblib`;
+  `save_model` serializa modelo + metadados; `load_model` restaura instância
+  completa pronta para `predict()` e `explain()`.
+
+- **FEAT — Integração de Parsers de Potenciostatos no `load_eis_file()`**
+  (`src/loader.py`): ao receber extensão especializada (`.dta`, `.mpr`,
+  `.mpt`, `.ism`, `.isc`, `.idf`, `.dfr`), `load_eis_file()` delega ao
+  parser correto de `src.parsers` antes de tentar o fallback CSV genérico.
+  Habilita leitura nativa de arquivos Gamry `.dta`, BioLogic `.mpr`/`.mpt`,
+  Zahner `.ism`/`.isc` e Solartron `.idf`/`.dfr` sem conversão manual.
+  Parsers já existiam em `src/parsers/` (Fase 2 do Roadmap) — esta mudança
+  os conecta ao pipeline principal.
+
 ## [0.4.7] — 2026-05-20  _(Dados Sintéticos para Treino do ML)_
 
 ### Added

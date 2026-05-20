@@ -57,12 +57,37 @@ def load_eis_file(path: str) -> pd.DataFrame:
 
     Results are cached in-process by file mtime (OPT-02).  Re-reading the
     same unchanged file is a no-op after the first call.
+
+    For potentiostat-specific extensions (.dta, .mpr, .mpt, .ism, .isc,
+    .idf, .dfr) the specialised parser from ``src.parsers`` is tried first
+    so that binary and vendor-specific text formats are handled correctly.
     """
     # OPT-02: return cached copy when file has not changed
     cached = _cache_get(path)
     if cached is not None:
         logger.debug("load_eis_file: cache hit for %s", path)
         return cached
+
+    # ── Delegate to specialised parsers for vendor formats ────────────
+    import pathlib as _pl
+    _SPECIALIZED_EXTS = frozenset({".dta", ".mpr", ".mpt", ".ism", ".isc", ".idf", ".dfr"})
+    if _pl.Path(path).suffix.lower() in _SPECIALIZED_EXTS:
+        try:
+            from src.parsers import detect_parser, GenericCSVParser
+            parser_cls = detect_parser(path)
+            if parser_cls is not None and parser_cls is not GenericCSVParser:
+                result = parser_cls().parse(path)
+                required = {"frequency", "zreal", "zimag"}
+                if required.issubset(result.data.columns):
+                    df_out = result.data[list(required)].copy().dropna()
+                    if len(df_out) > 0:
+                        _cache_put(path, df_out)
+                        return df_out
+        except Exception as exc:
+            logger.warning(
+                "load_eis_file: specialised parser failed for %s: %s — falling back to CSV",
+                path, exc,
+            )
 
     # Tentar com diferentes separadores
     separators = [";", "\t", ",", None]

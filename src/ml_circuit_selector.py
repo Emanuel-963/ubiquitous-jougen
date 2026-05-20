@@ -322,3 +322,225 @@ class CircuitMLSelector:
         if not all(np.isfinite(v) for v in vec):
             return None
         return np.array(vec).reshape(1, -1)
+
+    # ── Persistence ──────────────────────────────────────────────────
+
+    def save_model(self, path) -> None:
+        """Serialize the trained model to a joblib file.
+
+        Parameters
+        ----------
+        path : str or Path
+            Destination file (conventionally ``*.joblib``).
+
+        Raises
+        ------
+        RuntimeError
+            If the model has not been trained yet.
+        """
+        if not self._trained or self._model is None:
+            raise RuntimeError("No trained model to save — call train() first.")
+
+        import joblib
+        from pathlib import Path as _Path
+
+        _path = _Path(path)
+        _path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "model": self._model,
+            "classes": self._classes,
+            "n_train": self._n_train,
+            "min_samples": self.min_samples,
+            "n_estimators": self.n_estimators,
+            "random_state": self.random_state,
+        }
+        joblib.dump(payload, _path)
+        logger.info("CircuitMLSelector: model saved to %s", _path)
+
+    @classmethod
+    def load_model(cls, path) -> "CircuitMLSelector":
+        """Load a serialized model and return a ready-to-use selector.
+
+        Parameters
+        ----------
+        path : str or Path
+            File previously created by :meth:`save_model`.
+
+        Returns
+        -------
+        CircuitMLSelector
+            Fully initialized instance with the loaded model.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the file does not exist.
+        """
+        import joblib
+        from pathlib import Path as _Path
+
+        _path = _Path(path)
+        if not _path.exists():
+            raise FileNotFoundError(f"Model file not found: {_path}")
+        payload = joblib.load(_path)
+        instance = cls(
+            min_samples=payload.get("min_samples", _DEFAULT_MIN_SAMPLES),
+            n_estimators=payload.get("n_estimators", 100),
+            random_state=payload.get("random_state", 42),
+        )
+        instance._model = payload["model"]
+        instance._classes = payload["classes"]
+        instance._n_train = payload["n_train"]
+        instance._trained = True
+        logger.info(
+            "CircuitMLSelector: loaded model from %s (%d samples, %d classes)",
+            _path, instance._n_train, len(instance._classes),
+        )
+        return instance
+
+    # ── Train from synthetic files ────────────────────────────────────
+
+    @classmethod
+    def train_from_synthetic(
+        cls,
+        data_dir,
+        model_path=None,
+        min_samples_per_class: int = 5,
+        cv_folds: int = 5,
+    ) -> dict:
+        """Train the classifier from synthetic EIS files (``SYN_*.txt``).
+
+        Scans *data_dir* for files matching ``SYN_*.txt``, extracts the
+        circuit label from the filename, loads each file with
+        :func:`~src.loader.load_eis_file`, computes spectral features, and
+        fits a :class:`~sklearn.ensemble.RandomForestClassifier`.
+
+        Parameters
+        ----------
+        data_dir : str or Path
+            Directory containing ``SYN_*.txt`` files (typically ``data/raw``).
+        model_path : str or Path, optional
+            Where to save the trained model.  Defaults to
+            ``data/knowledge/ml_classifier.joblib``.
+        min_samples_per_class : int
+            Classes with fewer samples than this are excluded from training.
+        cv_folds : int
+            Number of stratified cross-validation folds for the accuracy estimate.
+
+        Returns
+        -------
+        dict
+            Keys: ``n_samples``, ``n_classes``, ``classes``, ``cv_accuracy``,
+            ``model_path``, ``skipped``.
+        """
+        from collections import Counter
+        from pathlib import Path as _Path
+
+        from sklearn.ensemble import RandomForestClassifier
+        from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+        from src.circuit_fitting import extract_eis_features_for_ml
+        from src.loader import load_eis_file
+
+        data_dir = _Path(data_dir)
+        if model_path is None:
+            model_path = _Path("data/knowledge/ml_classifier.joblib")
+        else:
+            model_path = _Path(model_path)
+
+        syn_files = sorted(data_dir.glob("SYN_*.txt"))
+        if not syn_files:
+            raise FileNotFoundError(
+                f"No SYN_*.txt files found in '{data_dir}'. "
+                "Generate synthetic data first using 'Gerar Dados Sintéticos'."
+            )
+
+        X_list: List[List[float]] = []
+        y_list: List[str] = []
+        skipped = 0
+
+        for fpath in syn_files:
+            # Extract label from filename: SYN_{safe_name}_{NNN}.txt
+            # safe_name = circuit_name.replace(" ", "_")
+            stem = fpath.stem  # e.g. "SYN_Randles-CPE-W_001"
+            without_prefix = stem[4:]  # strip "SYN_"
+            parts = without_prefix.rsplit("_", 1)
+            if len(parts) != 2 or not parts[1].isdigit():
+                logger.debug("Skipping unexpected SYN filename: %s", fpath.name)
+                skipped += 1
+                continue
+            circuit_name = parts[0].replace("_", " ")
+
+            try:
+                df = load_eis_file(str(fpath))
+                feats = extract_eis_features_for_ml(df)
+                vec = [float(feats.get(k, float("nan"))) for k in _FEATURE_KEYS]
+                if not all(np.isfinite(v) for v in vec):
+                    skipped += 1
+                    continue
+                X_list.append(vec)
+                y_list.append(circuit_name)
+            except Exception as exc:
+                logger.debug("Skipping %s: %s", fpath.name, exc)
+                skipped += 1
+
+        if not X_list:
+            raise ValueError(
+                "No valid spectral features could be extracted from synthetic files."
+            )
+
+        X = np.array(X_list)
+        y = np.array(y_list)
+
+        # Drop classes with too few samples
+        counts = Counter(y_list)
+        valid_classes = {c for c, n in counts.items() if n >= min_samples_per_class}
+        mask = np.array([yi in valid_classes for yi in y])
+        X = X[mask]
+        y = y[mask]
+
+        n_unique = len(np.unique(y))
+        if n_unique < 2:
+            raise ValueError(
+                f"Need ≥ 2 circuit classes with ≥ {min_samples_per_class} samples each. "
+                f"Found: {dict(counts)}"
+            )
+
+        clf = RandomForestClassifier(
+            n_estimators=100,
+            random_state=42,
+            class_weight="balanced",
+            max_depth=8,
+            min_samples_leaf=2,
+        )
+
+        # Cross-validation accuracy estimate
+        cv_accuracy = 0.0
+        if len(X) >= cv_folds * n_unique:
+            skf = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=42)
+            scores = cross_val_score(clf, X, y, cv=skf, scoring="accuracy")
+            cv_accuracy = float(scores.mean())
+
+        # Fit final model on all data
+        clf.fit(X, y)
+
+        instance = cls()
+        instance._model = clf
+        instance._classes = list(clf.classes_)
+        instance._trained = True
+        instance._n_train = len(X)
+        instance.save_model(model_path)
+
+        logger.info(
+            "CircuitMLSelector: trained on %d samples, %d classes, CV acc=%.1f%%",
+            len(X), n_unique, cv_accuracy * 100,
+        )
+
+        return {
+            "n_samples": len(X),
+            "n_classes": n_unique,
+            "classes": list(clf.classes_),
+            "cv_accuracy": cv_accuracy,
+            "model_path": str(model_path),
+            "skipped": skipped,
+        }
