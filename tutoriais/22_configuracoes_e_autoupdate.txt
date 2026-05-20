@@ -1,9 +1,9 @@
 ================================================================================
-    TUTORIAL 22 — PAINEL DE CONFIGURAÇÕES E AUTO-UPDATE (IONFLOW v0.3.0)
+    TUTORIAL 22 — PAINEL DE CONFIGURAÇÕES E AUTO-UPDATE (IONFLOW v0.4.10)
 ================================================================================
 
-Versão: 0.3.0
-Última atualização: Abril 2026
+Versão: 0.4.10
+Última atualização: Maio 2026
 
 --------------------------------------------------------------------------------
 O QUE HÁ DE NOVO?
@@ -17,7 +17,8 @@ versões disponíveis e permite descarregá-las com um clique.
   ✅ Guardar / Carregar configurações de ficheiro JSON
   ✅ Repor valores padrão
   ✅ Auto-update: verificação automática no arranque
-  ✅ Download e extração da nova versão sem sair da GUI
+  ✅ NOVO v0.4.10: atualização silenciosa e automática (instala na mesma pasta,
+     sem mover arquivos do pesquisador)
 
 --------------------------------------------------------------------------------
 1. ABRIR O PAINEL DE CONFIGURAÇÕES
@@ -176,39 +177,59 @@ Se houver uma versão nova:
 ──────────────────────────────────────
 
   ┌──────────────────────────────────────────────────────────────────────────┐
-  │  ⚡ Nova versão disponível: v0.4.0                                        │
+  │  ⚡ Nova versão disponível: v0.4.10                                       │
   │  ────────────────────────────────────────────────────────────────────    │
-  │  Versão atual: 0.3.0                                                     │
-  │  Nova versão: 0.4.0                                                      │
+  │  Versão atual: 0.4.9                                                     │
   │                                                                          │
-  │  O que há de novo:                                                       │
-  │  • Novo parser para ficheiros .soartg (Solartron)                        │
-  │  • Exportação para formato Zennium                                       │
-  │  • Correção de bug no DRT para espectros muito curtos                   │
+  │  O que há de novo:  (primeiras linhas do CHANGELOG)                     │
+  │  • Auto-update silencioso — instala sem mover dados do pesquisador       │
+  │  • 33 topologias de circuitos no gerador de dados sintéticos             │
   │                                                                          │
-  │  [⬇ Descarregar]    [🌐 Ver no GitHub]    [✖ Mais tarde]               │
+  │  [⬇ Instalar agora (automático)]  [🌐 Ver no GitHub]  [✖ Mais tarde]   │
   └──────────────────────────────────────────────────────────────────────────┘
 
-5.3. DESCARREGAR UMA ATUALIZAÇÃO
-──────────────────────────────────
-  1) Clique "⬇ Descarregar" na janela de notificação
-  2) Uma barra de progresso aparece enquanto o ficheiro .zip é descarregado
-  3) O ficheiro é extraído automaticamente para a pasta do projeto
-  4) Mensagem de sucesso: "Actualização extraída em: eis_analytics-v0.4.0/"
-  5) Feche a GUI e abra novamente a partir da nova pasta
+5.3. INSTALAR UMA ATUALIZAÇÃO — MODO AUTOMÁTICO (versão instalada via .exe)
+─────────────────────────────────────────────────────────────────────────────
+  1) Clique "⬇ Instalar agora (automático)" na janela de notificação
+  2) Uma barra de progresso aparece enquanto o instalador é baixado
+     Exemplo: "⬇ A baixar… 67%  (45.2 / 67.4 MB)"
+  3) Aparece "⚙ A instalar… aguarde alguns segundos"
+  4) O instalador do Windows roda em segundo plano (sem janela)
+     — substitui todos os arquivos do programa na mesma pasta de instalação
+     — NÃO toca nos arquivos do pesquisador em data/raw/ e data/processed/
+  5) O IonFlow fecha e reabre automaticamente na nova versão
 
-NOTA: O processo NÃO substitui automaticamente os ficheiros em uso.
-A nova versão é extraída numa pasta separada (ex: eis_analytics-v0.4.0/).
-Deve mover os seus ficheiros de dados (data/) para a nova pasta manualmente.
+  TOTAL: ~30 segundos.  Zero intervenção manual.
 
-5.4. DESATIVAR VERIFICAÇÃO AUTOMÁTICA
+  ✅ Seus arquivos EIS (.txt, .csv) em data/raw/ permanecem intactos
+  ✅ Seus dados de ciclagem em data/processed/ permanecem intactos
+  ✅ Suas configurações em %APPDATA%\IonFlow\ permanecem intactas
+
+5.4. INSTALAR UMA ATUALIZAÇÃO — MODO GIT CLONE (código-fonte)
+───────────────────────────────────────────────────────────────
+  Se instalou via "git clone", ao clicar o botão, o IonFlow mostrará:
+
+    "Modo código-fonte — execute no terminal:
+
+      git pull
+      pip install -e .
+
+    Depois reinicie a GUI."
+
+  Ou use o script automático (na pasta do projeto):
+
+    .\install_pipeline.ps1 -Update
+
+  O script faz automaticamente: git pull + pip install -e . + mostra a nova versão.
+
+5.5. DESATIVAR VERIFICAÇÃO AUTOMÁTICA
 ───────────────────────────────────────
   No painel de Configurações → Aparência → desmarcar "Verificar atualizações ao iniciar"
 
   Ou no ficheiro de configuração JSON:
     "check_updates_on_start": false
 
-5.5. VERIFICAR MANUALMENTE
+5.6. VERIFICAR MANUALMENTE
 ────────────────────────────
   GUI: menu Ajuda → Verificar Atualizações
   Python:
@@ -216,7 +237,7 @@ Deve mover os seus ficheiros de dados (data/) para a nova pasta manualmente.
     info = get_latest_release()
     if info and info.is_newer_than_local():
         print(f"Nova versão: {info.tag}")
-        print(info.body)  # changelog
+        print(f"Instalador disponível: {info.installer_asset_url}")
 
 --------------------------------------------------------------------------------
 6. FICHEIRO DE CONFIGURAÇÃO — ESTRUTURA JSON

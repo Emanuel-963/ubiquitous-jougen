@@ -1,6 +1,6 @@
 """IonFlow Pipeline — EIS analytics package."""
 
-__version__ = "0.4.9"
+__version__ = "0.4.10"
 
 from src.ai import (  # noqa: F401
     AnalysisReport,

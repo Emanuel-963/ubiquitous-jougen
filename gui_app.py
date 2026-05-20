@@ -6649,17 +6649,32 @@ class PipelineApp(ctk.CTk):
         changelog.pack(fill="x", padx=20, pady=(0, 12))
 
         self._update_progress_label = ctk.CTkLabel(
-            dialog, text="", font=ctk.CTkFont(size=12)
+            dialog, text="", font=ctk.CTkFont(size=12), wraplength=460
         )
         self._update_progress_label.pack(pady=(0, 8))
 
         btn_row = ctk.CTkFrame(dialog, fg_color="transparent")
         btn_row.pack(pady=(0, 16))
 
+        from src.updater import is_frozen
+        _has_installer = is_frozen() and bool(getattr(info, "installer_asset_url", None))
+        _btn_label = (
+            "⬇ " + tr("Instalar agora  (automático)")
+            if _has_installer
+            else "📋 " + tr("Ver instruções")
+        )
+        _btn_hint = (
+            "Baixa o instalador e atualiza sem mover arquivos"
+            if _has_installer
+            else "git pull + pip install -e ."
+        )
+
         def _on_update():
             btn_update.configure(state="disabled")
             btn_later.configure(state="disabled")
-            self._update_progress_label.configure(text=tr("A baixar…"))
+            self._update_progress_label.configure(
+                text="⬇ A verificar instalador…" if _has_installer else "A preparar instruções…"
+            )
             threading.Thread(
                 target=self._do_download_update,
                 args=(info, dialog),
@@ -6673,11 +6688,16 @@ class PipelineApp(ctk.CTk):
 
         btn_update = ctk.CTkButton(
             btn_row,
-            text="⬇ " + tr("Atualizar agora"),
+            text=_btn_label,
             font=ctk.CTkFont(weight="bold"),
             command=_on_update,
+            width=220,
         )
         btn_update.pack(side="left", padx=8)
+
+        ctk.CTkLabel(
+            dialog, text=_btn_hint, font=ctk.CTkFont(size=11), text_color="gray60"
+        ).pack(pady=(0, 4))
 
         ctk.CTkButton(
             btn_row,
@@ -6694,45 +6714,74 @@ class PipelineApp(ctk.CTk):
         btn_later.pack(side="left", padx=8)
 
     def _do_download_update(self, info, dialog: ctk.CTkToplevel) -> None:
-        """Download the release ZIP in a worker thread and notify the user."""
+        """Download and install the new release in a worker thread.
+
+        Frozen (installed .exe):
+            Downloads the Windows installer asset, runs it silently
+            (/VERYSILENT) so it replaces all files in-place, then exits
+            the current process.  The installer relaunches the app.
+
+        Source (git clone / venv):
+            Cannot auto-patch; shows copy-paste commands.
+        """
         import tempfile
 
-        from src.updater import download_release, extract_release
+        from src.updater import download_asset, is_frozen, launch_installer_and_exit
+
+        installer_url = getattr(info, "installer_asset_url", None)
 
         try:
-            tmp_dir = Path(tempfile.mkdtemp(prefix="ionflow_update_"))
-            zip_path = tmp_dir / f"ionflow_{info.tag}.zip"
+            if is_frozen() and installer_url:
+                # ── Installed .exe path: silent in-place upgrade ──────────
+                tmp_dir = Path(tempfile.mkdtemp(prefix="ionflow_update_"))
+                tag_clean = info.tag.lstrip("v")
+                installer_path = tmp_dir / f"IonFlow_Pipeline_Setup_{tag_clean}.exe"
 
-            total_ref: list = [0]
+                def _progress(downloaded: int, total: int) -> None:
+                    if total > 0:
+                        pct = int(downloaded / total * 100)
+                        mb = downloaded / 1_048_576
+                        total_mb = total / 1_048_576
+                        msg = f"⬇ A baixar… {pct}%  ({mb:.1f} / {total_mb:.1f} MB)"
+                    else:
+                        kb = downloaded // 1024
+                        msg = f"⬇ A baixar… {kb} KB"
+                    self.log_queue.put(("_update_msg", msg))
 
-            def _progress(downloaded: int, total: int) -> None:
-                total_ref[0] = total
-                if total > 0:
-                    pct = int(downloaded / total * 100)
-                    msg = f"{tr('A baixar')}… {pct}%"
-                else:
-                    kb = downloaded // 1024
-                    msg = f"{tr('A baixar')}… {kb} KB"
-                self.log_queue.put(("_update_msg", msg))
+                download_asset(installer_url, installer_path, on_progress=_progress)
+                self.log_queue.put(("_update_msg", "⚙ A instalar… aguarde alguns segundos"))
+                import time
+                time.sleep(1)
+                # Starts installer silently then exits this process.
+                # The installer detects the existing path via registry AppId,
+                # replaces all files, then relaunches IonFlow_Pipeline.exe.
+                launch_installer_and_exit(installer_path)
 
-            download_release(info, zip_path, on_progress=_progress)
-            self.log_queue.put(("_update_msg", tr("A extrair…")))
+            elif is_frozen() and not installer_url:
+                # Frozen but no .exe asset published — open GitHub page
+                import webbrowser
+                webbrowser.open(info.html_url)
+                self.log_queue.put((
+                    "_update_done",
+                    (dialog, "", tr("Instalador não encontrado — página GitHub aberta.\nBaixe o Setup manualmente.")),
+                ))
 
-            extract_dir = extract_release(zip_path, tmp_dir / "extracted")
-            self.log_queue.put(
-                (
+            else:
+                # Source / developer mode
+                self.log_queue.put((
                     "_update_done",
                     (
                         dialog,
-                        str(extract_dir),
-                        tr(
-                            "Extração completa.\n"
-                            "Copie os ficheiros para a pasta da aplicação\n"
-                            "e reinicie o programa."
+                        "",
+                        (
+                            "Modo código-fonte — execute no terminal:\n\n"
+                            "  git pull\n"
+                            "  pip install -e .\n\n"
+                            "Depois reinicie a GUI."
                         ),
                     ),
-                )
-            )
+                ))
+
         except Exception as exc:
             self.log_queue.put(("_update_msg", f"{tr('Erro na atualização')}: {exc}"))
 

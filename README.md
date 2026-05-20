@@ -3,7 +3,7 @@
 **Plataforma profissional de análise eletroquímica** — EIS, ciclagem galvanostática, DRT — com agente IA, relatórios PDF, CLI e GUI interativa.
 
 [![CI](https://github.com/Emanuel-963/ubiquitous-jougen/actions/workflows/ci.yml/badge.svg)](https://github.com/Emanuel-963/ubiquitous-jougen/actions/workflows/ci.yml)
-![Version](https://img.shields.io/badge/version-0.4.1-blue)
+![Version](https://img.shields.io/badge/version-0.4.9-blue)
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License MIT](https://img.shields.io/badge/license-MIT-green)
 ![Tests](https://img.shields.io/badge/tests-235%2B%20passing-brightgreen)
@@ -28,11 +28,11 @@ ionflow analyze --all --ai --export-pdf report.pdf
 
 ---
 
-## ✨ Funcionalidades (v0.4.1)
+## ✨ Funcionalidades (v0.4.9)
 
 | Módulo | Descrição |
 |---|---|
-| **Pipeline EIS** | 12 circuitos equivalentes, ML shortlist, Monte Carlo, Kramers-Kronig |
+| **Pipeline EIS** | 33 circuitos equivalentes, ML shortlist, Monte Carlo, Kramers-Kronig |
 | **Metrologia Orazem** | σ = α\|Zⱼ\|+β\|Zᵣ\|, χ²/ν, IC 95%, parâmetro-zumbi, Porous-TLM |
 | **Pipeline DRT** | Tikhonov regularisation, detecção de picos, overlay multi-amostra |
 | **Pipeline Ciclagem** | Ragone com zonas de referência, gap analysis vs targets |
@@ -53,7 +53,7 @@ ionflow analyze --all --ai --export-pdf report.pdf
 
 ## 🔬 Para Pesquisadores
 
-### Fluxo típico de análise (v0.4.1 — estilo Orazem & Tribollet 2026)
+### Fluxo típico de análise (v0.4.9 — estilo Orazem & Tribollet 2026)
 
 1. **Preparar dados** — Colocar ficheiros EIS (`.csv`/`.txt`) em `data/raw/`
 2. **Pré-processar** (recomendado):
@@ -156,28 +156,111 @@ eis_analytics/
 
 ## 🚀 Instalação
 
-### Via pip (modo desenvolvedor)
+Escolha **uma** das três formas abaixo.
 
-```bash
+---
+
+### Opção 1 — Instalador Windows (recomendado para pesquisadores)
+
+> Não requer Python, Git nem terminal.  O auto-update cuida de versões futuras.
+
+1. Acesse a última versão em <https://github.com/Emanuel-963/ubiquitous-jougen/releases/latest>
+2. Baixe o arquivo `IonFlow_Pipeline_Setup_X.Y.Z.exe`
+3. Execute o instalador e siga os passos (não requer permissão de administrador)
+4. Abra pelo atalho na área de trabalho ou pelo menu Iniciar
+
+**Atualizar para nova versão:**  
+A GUI verifica atualizações ao iniciar.  Quando aparecer a notificação:
+- Clique **"⬇ Instalar agora (automático)"**
+- O instalador baixa, substitui os arquivos em segundo plano e reabre o IonFlow
+- Seus dados em `data/raw/` e `data/processed/` não são tocados
+
+---
+
+### Opção 2 — Git clone (para desenvolvedores e usuários avançados)
+
+**Pré-requisitos:**
+- Python 3.11+ — <https://www.python.org/downloads/> (marcar "Add to PATH")
+- Git — <https://git-scm.com/download/win> (Windows) ou `sudo apt install git` (Linux)
+
+**Instalação:**
+
+```powershell
+# 1. Clonar o repositório
+git clone https://github.com/Emanuel-963/ubiquitous-jougen.git
+cd ubiquitous-jougen/eis_analytics
+
+# 2. Criar e ativar ambiente virtual
 python -m venv venv
-venv\Scripts\Activate.ps1   # Windows
-# source venv/bin/activate  # Linux/Mac
-pip install -e ".[dev]"
+.\venv\Scripts\Activate.ps1          # Windows PowerShell
+# source venv/bin/activate           # Linux / macOS
+
+# 3. Instalar o pacote
+pip install -e .
+
+# 4. Abrir a GUI
+python gui_app.py
 ```
 
-### Executável standalone (Windows)
+> **Nota Windows:** Se o PowerShell bloquear a ativação, rode primeiro:
+> ```powershell
+> Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+> ```
 
-```bash
-pip install -e ".[build]"
-python build_exe.py
-# → dist/IonFlow_Pipeline/IonFlow_Pipeline.exe
+**Atualizar para nova versão (git clone):**
+
+```powershell
+# Na pasta eis_analytics, com o venv ativado:
+git pull
+pip install -e .
+python gui_app.py
 ```
 
-### Instalador Windows (Inno Setup)
+Ou use o script automático:
 
-```bash
-iscc installer/ionflow_setup.iss
-# → dist/installer/IonFlow_Pipeline_Setup_0.2.0.exe
+```powershell
+.\install_pipeline.ps1 -Update
+```
+
+**Verificar se está tudo OK:**
+
+```powershell
+python -c "import src; print(src.__version__)"   # deve mostrar 0.4.9 ou superior
+python -m pytest tests/ -q --tb=no               # deve passar todos os testes
+```
+
+---
+
+### Opção 3 — Instalação via script automático (Windows)
+
+O script `install_pipeline.ps1` configura tudo automaticamente:
+
+```powershell
+# Primeira instalação
+.\install_pipeline.ps1
+
+# Atualizar versão existente
+.\install_pipeline.ps1 -Update
+```
+
+O script:
+- Verifica/instala Python 3.11
+- Cria/recria o ambiente virtual
+- Instala todas as dependências
+- Cria as pastas `data/raw/`, `data/processed/`, `outputs/`
+- Com `-Update`: faz `git pull` + reinstala dependências
+
+---
+
+### Estrutura de pastas após instalação
+
+```
+eis_analytics/
+├── data/
+│   ├── raw/          ← Coloque aqui seus arquivos EIS (.txt, .csv, .dta, .mpt)
+│   └── processed/    ← Coloque aqui seus dados de ciclagem
+├── outputs/          ← Resultados gerados automaticamente
+└── IonFlow_Pipeline.exe  (se instalador) / gui_app.py (se git clone)
 ```
 
 ---

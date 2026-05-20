@@ -2,6 +2,24 @@
 
 All notable changes to the IonFlow Pipeline are documented here.
 
+## [0.4.10] — 2026-05-20  _(Auto-update silencioso + Instalação melhorada)_
+
+### Changed
+
+- **AUTO-UPDATE REESCRITO** (`src/updater.py`, `gui_app.py`): o fluxo antigo baixava um .zip e pedia ao pesquisador para copiar arquivos manualmente para a nova pasta.  A partir de agora:
+  - **Instalado via .exe (Inno Setup)**: a GUI baixa o instalador `IonFlow_Pipeline_Setup_X.Y.Z.exe` diretamente dos assets do GitHub Release, roda o instalador silenciosamente (`/VERYSILENT`), que substitui os arquivos do programa na mesma pasta de instalação sem tocar nos dados do pesquisador (`data/raw/`, `data/processed/`), e reabre o IonFlow automaticamente.
+  - **Instalado via git clone**: a GUI mostra os comandos `git pull && pip install -e .` para copiar-colar; ou o pesquisador pode rodar `./install_pipeline.ps1 -Update`.
+  - Botão atualizado: "⬇ Instalar agora (automático)" para usuários com instalador.
+  - Progresso exibido em MB: "⬇ A baixar… 67%  (45.2 / 67.4 MB)".
+
+- **`installer/ionflow_setup.iss`**: removido `skipifsilent` da seção `[Run]` — agora o app relança automaticamente após instalação silenciosa.
+
+- **`install_pipeline.ps1` REESCRITO**: adicionada opção `-Update` que faz `git fetch` + verifica se há commits novos + `git pull` + `pip install -e .` + mostra nova versão.  Funções limpas, output colorido, validação de pasta correta.
+
+- **`README.md`**: seção de Instalação completamente reescrita com 3 opções claras (instalador Windows, git clone, script automático), instruções passo-a-passo, como atualizar e como verificar a instalação.
+
+- **`tutoriais/22_configuracoes_e_autoupdate.txt`**: seção 5 reescrita descrevendo o novo fluxo automático (5.3) e o fluxo git clone (5.4).
+
 ## [0.4.9] — 2026-05-20  _(Gerador de Dados Sintéticos Expandido — 33 topologias de circuitos)_
 
 ### Added

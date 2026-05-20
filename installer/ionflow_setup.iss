@@ -9,7 +9,7 @@
 ; ──────────────────────────────────────────────────────────────
 
 #define MyAppName      "IonFlow Pipeline"
-#define MyAppVersion   "0.4.9"
+#define MyAppVersion   "0.4.10"
 #define MyAppPublisher "Emanuel"
 #define MyAppURL       "https://github.com/Emanuel-963/ubiquitous-jougen"
 #define MyAppExeName   "IonFlow_Pipeline.exe"
@@ -69,7 +69,7 @@ Name: "{group}\Desinstalar {#MyAppName}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}";   Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall
 
 [Code]
 // Show a summary page at the end of the installer
