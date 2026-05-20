@@ -2,7 +2,15 @@
 
 All notable changes to the IonFlow Pipeline are documented here.
 
-## [0.4.6] — 2026-05-19  _(Rodar Ambos — Timeline, Health Score e Relatório)_
+## [0.4.6] — 2026-05-19  _(Rodar Ambos — Timeline, Health Score, Relatório e Auto-Carregamento)_
+
+### Added
+
+- **FEAT — Auto-carregamento de amostras EIS na inicialização** (`gui_app.py`
+  `_autoload_eis_on_startup`): ao abrir o programa, os arquivos EIS já
+  presentes em `data/raw` (diretório padrão de `PipelineConfig`) são
+  carregados automaticamente em segundo plano para `self.raw_eis`, populando
+  a aba **Comparar Amostras** sem precisar importar nem rodar o pipeline.
 
 ### Fixed
 

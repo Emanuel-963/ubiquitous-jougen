@@ -498,6 +498,8 @@ class PipelineApp(ctk.CTk):
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self._after_queue_id = self.after(100, self._process_queue)
         self._after_update_id = self.after(2000, self._check_for_updates_async)
+        # Auto-populate Compare tab with EIS files already in data_dir
+        self.after(500, self._autoload_eis_on_startup)
 
         # MVC layer (Day 13) — will progressively absorb PipelineApp logic
         self._mvc = _MVCWindow(settings_path=self.settings_path)
@@ -4161,6 +4163,22 @@ class PipelineApp(ctk.CTk):
                     f"{n} amostra(s) carregada(s) na aba Comparar Amostras."
                 ),
             )
+
+    def _autoload_eis_on_startup(self) -> None:
+        """On startup, background-load EIS files already in data_dir.
+
+        Populates the Compare tab without requiring the user to run the
+        pipeline or import new files first.
+        """
+        from src.config import PipelineConfig
+
+        data_dir = PipelineConfig.default().data_dir
+        if os.path.isdir(data_dir):
+            threading.Thread(
+                target=self._quick_load_eis_dir,
+                args=(data_dir,),
+                daemon=True,
+            ).start()
 
     def _open_rank_interactive(self):
         if self.rank_df is None or self.rank_df.empty:
