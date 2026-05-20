@@ -9,7 +9,7 @@ Uso
 ---
 ::
 
-    python scripts/gen_synthetic_eis.py                 # 20 arquivos × 11 circuitos
+    python scripts/gen_synthetic_eis.py                 # 20 arquivos × 33 circuitos
     python scripts/gen_synthetic_eis.py --n 40          # 40 por classe
     python scripts/gen_synthetic_eis.py --out data/raw  # pasta de destino
     python scripts/gen_synthetic_eis.py --seed 0        # semente aleatória fixa
@@ -20,8 +20,8 @@ Uso
 Os arquivos gerados recebem o prefixo ``SYN_`` para diferenciar de medições reais
 e podem ser excluídos com ``--clean``.
 
-Circuitos suportados (11)
---------------------------
+Circuitos base (11)
+--------------------
  1. Randles-CPE-W    — Rs − (Rp ‖ CPE) − W
  2. Two-Arc-CPE      — Rs − (Rp1 ‖ CPE1) − (Rp2 ‖ CPE2)
  3. Inductive-CPE    — Rs − L − (Rp ‖ CPE)
@@ -33,6 +33,31 @@ Circuitos suportados (11)
  9. Warburg-Short    — Rs − (Rp ‖ CPE) − Wo        [reflective / coth]
 10. Gerischer        — Rs − (Rp ‖ CPE) − Z_Ger     [SOFC / mixed conductors]
 11. Three-ZARC       — Rs − ZARC₁ − ZARC₂ − ZARC₃ [solid electrolytes]
+
+Circuitos estendidos — novas topologias compostas (22)
+-------------------------------------------------------
+EXT-01  Rs-ZARC-TLM             — ZARC + De Levie TLM (eletrodo poroso)
+EXT-02  Rs-ZARC-ZARC-Wfinite    — 2 ZARCs + Warburg finito
+EXT-03  Rs-ZARC-ZARC-Wshort     — 2 ZARCs + Warburg refletivo
+EXT-04  Rs-ZARC-ZARC-Gerischer  — 2 ZARCs + difusão química
+EXT-05  Rs-ZARC-ZARC-TLM        — 2 ZARCs + TLM
+EXT-06  Rs-RC-ZARC-W            — coating ideal + CPE + Warburg
+EXT-07  Rs-ZARC-RC-Wfinite      — CPE arc + RC ideal + difusão finita
+EXT-08  Rs-L-ZARC-W             — indutivo + Randles + Warburg
+EXT-09  Rs-L-ZARC-Wfinite       — indutivo + difusão finita
+EXT-10  Rs-L-ZARC-ZARC          — indutivo + 2 arcos
+EXT-11  Rs-ZARC-ZARC-ZARC-W     — 3 ZARCs + Warburg
+EXT-12  Rs-ZARC-ZARC-ZARC-Wfinite — 3 ZARCs + Warburg finito
+EXT-13  Rs-ZARC-CPE             — arco + CPE bloqueante
+EXT-14  Rs-RC-W                 — RC ideal + Warburg
+EXT-15  Rs-RC-Wfinite           — RC ideal + Warburg finito
+EXT-16  Rs-ZARC-ZARC-CPE        — 2 ZARCs + CPE bloqueante
+EXT-17  Rs-RC-ZARC-Wfinite      — coating + CPE + difusão finita
+EXT-18  Rs-ZARC-RC-Wshort       — CPE arc + RC + Warburg refletivo
+EXT-19  Rs-L-ZARC-ZARC-W        — indutivo + 2 ZARCs + Warburg
+EXT-20  Rs-TLM                  — De Levie puro (sem arco)
+EXT-21  Rs-ZARC-ZARC-ZARC-Gerischer — 3 ZARCs + Gerischer
+EXT-22  Rs-ZARC-TLM-W           — ZARC + TLM + cauda difusiva
 
 Parâmetros físicos (realistas para supercapacitores/células eletroquímicas)
 ---------------------------------------------------------------------------
@@ -267,6 +292,53 @@ def _model_three_zarc(p: np.ndarray, omega: np.ndarray) -> np.ndarray:
     return Rs + Zarc1 + Zarc2 + Zarc3
 
 
+# ── Block-level helpers for extended circuit topologies ────────────────────
+# Each helper is a single, tested implementation of a primitive element.
+# Extended models compose these instead of repeating the numerical logic.
+
+def _zarc(omega: np.ndarray, R: float, Q: float, n: float) -> np.ndarray:
+    """R ‖ CPE — fundamental ZARC arc."""
+    return 1.0 / (1.0 / R + 1.0 / _cpe(omega, Q, n))
+
+
+def _rc_par(omega: np.ndarray, R: float, C: float) -> np.ndarray:
+    """R ‖ C — arc with ideal capacitor."""
+    return 1.0 / (1.0 / R + 1j * omega * C)
+
+
+def _wfin_b(omega: np.ndarray, Rd: float, Td: float) -> np.ndarray:
+    """Finite Warburg (transmissive / tanh): Rd·tanh(s)/s, s=√(j·ω·Td)."""
+    s = np.sqrt(1j * omega * Td)
+    sa = np.abs(s)
+    ss = np.where(sa < 1e-30, 1e-30 + 0j, np.where(sa > 20, s / sa * 20, s))
+    return Rd * np.tanh(ss) / ss
+
+
+def _wsho_b(omega: np.ndarray, Rd: float, Td: float) -> np.ndarray:
+    """Short Warburg (reflective / coth): Rd·coth(s)/s, s=√(j·ω·Td)."""
+    s = np.sqrt(1j * omega * Td)
+    sa = np.abs(s)
+    safe = np.where(sa < 1e-10, 1e-10 + 0j, s)
+    sc = np.where(sa > 20, safe / np.where(sa > 0, sa, 1.0) * 20, safe)
+    return Rd * (np.cosh(sc) / np.sinh(sc)) / safe
+
+
+def _ger_b(omega: np.ndarray, Rg: float, Tg: float) -> np.ndarray:
+    """Gerischer element: Rg / √(1 + j·ω·Tg)."""
+    return Rg / np.sqrt(1.0 + 1j * omega * Tg)
+
+
+def _tlm_b(omega: np.ndarray, Ri: float, Ydl: float, nt: float) -> np.ndarray:
+    """Semi-infinite De Levie TLM: √(Ri / (Ydl · (j·ω)^nt)).
+
+    nt ≈ 0.5 → capacitive pores (45° Nyquist line at high freq)
+    nt < 0.5 → sub-capacitive distributed admittance
+    """
+    jw_n = (1j * omega) ** nt
+    safe = np.where(np.abs(jw_n) < 1e-30, 1e-30 + 0j, jw_n)
+    return np.sqrt(Ri / (Ydl * safe))
+
+
 _MODELS: dict[str, Any] = {
     "Randles-CPE-W": _model_randles_cpe_w,
     "Two-Arc-CPE": _model_two_arc_cpe,
@@ -280,6 +352,397 @@ _MODELS: dict[str, Any] = {
     "Gerischer": _model_gerischer,
     "Three-ZARC": _model_three_zarc,
 }
+
+# ── Extended model functions — 22 novel topologies ─────────────────────────
+# EXT-01  Rs − (R‖CPE) − TLM  [single arc + porous transmission line]
+def _m_Rs_ZARC_TLM(p, o):
+    Rs, R, Q, n, Ri, Ydl, nt = p
+    return Rs + _zarc(o, R, Q, n) + _tlm_b(o, Ri, Ydl, nt)
+
+# EXT-02  Rs − (R1‖CPE1) − (R2‖CPE2) − Wfinite  [two arcs + finite diffusion]
+def _m_Rs_ZARC2_Wfinite(p, o):
+    Rs, R1, Q1, n1, R2, Q2, n2, Rd, Td = p
+    return Rs + _zarc(o, R1, Q1, n1) + _zarc(o, R2, Q2, n2) + _wfin_b(o, Rd, Td)
+
+# EXT-03  Rs − (R1‖CPE1) − (R2‖CPE2) − Wshort  [two arcs + reflective diffusion]
+def _m_Rs_ZARC2_Wshort(p, o):
+    Rs, R1, Q1, n1, R2, Q2, n2, Rd, Td = p
+    return Rs + _zarc(o, R1, Q1, n1) + _zarc(o, R2, Q2, n2) + _wsho_b(o, Rd, Td)
+
+# EXT-04  Rs − (R1‖CPE1) − (R2‖CPE2) − Gerischer  [two arcs + chem. diffusion]
+def _m_Rs_ZARC2_Gerischer(p, o):
+    Rs, R1, Q1, n1, R2, Q2, n2, Rg, Tg = p
+    return Rs + _zarc(o, R1, Q1, n1) + _zarc(o, R2, Q2, n2) + _ger_b(o, Rg, Tg)
+
+# EXT-05  Rs − (R1‖CPE1) − (R2‖CPE2) − TLM  [two arcs + transmission line]
+def _m_Rs_ZARC2_TLM(p, o):
+    Rs, R1, Q1, n1, R2, Q2, n2, Ri, Ydl, nt = p
+    return Rs + _zarc(o, R1, Q1, n1) + _zarc(o, R2, Q2, n2) + _tlm_b(o, Ri, Ydl, nt)
+
+# EXT-06  Rs − (R1‖C1) − (R2‖CPE2) − W  [ideal coating + CPE arc + Warburg]
+def _m_Rs_RC_ZARC_W(p, o):
+    Rs, R1, C1, R2, Q2, n2, sigma = p
+    return Rs + _rc_par(o, R1, C1) + _zarc(o, R2, Q2, n2) + _warburg(o, sigma)
+
+# EXT-07  Rs − (R1‖CPE1) − (R2‖C2) − Wfinite  [CPE arc + ideal arc + finite diff]
+def _m_Rs_ZARC_RC_Wfinite(p, o):
+    Rs, R1, Q1, n1, R2, C2, Rd, Td = p
+    return Rs + _zarc(o, R1, Q1, n1) + _rc_par(o, R2, C2) + _wfin_b(o, Rd, Td)
+
+# EXT-08  Rs − L − (R‖CPE) − W  [inductive loop + Randles + Warburg]
+def _m_Rs_L_ZARC_W(p, o):
+    Rs, L, R, Q, n, sigma = p
+    return Rs + _inductor(o, L) + _zarc(o, R, Q, n) + _warburg(o, sigma)
+
+# EXT-09  Rs − L − (R‖CPE) − Wfinite  [inductive + finite diffusion]
+def _m_Rs_L_ZARC_Wfinite(p, o):
+    Rs, L, R, Q, n, Rd, Td = p
+    return Rs + _inductor(o, L) + _zarc(o, R, Q, n) + _wfin_b(o, Rd, Td)
+
+# EXT-10  Rs − L − (R1‖CPE1) − (R2‖CPE2)  [inductive + two arcs]
+def _m_Rs_L_ZARC2(p, o):
+    Rs, L, R1, Q1, n1, R2, Q2, n2 = p
+    return Rs + _inductor(o, L) + _zarc(o, R1, Q1, n1) + _zarc(o, R2, Q2, n2)
+
+# EXT-11  Rs − ZARC1 − ZARC2 − ZARC3 − W  [3 arcs + semi-infinite Warburg]
+def _m_Rs_ZARC3_W(p, o):
+    Rs, R1, Q1, n1, R2, Q2, n2, R3, Q3, n3, sigma = p
+    return (Rs + _zarc(o, R1, Q1, n1) + _zarc(o, R2, Q2, n2)
+            + _zarc(o, R3, Q3, n3) + _warburg(o, sigma))
+
+# EXT-12  Rs − ZARC1 − ZARC2 − ZARC3 − Wfinite  [3 arcs + finite diffusion]
+def _m_Rs_ZARC3_Wfinite(p, o):
+    Rs, R1, Q1, n1, R2, Q2, n2, R3, Q3, n3, Rd, Td = p
+    return (Rs + _zarc(o, R1, Q1, n1) + _zarc(o, R2, Q2, n2)
+            + _zarc(o, R3, Q3, n3) + _wfin_b(o, Rd, Td))
+
+# EXT-13  Rs − (R‖CPE1) − CPE2  [arc + blocking CPE]
+def _m_Rs_ZARC_CPE(p, o):
+    Rs, R, Q1, n1, Q2, n2 = p
+    return Rs + _zarc(o, R, Q1, n1) + _cpe(o, Q2, n2)
+
+# EXT-14  Rs − (R‖C) − W  [ideal RC arc + semi-infinite Warburg]
+def _m_Rs_RC_W(p, o):
+    Rs, R, C, sigma = p
+    return Rs + _rc_par(o, R, C) + _warburg(o, sigma)
+
+# EXT-15  Rs − (R‖C) − Wfinite  [ideal RC arc + finite diffusion]
+def _m_Rs_RC_Wfinite(p, o):
+    Rs, R, C, Rd, Td = p
+    return Rs + _rc_par(o, R, C) + _wfin_b(o, Rd, Td)
+
+# EXT-16  Rs − ZARC1 − ZARC2 − CPE3  [two arcs + blocking CPE]
+def _m_Rs_ZARC2_CPE(p, o):
+    Rs, R1, Q1, n1, R2, Q2, n2, Q3, n3 = p
+    return Rs + _zarc(o, R1, Q1, n1) + _zarc(o, R2, Q2, n2) + _cpe(o, Q3, n3)
+
+# EXT-17  Rs − (R1‖C1) − (R2‖CPE2) − Wfinite  [coating + CPE arc + finite diff]
+def _m_Rs_RC_ZARC_Wfinite(p, o):
+    Rs, R1, C1, R2, Q2, n2, Rd, Td = p
+    return Rs + _rc_par(o, R1, C1) + _zarc(o, R2, Q2, n2) + _wfin_b(o, Rd, Td)
+
+# EXT-18  Rs − (R1‖CPE1) − (R2‖C2) − Wshort  [CPE arc + ideal arc + reflective diff]
+def _m_Rs_ZARC_RC_Wshort(p, o):
+    Rs, R1, Q1, n1, R2, C2, Rd, Td = p
+    return Rs + _zarc(o, R1, Q1, n1) + _rc_par(o, R2, C2) + _wsho_b(o, Rd, Td)
+
+# EXT-19  Rs − L − ZARC1 − ZARC2 − W  [inductive + two arcs + Warburg]
+def _m_Rs_L_ZARC2_W(p, o):
+    Rs, L, R1, Q1, n1, R2, Q2, n2, sigma = p
+    return (Rs + _inductor(o, L) + _zarc(o, R1, Q1, n1)
+            + _zarc(o, R2, Q2, n2) + _warburg(o, sigma))
+
+# EXT-20  Rs − TLM  [pure De Levie porous electrode, no arc]
+def _m_Rs_TLM(p, o):
+    Rs, Ri, Ydl, nt = p
+    return Rs + _tlm_b(o, Ri, Ydl, nt)
+
+# EXT-21  Rs − ZARC1 − ZARC2 − ZARC3 − Gerischer  [3 arcs + chemical diffusion]
+def _m_Rs_ZARC3_Gerischer(p, o):
+    Rs, R1, Q1, n1, R2, Q2, n2, R3, Q3, n3, Rg, Tg = p
+    return (Rs + _zarc(o, R1, Q1, n1) + _zarc(o, R2, Q2, n2)
+            + _zarc(o, R3, Q3, n3) + _ger_b(o, Rg, Tg))
+
+# EXT-22  Rs − (R‖CPE) − TLM − W  [arc + porous TLM + diffusion tail]
+def _m_Rs_ZARC_TLM_W(p, o):
+    Rs, R, Q, n, Ri, Ydl, nt, sigma = p
+    return Rs + _zarc(o, R, Q, n) + _tlm_b(o, Ri, Ydl, nt) + _warburg(o, sigma)
+
+
+# ── Extended parameter ranges (one tuple per parameter) ───────────────────
+_EXTENDED_PARAM_RANGES: dict[str, list[tuple[float, float]]] = {
+    # EXT-01 — Rs-ZARC-TLM
+    "Rs-ZARC-TLM": [
+        (0.05, 3.0),    # Rs
+        (1.0, 100.0),   # R
+        (1e-5, 2e-3),   # Q
+        (0.72, 0.97),   # n
+        (0.5, 50.0),    # Ri  (Ω per length unit)
+        (1e-5, 1e-2),   # Ydl (admittance per length unit)
+        (0.40, 0.65),   # nt  (distributed CPE exponent)
+    ],
+    # EXT-02 — Rs-ZARC-ZARC-Wfinite
+    "Rs-ZARC-ZARC-Wfinite": [
+        (0.05, 3.0),    # Rs
+        (0.5, 50.0),    # R1 (HF arc)
+        (1e-5, 5e-3),   # Q1
+        (0.75, 0.97),   # n1
+        (5.0, 300.0),   # R2 (LF arc)
+        (1e-6, 5e-4),   # Q2
+        (0.65, 0.92),   # n2
+        (0.5, 80.0),    # Rd
+        (0.05, 30.0),   # Td
+    ],
+    # EXT-03 — Rs-ZARC-ZARC-Wshort
+    "Rs-ZARC-ZARC-Wshort": [
+        (0.05, 3.0),    # Rs
+        (0.5, 50.0),    # R1
+        (1e-5, 5e-3),   # Q1
+        (0.75, 0.97),   # n1
+        (5.0, 300.0),   # R2
+        (1e-6, 5e-4),   # Q2
+        (0.65, 0.92),   # n2
+        (0.5, 80.0),    # Rd
+        (0.05, 30.0),   # Td
+    ],
+    # EXT-04 — Rs-ZARC-ZARC-Gerischer
+    "Rs-ZARC-ZARC-Gerischer": [
+        (0.01, 2.0),    # Rs
+        (0.1, 20.0),    # R1 (HF arc)
+        (1e-5, 5e-3),   # Q1
+        (0.75, 0.97),   # n1
+        (5.0, 200.0),   # R2 (MF arc)
+        (1e-6, 5e-4),   # Q2
+        (0.65, 0.92),   # n2
+        (0.5, 100.0),   # Rg
+        (1e-4, 5.0),    # Tg
+    ],
+    # EXT-05 — Rs-ZARC-ZARC-TLM
+    "Rs-ZARC-ZARC-TLM": [
+        (0.05, 2.0),    # Rs
+        (0.5, 30.0),    # R1
+        (1e-5, 2e-3),   # Q1
+        (0.75, 0.97),   # n1
+        (3.0, 100.0),   # R2
+        (1e-6, 5e-4),   # Q2
+        (0.65, 0.92),   # n2
+        (0.5, 50.0),    # Ri
+        (1e-5, 1e-2),   # Ydl
+        (0.40, 0.65),   # nt
+    ],
+    # EXT-06 — Rs-RC-ZARC-W
+    "Rs-RC-ZARC-W": [
+        (0.05, 3.0),    # Rs
+        (10.0, 800.0),  # R1 (coating / membrane)
+        (1e-10, 1e-7),  # C1 (coating capacitance)
+        (1.0, 100.0),   # R2 (charge-transfer)
+        (1e-5, 2e-3),   # Q2
+        (0.72, 0.97),   # n2
+        (0.005, 3.0),   # sigma
+    ],
+    # EXT-07 — Rs-ZARC-RC-Wfinite
+    "Rs-ZARC-RC-Wfinite": [
+        (0.05, 3.0),    # Rs
+        (1.0, 80.0),    # R1 (CPE arc)
+        (1e-5, 2e-3),   # Q1
+        (0.72, 0.97),   # n1
+        (5.0, 500.0),   # R2 (ideal RC arc)
+        (1e-8, 1e-5),   # C2
+        (0.5, 80.0),    # Rd
+        (0.05, 30.0),   # Td
+    ],
+    # EXT-08 — Rs-L-ZARC-W
+    "Rs-L-ZARC-W": [
+        (0.05, 2.5),    # Rs
+        (5e-8, 8e-5),   # L
+        (1.0, 100.0),   # R
+        (1e-5, 8e-3),   # Q
+        (0.78, 0.99),   # n
+        (0.005, 3.0),   # sigma
+    ],
+    # EXT-09 — Rs-L-ZARC-Wfinite
+    "Rs-L-ZARC-Wfinite": [
+        (0.05, 2.5),    # Rs
+        (5e-8, 8e-5),   # L
+        (1.0, 100.0),   # R
+        (1e-5, 8e-3),   # Q
+        (0.78, 0.99),   # n
+        (0.5, 80.0),    # Rd
+        (0.05, 30.0),   # Td
+    ],
+    # EXT-10 — Rs-L-ZARC-ZARC
+    "Rs-L-ZARC-ZARC": [
+        (0.05, 2.5),    # Rs
+        (5e-8, 8e-5),   # L
+        (0.5, 50.0),    # R1 (HF arc)
+        (1e-5, 5e-3),   # Q1
+        (0.78, 0.99),   # n1
+        (5.0, 200.0),   # R2 (LF arc)
+        (1e-6, 5e-4),   # Q2
+        (0.65, 0.92),   # n2
+    ],
+    # EXT-11 — Rs-ZARC-ZARC-ZARC-W
+    "Rs-ZARC-ZARC-ZARC-W": [
+        (0.01, 1.0),      # Rs
+        (0.5, 30.0),      # R1 (HF bulk)
+        (1e-12, 1e-9),    # Q1
+        (0.85, 1.0),      # n1
+        (5.0, 500.0),     # R2 (MF grain boundary)
+        (1e-10, 1e-7),    # Q2
+        (0.75, 0.95),     # n2
+        (20.0, 2000.0),   # R3 (LF interface)
+        (1e-8, 1e-5),     # Q3
+        (0.65, 0.90),     # n3
+        (0.003, 2.0),     # sigma
+    ],
+    # EXT-12 — Rs-ZARC-ZARC-ZARC-Wfinite
+    "Rs-ZARC-ZARC-ZARC-Wfinite": [
+        (0.01, 1.0),      # Rs
+        (0.5, 30.0),      # R1
+        (1e-12, 1e-9),    # Q1
+        (0.85, 1.0),      # n1
+        (5.0, 500.0),     # R2
+        (1e-10, 1e-7),    # Q2
+        (0.75, 0.95),     # n2
+        (20.0, 2000.0),   # R3
+        (1e-8, 1e-5),     # Q3
+        (0.65, 0.90),     # n3
+        (0.5, 80.0),      # Rd
+        (0.05, 30.0),     # Td
+    ],
+    # EXT-13 — Rs-ZARC-CPE
+    "Rs-ZARC-CPE": [
+        (0.01, 3.0),    # Rs
+        (1.0, 100.0),   # R (arc)
+        (1e-5, 5e-3),   # Q1 (arc CPE)
+        (0.72, 0.97),   # n1
+        (1e-3, 1.0),    # Q2 (blocking CPE, larger Q)
+        (0.88, 1.0),    # n2 (close to ideal capacitor)
+    ],
+    # EXT-14 — Rs-RC-W
+    "Rs-RC-W": [
+        (0.05, 3.0),    # Rs
+        (1.0, 150.0),   # R
+        (1e-6, 1e-2),   # C
+        (0.005, 3.0),   # sigma
+    ],
+    # EXT-15 — Rs-RC-Wfinite
+    "Rs-RC-Wfinite": [
+        (0.05, 3.0),    # Rs
+        (1.0, 150.0),   # R
+        (1e-6, 1e-2),   # C
+        (0.5, 80.0),    # Rd
+        (0.05, 30.0),   # Td
+    ],
+    # EXT-16 — Rs-ZARC-ZARC-CPE
+    "Rs-ZARC-ZARC-CPE": [
+        (0.01, 2.0),    # Rs
+        (0.5, 50.0),    # R1
+        (1e-5, 5e-3),   # Q1
+        (0.75, 0.97),   # n1
+        (5.0, 300.0),   # R2
+        (1e-6, 5e-4),   # Q2
+        (0.65, 0.92),   # n2
+        (1e-3, 0.5),    # Q3 (blocking CPE)
+        (0.88, 1.0),    # n3
+    ],
+    # EXT-17 — Rs-RC-ZARC-Wfinite
+    "Rs-RC-ZARC-Wfinite": [
+        (0.05, 3.0),    # Rs
+        (10.0, 800.0),  # R1 (coating)
+        (1e-10, 1e-7),  # C1
+        (1.0, 100.0),   # R2 (charge-transfer)
+        (1e-5, 2e-3),   # Q2
+        (0.72, 0.97),   # n2
+        (0.5, 80.0),    # Rd
+        (0.05, 30.0),   # Td
+    ],
+    # EXT-18 — Rs-ZARC-RC-Wshort
+    "Rs-ZARC-RC-Wshort": [
+        (0.05, 3.0),    # Rs
+        (1.0, 80.0),    # R1 (CPE arc)
+        (1e-5, 2e-3),   # Q1
+        (0.72, 0.97),   # n1
+        (5.0, 500.0),   # R2 (ideal RC arc)
+        (1e-8, 1e-5),   # C2
+        (0.5, 80.0),    # Rd
+        (0.05, 30.0),   # Td
+    ],
+    # EXT-19 — Rs-L-ZARC-ZARC-W
+    "Rs-L-ZARC-ZARC-W": [
+        (0.05, 2.0),    # Rs
+        (5e-8, 5e-5),   # L
+        (0.5, 30.0),    # R1
+        (1e-5, 5e-3),   # Q1
+        (0.78, 0.99),   # n1
+        (5.0, 200.0),   # R2
+        (1e-6, 5e-4),   # Q2
+        (0.65, 0.92),   # n2
+        (0.005, 3.0),   # sigma
+    ],
+    # EXT-20 — Rs-TLM
+    "Rs-TLM": [
+        (0.01, 2.0),    # Rs
+        (0.5, 100.0),   # Ri
+        (1e-6, 1e-2),   # Ydl
+        (0.40, 0.65),   # nt
+    ],
+    # EXT-21 — Rs-ZARC-ZARC-ZARC-Gerischer
+    "Rs-ZARC-ZARC-ZARC-Gerischer": [
+        (0.01, 1.0),      # Rs
+        (0.5, 30.0),      # R1
+        (1e-12, 1e-9),    # Q1
+        (0.85, 1.0),      # n1
+        (5.0, 500.0),     # R2
+        (1e-10, 1e-7),    # Q2
+        (0.75, 0.95),     # n2
+        (20.0, 2000.0),   # R3
+        (1e-8, 1e-5),     # Q3
+        (0.65, 0.90),     # n3
+        (0.5, 100.0),     # Rg
+        (1e-4, 5.0),      # Tg
+    ],
+    # EXT-22 — Rs-ZARC-TLM-W
+    "Rs-ZARC-TLM-W": [
+        (0.05, 2.0),    # Rs
+        (1.0, 50.0),    # R  (arc)
+        (1e-5, 2e-3),   # Q
+        (0.72, 0.97),   # n
+        (0.5, 30.0),    # Ri
+        (1e-5, 5e-3),   # Ydl
+        (0.40, 0.65),   # nt
+        (0.005, 2.0),   # sigma
+    ],
+}
+
+_EXTENDED_MODELS: dict[str, Any] = {
+    "Rs-ZARC-TLM":              _m_Rs_ZARC_TLM,
+    "Rs-ZARC-ZARC-Wfinite":     _m_Rs_ZARC2_Wfinite,
+    "Rs-ZARC-ZARC-Wshort":      _m_Rs_ZARC2_Wshort,
+    "Rs-ZARC-ZARC-Gerischer":   _m_Rs_ZARC2_Gerischer,
+    "Rs-ZARC-ZARC-TLM":         _m_Rs_ZARC2_TLM,
+    "Rs-RC-ZARC-W":             _m_Rs_RC_ZARC_W,
+    "Rs-ZARC-RC-Wfinite":       _m_Rs_ZARC_RC_Wfinite,
+    "Rs-L-ZARC-W":              _m_Rs_L_ZARC_W,
+    "Rs-L-ZARC-Wfinite":        _m_Rs_L_ZARC_Wfinite,
+    "Rs-L-ZARC-ZARC":           _m_Rs_L_ZARC2,
+    "Rs-ZARC-ZARC-ZARC-W":      _m_Rs_ZARC3_W,
+    "Rs-ZARC-ZARC-ZARC-Wfinite":_m_Rs_ZARC3_Wfinite,
+    "Rs-ZARC-CPE":              _m_Rs_ZARC_CPE,
+    "Rs-RC-W":                  _m_Rs_RC_W,
+    "Rs-RC-Wfinite":            _m_Rs_RC_Wfinite,
+    "Rs-ZARC-ZARC-CPE":         _m_Rs_ZARC2_CPE,
+    "Rs-RC-ZARC-Wfinite":       _m_Rs_RC_ZARC_Wfinite,
+    "Rs-ZARC-RC-Wshort":        _m_Rs_ZARC_RC_Wshort,
+    "Rs-L-ZARC-ZARC-W":         _m_Rs_L_ZARC2_W,
+    "Rs-TLM":                   _m_Rs_TLM,
+    "Rs-ZARC-ZARC-ZARC-Gerischer": _m_Rs_ZARC3_Gerischer,
+    "Rs-ZARC-TLM-W":            _m_Rs_ZARC_TLM_W,
+}
+
+# Merge extended circuits into the main lookup tables (called at module load).
+_MODELS.update(_EXTENDED_MODELS)
+_PARAM_RANGES.update(_EXTENDED_PARAM_RANGES)
 
 
 # ── Core generator ─────────────────────────────────────────────────────────

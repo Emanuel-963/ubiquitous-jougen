@@ -2,6 +2,45 @@
 
 All notable changes to the IonFlow Pipeline are documented here.
 
+## [0.4.9] — 2026-05-20  _(Gerador de Dados Sintéticos Expandido — 33 topologias de circuitos)_
+
+### Added
+
+- **FEAT — 22 novas topologias de circuitos estendidos** (`scripts/gen_synthetic_eis.py`):
+  O gerador agora cobre **33 classes** (11 base + 22 novas composições). As novas
+  topologias cobrem combinações físicas realistas de ZARC, RC, CPE, TLM (De Levie),
+  Warburg finito/refletivo, Gerischer e elementos indutivos:
+  - EXT-01 `Rs-ZARC-TLM` — ZARC + linha de transmissão porosa
+  - EXT-02 `Rs-ZARC-ZARC-Wfinite` — 2 ZARCs + difusão finita
+  - EXT-03 `Rs-ZARC-ZARC-Wshort` — 2 ZARCs + Warburg refletivo (coth)
+  - EXT-04 `Rs-ZARC-ZARC-Gerischer` — 2 ZARCs + difusão química
+  - EXT-05 `Rs-ZARC-ZARC-TLM` — 2 ZARCs + TLM
+  - EXT-06 `Rs-RC-ZARC-W` — coating ideal + CPE + Warburg
+  - EXT-07 `Rs-ZARC-RC-Wfinite` — CPE arc + RC ideal + difusão finita
+  - EXT-08 `Rs-L-ZARC-W` — indutivo + Randles + Warburg
+  - EXT-09 `Rs-L-ZARC-Wfinite` — indutivo + difusão finita
+  - EXT-10 `Rs-L-ZARC-ZARC` — indutivo + 2 arcos
+  - EXT-11 `Rs-ZARC-ZARC-ZARC-W` — 3 ZARCs + Warburg
+  - EXT-12 `Rs-ZARC-ZARC-ZARC-Wfinite` — 3 ZARCs + Warburg finito
+  - EXT-13 `Rs-ZARC-CPE` — arco CPE + CPE bloqueante
+  - EXT-14 `Rs-RC-W` — RC ideal + Warburg
+  - EXT-15 `Rs-RC-Wfinite` — RC ideal + Warburg finito
+  - EXT-16 `Rs-ZARC-ZARC-CPE` — 2 ZARCs + CPE bloqueante
+  - EXT-17 `Rs-RC-ZARC-Wfinite` — coating + CPE + difusão finita
+  - EXT-18 `Rs-ZARC-RC-Wshort` — CPE arc + RC + Warburg refletivo
+  - EXT-19 `Rs-L-ZARC-ZARC-W` — indutivo + 2 ZARCs + Warburg
+  - EXT-20 `Rs-TLM` — De Levie puro
+  - EXT-21 `Rs-ZARC-ZARC-ZARC-Gerischer` — 3 ZARCs + Gerischer
+  - EXT-22 `Rs-ZARC-TLM-W` — ZARC + TLM + cauda difusiva
+
+- **REFACT — Helpers de blocos primitivos** (`_zarc`, `_rc_par`, `_wfin_b`,
+  `_wsho_b`, `_ger_b`, `_tlm_b`) extraídos de funções de modelo isoladas,
+  permitindo composição sem repetição numérica.
+
+- **GUI** — Label do diálogo de configuração atualizado de "11 circuitos" → "33 circuitos".
+
+---
+
 ## [0.4.8] — 2026-05-20  _(Treino do Classificador ML + Parsers de Potenciostatos)_
 
 ### Added

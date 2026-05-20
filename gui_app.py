@@ -4250,7 +4250,7 @@ class PipelineApp(ctk.CTk):
         grid.pack(padx=16, fill="x")
         grid.grid_columnconfigure(1, weight=1)
 
-        ctk.CTkLabel(grid, text="EIS por circuito (11 circuitos):").grid(
+        ctk.CTkLabel(grid, text="EIS por circuito (33 circuitos):").grid(
             row=0, column=0, sticky="w", pady=6, padx=(0, 8)
         )
         n_eis_entry = ctk.CTkEntry(grid, width=90)
