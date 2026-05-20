@@ -792,9 +792,13 @@ class PipelineApp(ctk.CTk):
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        sidebar = ctk.CTkFrame(self, corner_radius=12)
-        sidebar.grid(row=0, column=0, sticky="nsw", padx=16, pady=16)
-        sidebar.grid_rowconfigure(16, weight=1)
+        _sidebar_outer = ctk.CTkFrame(self, corner_radius=12)
+        _sidebar_outer.grid(row=0, column=0, sticky="nsw", padx=16, pady=16)
+        sidebar = ctk.CTkScrollableFrame(
+            _sidebar_outer, fg_color="transparent", corner_radius=0
+        )
+        sidebar.pack(fill="both", expand=True)
+        sidebar.grid_columnconfigure(0, weight=1)
 
         ctk.CTkLabel(
             sidebar,
