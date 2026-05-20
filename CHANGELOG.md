@@ -2,6 +2,32 @@
 
 All notable changes to the IonFlow Pipeline are documented here.
 
+## [0.4.5] — 2026-05-19  _(Configurable Report Dialog + Close-Window Fix)_
+
+### Added
+
+- **FEAT-REPORT — Configurable multi-section report dialog** (`gui_app.py`,
+  `src/report_generator.py`): "Gerar Relatório" now opens a configuration
+  dialog before saving. The researcher can set title / author / institution,
+  apply one of four presets (Análise Completa, EIS+DRT, Ciclagem+Fitting,
+  IA+KK+EIS), toggle 8 individual sections (EIS, Ciclagem, DRT, Correlações,
+  IA, Fitting Report, KK Validation, Referências — disabled automatically
+  when no data is available), and choose output format (PDF / Markdown / LaTeX).
+- **`ReportConfig`** gains two new boolean flags: `include_fitting_report`
+  and `include_kk`. `generate()`, `_generate_pdf()` and `generate_markdown()`
+  accept `fitting_report_text` / `kk_text` kwargs and render them as
+  sections 5 and 6 (between DRT and Correlations).
+
+### Fixed
+
+- **BUG-10 — Ghost window after close** (`gui_app.py` `_on_close`):
+  `_on_close` previously called only `self.destroy()`, which tears down
+  the widget tree but does not stop the Tcl/Tk event loop. The
+  `_process_queue` callback rescheduled itself every 100 ms, keeping the
+  process alive. Fix: store `after()` return IDs (`_after_queue_id`,
+  `_after_update_id`), cancel them in `_on_close`, and call `self.quit()`
+  after `self.destroy()` to terminate the mainloop.
+
 ## [0.4.4] — 2026-05-20  _(Compare Tab Checklist Fix)_
 
 ### Fixed
