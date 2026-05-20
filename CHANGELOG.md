@@ -2,6 +2,22 @@
 
 All notable changes to the IonFlow Pipeline are documented here.
 
+## [0.4.6] — 2026-05-19  _(Rodar Ambos — Timeline, Health Score e Relatório)_
+
+### Fixed
+
+- **BUG-11 — Timeline e Health Score vazios após "Rodar Ambos"** (`gui_app.py`
+  `_handle_both_done`): o método extraía `eis_result` e `cic_result` do par
+  retornado pelo worker, mas não armazenava nenhum dos dois em
+  `self.last_eis_result` / `self.last_cycling_result`. Como a aba Compare e
+  o diálogo de relatório dependem dessas referências para detectar dados
+  disponíveis, Timeline e Health Score exibiam a mensagem *"Execute o
+  Pipeline EIS primeiro"* e as seções EIS, Ciclagem e Correlações do
+  diálogo de relatório ficavam desabilitadas *(sem dados)*.
+  Correção: duas linhas adicionadas logo após o unpack do resultado:
+  `self.last_eis_result = eis_result` e
+  `self.last_cycling_result = cic_result`.
+
 ## [0.4.5] — 2026-05-19  _(Configurable Report Dialog + Close-Window Fix)_
 
 ### Added

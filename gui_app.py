@@ -5545,6 +5545,9 @@ class PipelineApp(ctk.CTk):
             return
 
         eis_result, cic_result = result
+        # Store for Timeline, Health Score, report dialog availability checks
+        self.last_eis_result = eis_result
+        self.last_cycling_result = cic_result
         cap_df = eis_result.get("cap_energy")
         cap_display = None
         if cap_df is not None:
