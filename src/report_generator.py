@@ -453,6 +453,7 @@ def generate_markdown(
     config: Optional[ReportConfig] = None,
     fitting_report_text: Optional[str] = None,
     kk_text: Optional[str] = None,
+    circuit_info: Optional[Dict[str, Any]] = None,
 ) -> str:
     """Generate a complete Markdown report.
 
@@ -541,6 +542,32 @@ def generate_markdown(
         sections.append("## Fitting Report\n")
         sections.append(fitting_report_text)
         sections.append("")
+
+    # Equivalent circuit topology
+    if circuit_info:
+        sections.append("## Equivalent Circuit\n")
+        sections.append(f"**Circuit:** {circuit_info.get('name', 'N/A')}\n")
+        desc = circuit_info.get("description", "")
+        if desc:
+            sections.append(f"{desc}\n")
+        diagram = circuit_info.get("diagram", "")
+        if diagram:
+            sections.append("### Topology Diagram\n")
+            sections.append(f"```\n{diagram}\n```\n")
+        pm = circuit_info.get("physical_meaning", {})
+        if pm:
+            sections.append("### Parameter Physical Meaning\n")
+            sections.append("| Parameter | Physical Meaning |")
+            sections.append("|-----------|-----------------|")
+            for param, meaning in pm.items():
+                sections.append(f"| `{param}` | {meaning} |")
+            sections.append("")
+        typical = circuit_info.get("typical_systems", [])
+        if typical:
+            sections.append("### Typical Systems\n")
+            for s in typical:
+                sections.append(f"- {s}")
+            sections.append("")
 
     # Kramers-Kronig
     if cfg.include_kk and kk_text:
@@ -894,6 +921,18 @@ class _IonFlowPDF:
             self.pdf.ln(1)
         self.pdf.ln(2)
 
+    def add_monospace_block(self, text: str) -> None:
+        """Add a block of text in Courier (monospace) for circuit diagrams."""
+        cfg = self.cfg
+        pw = self.pdf.w - 2 * cfg.margin
+        self.pdf.set_font("Courier", "", cfg.font_size_small)
+        self.pdf.set_fill_color(245, 245, 245)
+        self._set_color(cfg.color_secondary)
+        for line in text.split("\n"):
+            self.pdf.multi_cell(pw, 4.5, _clean_text(line), fill=True)
+        self.pdf.ln(3)
+        self.pdf.set_font(cfg.font_family, "", cfg.font_size_body)
+
     def add_key_value(self, key: str, value: str) -> None:
         """Add a bold key: value pair."""
         cfg = self.cfg
@@ -954,20 +993,35 @@ def _clean_text(text: str) -> str:
         "\u2070": "^0",  # superscript 0
         "\u2071": "^i",
         "\u207b": "^-",
-        "\U0001f7e2": "[OK]",  # green circle
-        "\U0001f7e1": "[WARN]",  # yellow circle
-        "\U0001f534": "[ERR]",  # red circle
-        "\U0001f916": "[AI]",  # robot
-        "\U0001f4a1": "[TIP]",  # bulb
-        "\U0001f52e": "[PRED]",  # crystal ball
-        "\u26a0\ufe0f": "[!]",  # warning
-        "\u2705": "[v]",  # check
-        "\u274c": "[x]",  # cross
+        # Box-drawing separators (used in AI panel section dividers)
+        "\u2500": "-",  # BOX DRAWINGS LIGHT HORIZONTAL (─)
+        "\u2550": "=",  # BOX DRAWINGS DOUBLE HORIZONTAL (═)
+        "\u2501": "-",  # BOX DRAWINGS HEAVY HORIZONTAL (━)
+        "\u2502": "|",  # BOX DRAWINGS LIGHT VERTICAL (│)
+        # Emoji section labels (from _assemble_full_report in ai_panel.py)
+        "\U0001f4ca": "[Chart]",  # 📊 bar chart
+        "\u2699\ufe0f": "[Cfg]",  # ⚙️ gear + variation selector
+        "\u2699": "[Cfg]",  # ⚙ gear alone
+        "\U0001f50d": "[Find]",  # 🔍 magnifying glass
+        "\U0001f3ed": "[Process]",  # 🏭 factory
+        "\U0001f4a1": "[TIP]",  # 💡 bulb
+        "\U0001f52e": "[PRED]",  # 🔮 crystal ball
+        "\U0001f916": "[AI]",  # 🤖 robot
+        # Status circles
+        "\U0001f7e2": "[OK]",  # 🟢 green circle
+        "\U0001f7e1": "[WARN]",  # 🟡 yellow circle
+        "\U0001f534": "[ERR]",  # 🔴 red circle
+        # Warning / check / cross
+        "\u26a0\ufe0f": "[!]",  # ⚠️ warning + variation selector
+        "\u26a0": "[!]",  # ⚠ warning alone
+        "\u2705": "[v]",  # ✅ check
+        "\u274c": "[x]",  # ❌ cross
+        "\ufe0f": "",  # variation selector-16 (strip if leftover)
     }
     for old, new in replacements.items():
         text = text.replace(old, new)
-    # Encode to latin-1, dropping anything that doesn't fit
-    text = text.encode("latin-1", errors="replace").decode("latin-1")
+    # Drop any remaining chars outside latin-1 (instead of replacing with ?)
+    text = text.encode("latin-1", errors="ignore").decode("latin-1")
     return text
 
 
@@ -1026,6 +1080,7 @@ class ReportGenerator:
         formats: Optional[List[str]] = None,
         fitting_report_text: Optional[str] = None,
         kk_text: Optional[str] = None,
+        circuit_info: Optional[Dict[str, Any]] = None,
     ) -> List[str]:
         """Generate reports in one or more formats.
 
@@ -1089,6 +1144,7 @@ class ReportGenerator:
                         ai_summary,
                         fitting_report_text=fitting_report_text,
                         kk_text=kk_text,
+                        circuit_info=circuit_info,
                     )
                     generated.append(path)
                 elif fmt == "markdown":
@@ -1099,6 +1155,7 @@ class ReportGenerator:
                         cfg,
                         fitting_report_text=fitting_report_text,
                         kk_text=kk_text,
+                        circuit_info=circuit_info,
                     )
                     base.parent.mkdir(parents=True, exist_ok=True)
                     base.write_text(md, encoding="utf-8")
@@ -1152,6 +1209,7 @@ class ReportGenerator:
         ai_summary: Optional[str],
         fitting_report_text: Optional[str] = None,
         kk_text: Optional[str] = None,
+        circuit_info: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Build the full PDF document."""
         path = str(Path(output_path).with_suffix(".pdf"))
@@ -1238,6 +1296,27 @@ class ReportGenerator:
                 doc.add_text(
                     "[output truncated — see full text in the Fitting Report tab]"
                 )
+
+        # 5b. Equivalent circuit topology (from CircuitRegistry)
+        if circuit_info:
+            doc.add_section_header("Equivalent Circuit", level=2)
+            doc.add_key_value("Circuit", str(circuit_info.get("name", "N/A")))
+            desc = circuit_info.get("description", "")
+            if desc:
+                doc.add_text(desc)
+            diagram = circuit_info.get("diagram", "")
+            if diagram:
+                doc.add_section_header("Topology Diagram", level=3)
+                doc.add_monospace_block(diagram)
+            pm = circuit_info.get("physical_meaning", {})
+            if pm:
+                doc.add_section_header("Parameter Physical Meaning", level=3)
+                for param, meaning in pm.items():
+                    doc.add_key_value(str(param), str(meaning))
+            typical = circuit_info.get("typical_systems", [])
+            if typical:
+                doc.add_section_header("Typical Systems", level=3)
+                doc.add_bullet_list([str(s) for s in typical])
 
         # 6. Kramers-Kronig Validation
         if cfg.include_kk and kk_text:

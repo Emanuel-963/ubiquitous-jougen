@@ -23,7 +23,7 @@ def _reset_registry():
 
 class TestRegistryCRUD:
     def test_count_at_import(self):
-        assert CircuitRegistry.count() == 15
+        assert CircuitRegistry.count() == 37
 
     def test_names_at_import(self):
         expected = {
@@ -43,12 +43,12 @@ class TestRegistryCRUD:
             "De-Levie-TLM",
             "Pseudo-Capacitance-CPE",
         }
-        assert set(CircuitRegistry.names()) == expected
+        assert expected.issubset(set(CircuitRegistry.names()))
 
     def test_all_returns_list(self):
         all_circuits = CircuitRegistry.all()
         assert isinstance(all_circuits, list)
-        assert len(all_circuits) == 15
+        assert len(all_circuits) == 37
 
     def test_get_known_circuit(self):
         tmpl = CircuitRegistry.get("Randles-CPE-W")
@@ -70,7 +70,7 @@ class TestRegistryCRUD:
         )
         CircuitRegistry.register(custom)
         assert "My-Test" in CircuitRegistry.names()
-        assert CircuitRegistry.count() == 16
+        assert CircuitRegistry.count() == 38
         assert CircuitRegistry.get("My-Test") is custom
 
     def test_register_overwrite(self):
@@ -85,7 +85,7 @@ class TestRegistryCRUD:
         CircuitRegistry.register(custom)
         assert CircuitRegistry.get("Simple-RC") is custom
         # Count unchanged
-        assert CircuitRegistry.count() == 15
+        assert CircuitRegistry.count() == 37
 
     def test_clear(self):
         CircuitRegistry.clear()
@@ -93,7 +93,7 @@ class TestRegistryCRUD:
 
     def test_from_config_all(self):
         result = CircuitRegistry.from_config(None)
-        assert len(result) == 15
+        assert len(result) == 37
 
     def test_from_config_filtered(self):
         result = CircuitRegistry.from_config(None, names=["Randles-CPE-W", "Simple-RC"])
@@ -190,7 +190,7 @@ class TestCatalogDelegation:
         from src.circuit_fitting import circuit_catalog
 
         cat = circuit_catalog()
-        assert len(cat) == 15
+        assert len(cat) == 37
         names = {c.name for c in cat}
         assert "Simple-RC" in names
         assert "ZARC-ZARC-W" in names

@@ -189,6 +189,20 @@ def extract_eis_features_for_ml(df) -> Dict[str, float]:
         "zreal_min": float(np.nanmin(z.real)) if z.size else np.nan,
         "zreal_max": float(np.nanmax(z.real)) if z.size else np.nan,
     }
+
+    # KK residual quality features (graceful fallback to nan)
+    try:
+        from src.kramers_kronig import KramersKronigValidator
+
+        kk_res = KramersKronigValidator().validate(freq, z)
+        feats["kk_residual_real"] = float(kk_res.mean_residual_real)
+        feats["kk_residual_imag"] = float(kk_res.mean_residual_imag)
+        feats["kk_valid"] = float(kk_res.kk_valid)
+    except Exception:
+        feats["kk_residual_real"] = np.nan
+        feats["kk_residual_imag"] = np.nan
+        feats["kk_valid"] = np.nan
+
     return feats
 
 

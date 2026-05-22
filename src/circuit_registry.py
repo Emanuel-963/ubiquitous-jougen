@@ -154,6 +154,46 @@ def _rs_from_z(z: np.ndarray) -> float:
     return float(max(np.nanmin(z.real[-5:]) if z.size >= 5 else z.real[-1], 1e-3))
 
 
+# ── Private element helpers (used by EXT circuit factory functions) ───
+def _zarc_h(omega: np.ndarray, R: float, Q: float, n: float) -> np.ndarray:
+    """R ‖ CPE arc."""
+    return 1.0 / (1.0 / R + 1.0 / _cpe(omega, Q, n))
+
+
+def _rc_par_h(omega: np.ndarray, R: float, C: float) -> np.ndarray:
+    """R ‖ C arc with ideal capacitor."""
+    return 1.0 / (1.0 / R + 1j * omega * C)
+
+
+def _wfin_h(omega: np.ndarray, Rd: float, Td: float) -> np.ndarray:
+    """Finite-length Warburg (tanh / transmissive boundary)."""
+    s = np.sqrt(1j * omega * Td)
+    sa = np.abs(s)
+    ss = np.where(sa < 1e-30, 1e-30 + 0j, np.where(sa > 20, s / sa * 20, s))
+    return Rd * np.tanh(ss) / ss
+
+
+def _wsho_h(omega: np.ndarray, Rd: float, Td: float) -> np.ndarray:
+    """Finite-length Warburg (coth / reflective boundary)."""
+    s = np.sqrt(1j * omega * Td)
+    sa = np.abs(s)
+    safe = np.where(sa < 1e-10, 1e-10 + 0j, s)
+    sc = np.where(sa > 20, safe / np.where(sa > 0, sa, 1.0) * 20, safe)
+    return Rd * (np.cosh(sc) / np.sinh(sc)) / safe
+
+
+def _ger_h(omega: np.ndarray, Rg: float, Tg: float) -> np.ndarray:
+    """Gerischer element: Rg / √(1 + j·ω·Tg)."""
+    return Rg / np.sqrt(1.0 + 1j * omega * Tg)
+
+
+def _tlm_h(omega: np.ndarray, Ri: float, Ydl: float, nt: float) -> np.ndarray:
+    """Semi-infinite De Levie TLM: √(Ri / (Ydl·(j·ω)^nt))."""
+    jw_n = (1j * omega) ** nt
+    safe = np.where(np.abs(jw_n) < 1e-30, 1e-30 + 0j, jw_n)
+    return np.sqrt(Ri / (Ydl * safe))
+
+
 # ---------- 1. Randles-CPE-W ------------------------------------------
 def _make_randles_cpe_w() -> CircuitTemplate:
     param_names = ["Rs", "Rp", "Q", "n", "Sigma"]
@@ -836,7 +876,7 @@ def _make_mxene_intercalation() -> CircuitTemplate:
     param_names = ["Rs", "Rsei", "Qsei", "n_sei", "Rct", "Qdl", "n_dl", "AW", "tau_d"]
     bounds = (
         [1e-3, 1e-3, 1e-14, 0.50, 1e-3, 1e-14, 0.50, 1e-4, 1e-4],
-        [500.0, 1e5,  1e-5,  1.00, 1e6,  1e-3,  1.00, 1e4,  1e4],
+        [500.0, 1e5, 1e-5, 1.00, 1e6, 1e-3, 1.00, 1e4, 1e4],
     )
 
     def model(p: np.ndarray, omega: np.ndarray) -> np.ndarray:
@@ -862,7 +902,9 @@ def _make_mxene_intercalation() -> CircuitTemplate:
     def init(omega: np.ndarray, z: np.ndarray) -> np.ndarray:
         rs = _rs_from_z(z)
         span = float(max(z.real.max() - z.real.min(), 0.1))
-        return np.array([rs, span * 0.05, 1e-9, 0.85, span * 0.5, 1e-10, 0.80, 10.0, 0.1])
+        return np.array(
+            [rs, span * 0.05, 1e-9, 0.85, span * 0.5, 1e-10, 0.80, 10.0, 0.1]
+        )
 
     return CircuitTemplate(
         name="MXene-Intercalation",
@@ -881,7 +923,7 @@ def _make_mxene_intercalation() -> CircuitTemplate:
         physical_meaning={
             "Rs": "Electrolyte / uncompensated resistance (Ω)",
             "Rsei": "Surface termination passivation resistance (Ω); "
-                    "increases after cycling in acid → tracks degradation",
+            "increases after cycling in acid → tracks degradation",
             "Qsei": "Surface layer CPE prefactor (F·s^(n-1))",
             "n_sei": "Surface layer CPE exponent; n < 0.8 → disordered terminations",
             "Rct": "Charge-transfer resistance at MXene/electrolyte interface (Ω)",
@@ -938,7 +980,7 @@ def _make_de_levie_tlm() -> CircuitTemplate:
     param_names = ["Rs", "Ri", "Qdl", "n_dl", "L"]
     bounds = (
         [1e-4, 1e-3, 1e-14, 0.60, 1e-4],
-        [500.0, 1e5,  1e-3,  1.00, 1e2],
+        [500.0, 1e5, 1e-3, 1.00, 1e2],
     )
 
     def model(p: np.ndarray, omega: np.ndarray) -> np.ndarray:
@@ -986,7 +1028,7 @@ def _make_de_levie_tlm() -> CircuitTemplate:
         physical_meaning={
             "Rs": "External electrolyte / contact resistance (Ω)",
             "Ri": "Ionic resistance per unit pore length (Ω/length); "
-                  "high Ri → narrow or long pores",
+            "high Ri → narrow or long pores",
             "Qdl": "CPE prefactor of pore-wall double-layer per unit length",
             "n_dl": "CPE exponent (0.8–1.0); n=1 → ideal capacitive pore walls",
             "L": "Effective pore depth (same length unit as 1/Ri)",
@@ -1043,7 +1085,7 @@ def _make_pseudo_capacitance() -> CircuitTemplate:
     param_names = ["Rs", "Rct", "Qdl", "n_dl", "Rads", "Cads"]
     bounds = (
         [1e-3, 1e-2, 1e-13, 0.50, 1e-2, 1e-10],
-        [500.0, 1e7,  1e-3,  1.00, 1e7,  1e-1],
+        [500.0, 1e7, 1e-3, 1.00, 1e7, 1e-1],
     )
 
     def model(p: np.ndarray, omega: np.ndarray) -> np.ndarray:
@@ -1081,7 +1123,7 @@ def _make_pseudo_capacitance() -> CircuitTemplate:
             "n_dl": "DL CPE exponent; n=1 → smooth surface",
             "Rads": "Adsorption kinetic resistance (Ω); large → slow adsorption",
             "Cads": "Adsorption pseudo-capacitance (F); proportional to "
-                    "∂θ/∂E at equilibrium surface coverage θ",
+            "∂θ/∂E at equilibrium surface coverage θ",
         },
         typical_systems=[
             "RuO₂ in H₂SO₄ — prototypical adsorption pseudocapacitance",
@@ -1094,7 +1136,992 @@ def _make_pseudo_capacitance() -> CircuitTemplate:
 
 
 # ── Auto-register all built-in circuits at import time ───────────────
+
+# ── EXT circuits (22 composite topologies) ───────────────────────────
+
+
+def _make_ext_zarc_tlm() -> CircuitTemplate:
+    """Rs − ZARC − TLM  [EXT-01]"""
+    pn = ["Rs", "R", "Q", "n", "Ri", "Ydl", "nt"]
+    lb = [1e-6, 1e-3, 1e-14, 0.3, 1e-4, 1e-14, 0.3]
+    ub = [1e4, 1e7, 1.0, 1.0, 1e5, 1e2, 1.0]
+
+    def model(p, o):
+        Rs, R, Q, n, Ri, Ydl, nt = p
+        return Rs + _zarc_h(o, R, Q, n) + _tlm_h(o, Ri, Ydl, nt)
+
+    def init(o, z):
+        rs = _rs_from_z(z)
+        sp = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array([rs, sp * 0.5, 1e-9, 0.85, sp * 0.1, 1e-7, 0.50])
+
+    return CircuitTemplate(
+        name="Rs-ZARC-TLM",
+        param_names=pn,
+        bounds=(lb, ub),
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − ZARC − TLM",
+        description="Single ZARC arc in series with a semi-infinite De Levie TLM. "
+        "Models a faradaic reaction at a porous electrode with distributed "
+        "double-layer capacitance.",
+        physical_meaning={
+            "Rs": "Series resistance (Ω)",
+            "R": "Arc resistance (Ω)",
+            "Q": "CPE prefactor",
+            "n": "CPE exponent",
+            "Ri": "Pore ionic resistance",
+            "Ydl": "DL admittance per length",
+            "nt": "TLM CPE exponent",
+        },
+        typical_systems=[
+            "Functionalised CNTs",
+            "MXene/RGO composites",
+            "Activated carbon with surface redox groups",
+        ],
+    )
+
+
+def _make_ext_zarc2_wfinite() -> CircuitTemplate:
+    """Rs − ZARC₁ − ZARC₂ − Wfinite  [EXT-02]"""
+    pn = ["Rs", "R1", "Q1", "n1", "R2", "Q2", "n2", "Rd", "Td"]
+    lb = [1e-6, 1e-3, 1e-14, 0.3, 1e-3, 1e-14, 0.3, 1e-3, 1e-6]
+    ub = [1e4, 1e7, 1.0, 1.0, 1e7, 1.0, 1.0, 1e7, 1e5]
+
+    def model(p, o):
+        Rs, R1, Q1, n1, R2, Q2, n2, Rd, Td = p
+        return Rs + _zarc_h(o, R1, Q1, n1) + _zarc_h(o, R2, Q2, n2) + _wfin_h(o, Rd, Td)
+
+    def init(o, z):
+        rs = _rs_from_z(z)
+        sp = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array(
+            [rs, sp * 0.3, 1e-9, 0.85, sp * 0.5, 1e-10, 0.80, sp * 0.3, 0.5]
+        )
+
+    return CircuitTemplate(
+        name="Rs-ZARC-ZARC-Wfinite",
+        param_names=pn,
+        bounds=(lb, ub),
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − ZARC₁ − ZARC₂ − Wfinite",
+        description="Two ZARC arcs followed by finite-length Warburg diffusion. "
+        "Typical for Li-ion anodes with SEI + CT + limited solid diffusion.",
+        physical_meaning={
+            "Rs": "Electrolyte resistance",
+            "R1": "HF arc resistance",
+            "Q1": "HF CPE",
+            "n1": "HF CPE exp",
+            "R2": "LF arc resistance",
+            "Q2": "LF CPE",
+            "n2": "LF CPE exp",
+            "Rd": "Diffusion resistance",
+            "Td": "Diffusion time constant",
+        },
+        typical_systems=[
+            "Li-ion graphite anodes",
+            "Thick oxide electrodes",
+            "Multi-layer battery cathodes",
+        ],
+    )
+
+
+def _make_ext_zarc2_wshort() -> CircuitTemplate:
+    """Rs − ZARC₁ − ZARC₂ − Wshort  [EXT-03]"""
+    pn = ["Rs", "R1", "Q1", "n1", "R2", "Q2", "n2", "Rd", "Td"]
+    lb = [1e-6, 1e-3, 1e-14, 0.3, 1e-3, 1e-14, 0.3, 1e-3, 1e-6]
+    ub = [1e4, 1e7, 1.0, 1.0, 1e7, 1.0, 1.0, 1e7, 1e5]
+
+    def model(p, o):
+        Rs, R1, Q1, n1, R2, Q2, n2, Rd, Td = p
+        return Rs + _zarc_h(o, R1, Q1, n1) + _zarc_h(o, R2, Q2, n2) + _wsho_h(o, Rd, Td)
+
+    def init(o, z):
+        rs = _rs_from_z(z)
+        sp = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array(
+            [rs, sp * 0.3, 1e-9, 0.85, sp * 0.5, 1e-10, 0.80, sp * 0.3, 0.5]
+        )
+
+    return CircuitTemplate(
+        name="Rs-ZARC-ZARC-Wshort",
+        param_names=pn,
+        bounds=(lb, ub),
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − ZARC₁ − ZARC₂ − Wshort",
+        description="Two ZARC arcs followed by reflective-boundary Warburg. "
+        "Use when diffusion layer terminates at a blocking interface.",
+        physical_meaning={
+            "Rs": "Electrolyte resistance",
+            "R1": "HF arc",
+            "Q1": "HF CPE",
+            "n1": "HF CPE exp",
+            "R2": "LF arc",
+            "Q2": "LF CPE",
+            "n2": "LF CPE exp",
+            "Rd": "Diffusion resistance",
+            "Td": "Diffusion time",
+        },
+        typical_systems=[
+            "Ion-exchange membranes",
+            "Closed-pore electrodes",
+            "Polymer electrolytes with blocking interfaces",
+        ],
+    )
+
+
+def _make_ext_zarc2_gerischer() -> CircuitTemplate:
+    """Rs − ZARC₁ − ZARC₂ − Gerischer  [EXT-04]"""
+    pn = ["Rs", "R1", "Q1", "n1", "R2", "Q2", "n2", "Rg", "Tg"]
+    lb = [1e-6, 1e-3, 1e-14, 0.3, 1e-3, 1e-14, 0.3, 1e-3, 1e-6]
+    ub = [1e4, 1e7, 1.0, 1.0, 1e7, 1.0, 1.0, 1e7, 1e4]
+
+    def model(p, o):
+        Rs, R1, Q1, n1, R2, Q2, n2, Rg, Tg = p
+        return Rs + _zarc_h(o, R1, Q1, n1) + _zarc_h(o, R2, Q2, n2) + _ger_h(o, Rg, Tg)
+
+    def init(o, z):
+        rs = _rs_from_z(z)
+        sp = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array(
+            [rs, sp * 0.2, 1e-9, 0.85, sp * 0.3, 1e-10, 0.80, sp * 0.3, 1e-3]
+        )
+
+    return CircuitTemplate(
+        name="Rs-ZARC-ZARC-Gerischer",
+        param_names=pn,
+        bounds=(lb, ub),
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − ZARC₁ − ZARC₂ − Gerischer",
+        description="Two ZARC arcs plus Gerischer distributed reaction element. "
+        "SOFC cathodes with two distinct interface processes.",
+        physical_meaning={
+            "Rs": "Electrolyte resistance",
+            "R1": "HF arc",
+            "Q1": "HF CPE",
+            "n1": "HF CPE exp",
+            "R2": "MF arc",
+            "Q2": "MF CPE",
+            "n2": "MF CPE exp",
+            "Rg": "Gerischer resistance",
+            "Tg": "Gerischer time constant",
+        },
+        typical_systems=[
+            "SOFC cathodes with bilayer microstructure",
+            "ORR catalysts with coupled chemical steps",
+        ],
+    )
+
+
+def _make_ext_zarc2_tlm() -> CircuitTemplate:
+    """Rs − ZARC₁ − ZARC₂ − TLM  [EXT-05]"""
+    pn = ["Rs", "R1", "Q1", "n1", "R2", "Q2", "n2", "Ri", "Ydl", "nt"]
+    lb = [1e-6, 1e-3, 1e-14, 0.3, 1e-3, 1e-14, 0.3, 1e-4, 1e-14, 0.3]
+    ub = [1e4, 1e7, 1.0, 1.0, 1e7, 1.0, 1.0, 1e5, 1e2, 1.0]
+
+    def model(p, o):
+        Rs, R1, Q1, n1, R2, Q2, n2, Ri, Ydl, nt = p
+        return (
+            Rs
+            + _zarc_h(o, R1, Q1, n1)
+            + _zarc_h(o, R2, Q2, n2)
+            + _tlm_h(o, Ri, Ydl, nt)
+        )
+
+    def init(o, z):
+        rs = _rs_from_z(z)
+        sp = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array(
+            [rs, sp * 0.2, 1e-9, 0.85, sp * 0.3, 1e-10, 0.80, sp * 0.1, 1e-7, 0.5]
+        )
+
+    return CircuitTemplate(
+        name="Rs-ZARC-ZARC-TLM",
+        param_names=pn,
+        bounds=(lb, ub),
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − ZARC₁ − ZARC₂ − TLM",
+        description="Two interface arcs plus semi-infinite TLM. Composite electrodes "
+        "with two distinct interfaces plus distributed porous capacitance.",
+        physical_meaning={
+            "Rs": "Series resistance",
+            "R1": "HF arc",
+            "Q1": "HF CPE",
+            "n1": "HF CPE exp",
+            "R2": "LF arc",
+            "Q2": "LF CPE",
+            "n2": "LF CPE exp",
+            "Ri": "Pore ionic resistance",
+            "Ydl": "DL admittance",
+            "nt": "TLM exp",
+        },
+        typical_systems=["MXene/carbon composites", "Hierarchically porous electrodes"],
+    )
+
+
+def _make_ext_rc_zarc_w() -> CircuitTemplate:
+    """Rs − (R₁‖C₁) − ZARC₂ − W  [EXT-06]"""
+    pn = ["Rs", "R1", "C1", "R2", "Q2", "n2", "Sigma"]
+    lb = [1e-6, 1e-3, 1e-14, 1e-3, 1e-14, 0.3, 1e-10]
+    ub = [1e4, 1e7, 1.0, 1e7, 1.0, 1.0, 1e5]
+
+    def model(p, o):
+        Rs, R1, C1, R2, Q2, n2, sigma = p
+        return Rs + _rc_par_h(o, R1, C1) + _zarc_h(o, R2, Q2, n2) + _warburg(o, sigma)
+
+    def init(o, z):
+        rs = _rs_from_z(z)
+        sp = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array([rs, sp * 0.3, 1e-9, sp * 0.5, 1e-9, 0.85, 0.01])
+
+    return CircuitTemplate(
+        name="Rs-RC-ZARC-W",
+        param_names=pn,
+        bounds=(lb, ub),
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − (R₁‖C₁) − ZARC₂ − W",
+        description="Ideal dielectric coating + CPE charge-transfer arc + Warburg. "
+        "Uniform films over corrosion-active metals.",
+        physical_meaning={
+            "Rs": "Electrolyte resistance",
+            "R1": "Coating resistance",
+            "C1": "Coating dielectric capacitance",
+            "R2": "Charge-transfer resistance",
+            "Q2": "DL CPE",
+            "n2": "DL CPE exp",
+            "Sigma": "Warburg coefficient",
+        },
+        typical_systems=[
+            "Uniform oxide coatings on steel",
+            "Anodised aluminium with barrier layer",
+        ],
+    )
+
+
+def _make_ext_zarc_rc_wfinite() -> CircuitTemplate:
+    """Rs − ZARC₁ − (R₂‖C₂) − Wfinite  [EXT-07]"""
+    pn = ["Rs", "R1", "Q1", "n1", "R2", "C2", "Rd", "Td"]
+    lb = [1e-6, 1e-3, 1e-14, 0.3, 1e-3, 1e-14, 1e-3, 1e-6]
+    ub = [1e4, 1e7, 1.0, 1.0, 1e7, 1.0, 1e7, 1e5]
+
+    def model(p, o):
+        Rs, R1, Q1, n1, R2, C2, Rd, Td = p
+        return Rs + _zarc_h(o, R1, Q1, n1) + _rc_par_h(o, R2, C2) + _wfin_h(o, Rd, Td)
+
+    def init(o, z):
+        rs = _rs_from_z(z)
+        sp = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array([rs, sp * 0.3, 1e-9, 0.85, sp * 0.4, 1e-7, sp * 0.3, 0.5])
+
+    return CircuitTemplate(
+        name="Rs-ZARC-RC-Wfinite",
+        param_names=pn,
+        bounds=(lb, ub),
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − ZARC₁ − (R₂‖C₂) − Wfinite",
+        description="CPE arc + ideal adsorption RC + finite diffusion. "
+        "Surface kinetics with Langmuir adsorption and bounded diffusion.",
+        physical_meaning={
+            "Rs": "Series resistance",
+            "R1": "CT resistance",
+            "Q1": "DL CPE",
+            "n1": "CPE exp",
+            "R2": "Adsorption resistance",
+            "C2": "Adsorption capacitance",
+            "Rd": "Diffusion resistance",
+            "Td": "Diffusion time",
+        },
+        typical_systems=[
+            "Nb₂O₅ with adsorption + diffusion",
+            "MXene at low frequencies",
+        ],
+    )
+
+
+def _make_ext_l_zarc_w() -> CircuitTemplate:
+    """Rs − L − ZARC − W  [EXT-08]"""
+    pn = ["Rs", "L", "R", "Q", "n", "Sigma"]
+    lb = [1e-6, 1e-12, 1e-3, 1e-14, 0.3, 1e-10]
+    ub = [1e4, 1e-1, 1e7, 1.0, 1.0, 1e5]
+
+    def model(p, o):
+        Rs, L, R, Q, n, sigma = p
+        return Rs + _inductor(o, L) + _zarc_h(o, R, Q, n) + _warburg(o, sigma)
+
+    def init(o, z):
+        rs = _rs_from_z(z)
+        sp = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array([rs, 1e-6, sp * 0.5, 1e-9, 0.85, 0.01])
+
+    return CircuitTemplate(
+        name="Rs-L-ZARC-W",
+        param_names=pn,
+        bounds=(lb, ub),
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − L − ZARC − W",
+        description="Inductive loop + Randles-CPE-W. Inductive cable artefact or "
+        "adsorbed intermediate combined with semi-infinite diffusion.",
+        physical_meaning={
+            "Rs": "Series resistance",
+            "L": "Inductance",
+            "R": "Charge-transfer resistance",
+            "Q": "DL CPE",
+            "n": "CPE exp",
+            "Sigma": "Warburg coefficient",
+        },
+        typical_systems=[
+            "PEM fuel cells with cable inductance",
+            "Corrosion with inductive loop + diffusion",
+        ],
+    )
+
+
+def _make_ext_l_zarc_wfinite() -> CircuitTemplate:
+    """Rs − L − ZARC − Wfinite  [EXT-09]"""
+    pn = ["Rs", "L", "R", "Q", "n", "Rd", "Td"]
+    lb = [1e-6, 1e-12, 1e-3, 1e-14, 0.3, 1e-3, 1e-6]
+    ub = [1e4, 1e-1, 1e7, 1.0, 1.0, 1e7, 1e5]
+
+    def model(p, o):
+        Rs, L, R, Q, n, Rd, Td = p
+        return Rs + _inductor(o, L) + _zarc_h(o, R, Q, n) + _wfin_h(o, Rd, Td)
+
+    def init(o, z):
+        rs = _rs_from_z(z)
+        sp = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array([rs, 1e-6, sp * 0.5, 1e-9, 0.85, sp * 0.3, 0.5])
+
+    return CircuitTemplate(
+        name="Rs-L-ZARC-Wfinite",
+        param_names=pn,
+        bounds=(lb, ub),
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − L − ZARC − Wfinite",
+        description="Inductive loop + ZARC + bounded diffusion. Thin-film systems "
+        "where diffusion layer is limited and measurement cables add inductance.",
+        physical_meaning={
+            "Rs": "Series resistance",
+            "L": "Inductance",
+            "R": "Charge-transfer resistance",
+            "Q": "DL CPE",
+            "n": "CPE exp",
+            "Rd": "Diffusion resistance",
+            "Td": "Diffusion time",
+        },
+        typical_systems=[
+            "Thin-film batteries with inductive measurement artefact",
+            "PEM cells with finite diffusion",
+        ],
+    )
+
+
+def _make_ext_l_zarc2() -> CircuitTemplate:
+    """Rs − L − ZARC₁ − ZARC₂  [EXT-10]"""
+    pn = ["Rs", "L", "R1", "Q1", "n1", "R2", "Q2", "n2"]
+    lb = [1e-6, 1e-12, 1e-3, 1e-14, 0.3, 1e-3, 1e-14, 0.3]
+    ub = [1e4, 1e-1, 1e7, 1.0, 1.0, 1e7, 1.0, 1.0]
+
+    def model(p, o):
+        Rs, L, R1, Q1, n1, R2, Q2, n2 = p
+        return Rs + _inductor(o, L) + _zarc_h(o, R1, Q1, n1) + _zarc_h(o, R2, Q2, n2)
+
+    def init(o, z):
+        rs = _rs_from_z(z)
+        sp = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array([rs, 1e-6, sp * 0.3, 1e-9, 0.85, sp * 0.5, 1e-10, 0.80])
+
+    return CircuitTemplate(
+        name="Rs-L-ZARC-ZARC",
+        param_names=pn,
+        bounds=(lb, ub),
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − L − ZARC₁ − ZARC₂",
+        description="Inductive loop + two ZARC arcs. PEM fuel cells with anode "
+        "and cathode arcs plus high-frequency inductance.",
+        physical_meaning={
+            "Rs": "Series resistance",
+            "L": "Inductance",
+            "R1": "HF arc resistance",
+            "Q1": "HF CPE",
+            "n1": "HF exp",
+            "R2": "LF arc resistance",
+            "Q2": "LF CPE",
+            "n2": "LF exp",
+        },
+        typical_systems=["PEM fuel cells", "Flow batteries with two electrode arcs"],
+    )
+
+
+def _make_ext_zarc3_w() -> CircuitTemplate:
+    """Rs − ZARC₁ − ZARC₂ − ZARC₃ − W  [EXT-11]"""
+    pn = ["Rs", "R1", "Q1", "n1", "R2", "Q2", "n2", "R3", "Q3", "n3", "Sigma"]
+    lb = [1e-6, 1e-3, 1e-14, 0.3, 1e-3, 1e-14, 0.3, 1e-3, 1e-14, 0.3, 1e-10]
+    ub = [1e4, 1e7, 1.0, 1.0, 1e7, 1.0, 1.0, 1e8, 1.0, 1.0, 1e5]
+
+    def model(p, o):
+        Rs, R1, Q1, n1, R2, Q2, n2, R3, Q3, n3, sigma = p
+        return (
+            Rs
+            + _zarc_h(o, R1, Q1, n1)
+            + _zarc_h(o, R2, Q2, n2)
+            + _zarc_h(o, R3, Q3, n3)
+            + _warburg(o, sigma)
+        )
+
+    def init(o, z):
+        rs = _rs_from_z(z)
+        sp = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array(
+            [
+                rs,
+                sp * 0.1,
+                1e-12,
+                0.95,
+                sp * 0.2,
+                1e-10,
+                0.85,
+                sp * 0.3,
+                1e-8,
+                0.75,
+                0.01,
+            ]
+        )
+
+    return CircuitTemplate(
+        name="Rs-ZARC-ZARC-ZARC-W",
+        param_names=pn,
+        bounds=(lb, ub),
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − ZARC₁ − ZARC₂ − ZARC₃ − W",
+        description="Three ZARC arcs plus semi-infinite Warburg. Solid electrolytes "
+        "with bulk, grain-boundary, and electrode arcs plus ionic diffusion.",
+        physical_meaning={
+            "Rs": "Geometric resistance",
+            "R1": "Bulk arc resistance",
+            "Q1": "Bulk arc CPE prefactor",
+            "n1": "Bulk arc CPE exponent",
+            "R2": "Grain-boundary arc resistance",
+            "Q2": "GB arc CPE prefactor",
+            "n2": "GB arc CPE exponent",
+            "R3": "Electrode arc resistance",
+            "Q3": "Electrode arc CPE prefactor",
+            "n3": "Electrode arc CPE exponent",
+            "Sigma": "Warburg coefficient",
+        },
+        typical_systems=[
+            "Polycrystalline LLZO/NASICON with porous electrode",
+            "YSZ pellets in SOFC stack",
+        ],
+    )
+
+
+def _make_ext_zarc3_wfinite() -> CircuitTemplate:
+    """Rs − ZARC₁ − ZARC₂ − ZARC₃ − Wfinite  [EXT-12]"""
+    pn = ["Rs", "R1", "Q1", "n1", "R2", "Q2", "n2", "R3", "Q3", "n3", "Rd", "Td"]
+    lb = [1e-6, 1e-3, 1e-14, 0.3, 1e-3, 1e-14, 0.3, 1e-3, 1e-14, 0.3, 1e-3, 1e-6]
+    ub = [1e4, 1e7, 1.0, 1.0, 1e7, 1.0, 1.0, 1e8, 1.0, 1.0, 1e7, 1e5]
+
+    def model(p, o):
+        Rs, R1, Q1, n1, R2, Q2, n2, R3, Q3, n3, Rd, Td = p
+        return (
+            Rs
+            + _zarc_h(o, R1, Q1, n1)
+            + _zarc_h(o, R2, Q2, n2)
+            + _zarc_h(o, R3, Q3, n3)
+            + _wfin_h(o, Rd, Td)
+        )
+
+    def init(o, z):
+        rs = _rs_from_z(z)
+        sp = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array(
+            [
+                rs,
+                sp * 0.1,
+                1e-12,
+                0.95,
+                sp * 0.2,
+                1e-10,
+                0.85,
+                sp * 0.3,
+                1e-8,
+                0.75,
+                sp * 0.3,
+                0.5,
+            ]
+        )
+
+    return CircuitTemplate(
+        name="Rs-ZARC-ZARC-ZARC-Wfinite",
+        param_names=pn,
+        bounds=(lb, ub),
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − ZARC₁ − ZARC₂ − ZARC₃ − Wfinite",
+        description="Three ZARC arcs plus finite-length Warburg. Full-cell solid "
+        "electrolyte with three bulk/grain/electrode processes and bounded diffusion.",
+        physical_meaning={
+            "Rs": "Geometric resistance",
+            "R1": "Bulk arc resistance",
+            "Q1": "Bulk arc CPE prefactor",
+            "n1": "Bulk arc CPE exponent",
+            "R2": "Grain-boundary arc resistance",
+            "Q2": "GB arc CPE prefactor",
+            "n2": "GB arc CPE exponent",
+            "R3": "Electrode arc resistance",
+            "Q3": "Electrode arc CPE prefactor",
+            "n3": "Electrode arc CPE exponent",
+            "Rd": "Diffusion resistance",
+            "Td": "Diffusion time constant",
+        },
+        typical_systems=[
+            "All-solid-state battery cells (full-cell)",
+            "Garnet electrolyte with thick porous electrode",
+        ],
+    )
+
+
+def _make_ext_zarc_cpe() -> CircuitTemplate:
+    """Rs − ZARC − CPE  [EXT-13]"""
+    pn = ["Rs", "R", "Q1", "n1", "Q2", "n2"]
+    lb = [1e-6, 1e-3, 1e-14, 0.3, 1e-14, 0.3]
+    ub = [1e4, 1e7, 1.0, 1.0, 1.0, 1.0]
+
+    def model(p, o):
+        Rs, R, Q1, n1, Q2, n2 = p
+        return Rs + _zarc_h(o, R, Q1, n1) + _cpe(o, Q2, n2)
+
+    def init(o, z):
+        rs = _rs_from_z(z)
+        sp = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array([rs, sp * 0.5, 1e-9, 0.85, 1e-4, 0.95])
+
+    return CircuitTemplate(
+        name="Rs-ZARC-CPE",
+        param_names=pn,
+        bounds=(lb, ub),
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − ZARC − CPE",
+        description="ZARC arc followed by a blocking CPE. Models a charge-transfer "
+        "process with a partially blocking passivation film at low frequencies.",
+        physical_meaning={
+            "Rs": "Series resistance",
+            "R": "Arc resistance",
+            "Q1": "Arc CPE",
+            "n1": "Arc CPE exp",
+            "Q2": "Blocking CPE",
+            "n2": "Blocking CPE exp (close to 1)",
+        },
+        typical_systems=[
+            "Metals with thick passive films",
+            "Partially blocked electrodes",
+            "SEI-covered electrodes at low SoC",
+        ],
+    )
+
+
+def _make_ext_rc_w() -> CircuitTemplate:
+    """Rs − (R‖C) − W  [EXT-14]"""
+    pn = ["Rs", "R", "C", "Sigma"]
+    lb = [1e-6, 1e-3, 1e-14, 1e-10]
+    ub = [1e4, 1e7, 1.0, 1e5]
+
+    def model(p, o):
+        Rs, R, C, sigma = p
+        return Rs + _rc_par_h(o, R, C) + _warburg(o, sigma)
+
+    def init(o, z):
+        rs = _rs_from_z(z)
+        sp = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array([rs, sp * 0.6, 1e-6, 0.01])
+
+    return CircuitTemplate(
+        name="Rs-RC-W",
+        param_names=pn,
+        bounds=(lb, ub),
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − (R‖C) − W",
+        description="Ideal RC arc plus semi-infinite Warburg. Parsimonious Randles "
+        "variant for smooth electrodes where a CPE exponent is not justified.",
+        physical_meaning={
+            "Rs": "Electrolyte resistance",
+            "R": "CT resistance",
+            "C": "Double-layer capacitance",
+            "Sigma": "Warburg coefficient",
+        },
+        typical_systems=[
+            "Smooth Pt / Au in aqueous electrolyte",
+            "Model systems for extracting diffusion coefficients",
+        ],
+    )
+
+
+def _make_ext_rc_wfinite() -> CircuitTemplate:
+    """Rs − (R‖C) − Wfinite  [EXT-15]"""
+    pn = ["Rs", "R", "C", "Rd", "Td"]
+    lb = [1e-6, 1e-3, 1e-14, 1e-3, 1e-6]
+    ub = [1e4, 1e7, 1.0, 1e7, 1e5]
+
+    def model(p, o):
+        Rs, R, C, Rd, Td = p
+        return Rs + _rc_par_h(o, R, C) + _wfin_h(o, Rd, Td)
+
+    def init(o, z):
+        rs = _rs_from_z(z)
+        sp = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array([rs, sp * 0.5, 1e-6, sp * 0.3, 0.5])
+
+    return CircuitTemplate(
+        name="Rs-RC-Wfinite",
+        param_names=pn,
+        bounds=(lb, ub),
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − (R‖C) − Wfinite",
+        description="Ideal RC arc plus finite Warburg. Parsimonious thin-film model "
+        "for smooth electrodes with a well-defined diffusion layer.",
+        physical_meaning={
+            "Rs": "Electrolyte resistance",
+            "R": "CT resistance",
+            "C": "Double-layer capacitance",
+            "Rd": "Diffusion resistance",
+            "Td": "Diffusion time constant",
+        },
+        typical_systems=[
+            "Smooth thin-film electrodes",
+            "Well-characterized model systems",
+        ],
+    )
+
+
+def _make_ext_zarc2_cpe() -> CircuitTemplate:
+    """Rs − ZARC₁ − ZARC₂ − CPE  [EXT-16]"""
+    pn = ["Rs", "R1", "Q1", "n1", "R2", "Q2", "n2", "Q3", "n3"]
+    lb = [1e-6, 1e-3, 1e-14, 0.3, 1e-3, 1e-14, 0.3, 1e-14, 0.3]
+    ub = [1e4, 1e7, 1.0, 1.0, 1e7, 1.0, 1.0, 1.0, 1.0]
+
+    def model(p, o):
+        Rs, R1, Q1, n1, R2, Q2, n2, Q3, n3 = p
+        return Rs + _zarc_h(o, R1, Q1, n1) + _zarc_h(o, R2, Q2, n2) + _cpe(o, Q3, n3)
+
+    def init(o, z):
+        rs = _rs_from_z(z)
+        sp = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array([rs, sp * 0.3, 1e-9, 0.85, sp * 0.4, 1e-10, 0.80, 1e-4, 0.95])
+
+    return CircuitTemplate(
+        name="Rs-ZARC-ZARC-CPE",
+        param_names=pn,
+        bounds=(lb, ub),
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − ZARC₁ − ZARC₂ − CPE",
+        description="Two ZARC arcs plus blocking CPE. Two kinetic processes with "
+        "a very resistive passivation layer blocking DC current.",
+        physical_meaning={
+            "Rs": "Series resistance",
+            "R1": "HF arc resistance",
+            "Q1": "HF arc CPE prefactor",
+            "n1": "HF arc CPE exponent",
+            "R2": "LF arc resistance",
+            "Q2": "LF arc CPE prefactor",
+            "n2": "LF arc CPE exponent",
+            "Q3": "Blocking CPE prefactor",
+            "n3": "Blocking CPE exponent",
+        },
+        typical_systems=["Thick SEI-covered anodes", "Heavily passivated metals"],
+    )
+
+
+def _make_ext_rc_zarc_wfinite() -> CircuitTemplate:
+    """Rs − (R₁‖C₁) − ZARC₂ − Wfinite  [EXT-17]"""
+    pn = ["Rs", "R1", "C1", "R2", "Q2", "n2", "Rd", "Td"]
+    lb = [1e-6, 1e-3, 1e-14, 1e-3, 1e-14, 0.3, 1e-3, 1e-6]
+    ub = [1e4, 1e7, 1.0, 1e7, 1.0, 1.0, 1e7, 1e5]
+
+    def model(p, o):
+        Rs, R1, C1, R2, Q2, n2, Rd, Td = p
+        return Rs + _rc_par_h(o, R1, C1) + _zarc_h(o, R2, Q2, n2) + _wfin_h(o, Rd, Td)
+
+    def init(o, z):
+        rs = _rs_from_z(z)
+        sp = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array([rs, sp * 0.3, 1e-9, sp * 0.4, 1e-9, 0.85, sp * 0.3, 0.5])
+
+    return CircuitTemplate(
+        name="Rs-RC-ZARC-Wfinite",
+        param_names=pn,
+        bounds=(lb, ub),
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − (R₁‖C₁) − ZARC₂ − Wfinite",
+        description="Ideal coating + CPE charge-transfer arc + finite diffusion. "
+        "Protective coatings on intercalation electrodes.",
+        physical_meaning={
+            "Rs": "Electrolyte resistance",
+            "R1": "Coating resistance",
+            "C1": "Coating capacitance",
+            "R2": "CT resistance",
+            "Q2": "DL CPE",
+            "n2": "DL CPE exp",
+            "Rd": "Diffusion resistance",
+            "Td": "Diffusion time",
+        },
+        typical_systems=[
+            "Coated Li-ion cathodes",
+            "Conversion electrodes with protective layer",
+        ],
+    )
+
+
+def _make_ext_zarc_rc_wshort() -> CircuitTemplate:
+    """Rs − ZARC₁ − (R₂‖C₂) − Wshort  [EXT-18]"""
+    pn = ["Rs", "R1", "Q1", "n1", "R2", "C2", "Rd", "Td"]
+    lb = [1e-6, 1e-3, 1e-14, 0.3, 1e-3, 1e-14, 1e-3, 1e-6]
+    ub = [1e4, 1e7, 1.0, 1.0, 1e7, 1.0, 1e7, 1e5]
+
+    def model(p, o):
+        Rs, R1, Q1, n1, R2, C2, Rd, Td = p
+        return Rs + _zarc_h(o, R1, Q1, n1) + _rc_par_h(o, R2, C2) + _wsho_h(o, Rd, Td)
+
+    def init(o, z):
+        rs = _rs_from_z(z)
+        sp = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array([rs, sp * 0.3, 1e-9, 0.85, sp * 0.4, 1e-7, sp * 0.3, 0.5])
+
+    return CircuitTemplate(
+        name="Rs-ZARC-RC-Wshort",
+        param_names=pn,
+        bounds=(lb, ub),
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − ZARC₁ − (R₂‖C₂) − Wshort",
+        description="CPE arc + ideal adsorption RC + reflective Warburg. "
+        "Systems with surface intermediates and a closed diffusion boundary.",
+        physical_meaning={
+            "Rs": "Series resistance",
+            "R1": "CT resistance",
+            "Q1": "DL CPE",
+            "n1": "CPE exp",
+            "R2": "Adsorption resistance",
+            "C2": "Adsorption capacitance",
+            "Rd": "Diffusion resistance",
+            "Td": "Diffusion time",
+        },
+        typical_systems=[
+            "Ion-selective membranes with adsorption",
+            "Polymer electrolytes with surface reaction",
+        ],
+    )
+
+
+def _make_ext_l_zarc2_w() -> CircuitTemplate:
+    """Rs − L − ZARC₁ − ZARC₂ − W  [EXT-19]"""
+    pn = ["Rs", "L", "R1", "Q1", "n1", "R2", "Q2", "n2", "Sigma"]
+    lb = [1e-6, 1e-12, 1e-3, 1e-14, 0.3, 1e-3, 1e-14, 0.3, 1e-10]
+    ub = [1e4, 1e-1, 1e7, 1.0, 1.0, 1e7, 1.0, 1.0, 1e5]
+
+    def model(p, o):
+        Rs, L, R1, Q1, n1, R2, Q2, n2, sigma = p
+        return (
+            Rs
+            + _inductor(o, L)
+            + _zarc_h(o, R1, Q1, n1)
+            + _zarc_h(o, R2, Q2, n2)
+            + _warburg(o, sigma)
+        )
+
+    def init(o, z):
+        rs = _rs_from_z(z)
+        sp = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array([rs, 1e-6, sp * 0.2, 1e-9, 0.85, sp * 0.4, 1e-10, 0.80, 0.01])
+
+    return CircuitTemplate(
+        name="Rs-L-ZARC-ZARC-W",
+        param_names=pn,
+        bounds=(lb, ub),
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − L − ZARC₁ − ZARC₂ − W",
+        description="Inductive loop + two ZARC arcs + semi-infinite Warburg. "
+        "PEM fuel cells with two electrode processes and measurement inductance.",
+        physical_meaning={
+            "Rs": "Series resistance",
+            "L": "Inductance",
+            "R1": "HF arc resistance",
+            "Q1": "HF arc CPE prefactor",
+            "n1": "HF arc CPE exponent",
+            "R2": "LF arc resistance",
+            "Q2": "LF arc CPE prefactor",
+            "n2": "LF arc CPE exponent",
+            "Sigma": "Warburg coefficient",
+        },
+        typical_systems=[
+            "PEM fuel cells with diffusion artefact",
+            "Flow batteries with two arcs and mass transport",
+        ],
+    )
+
+
+def _make_ext_tlm() -> CircuitTemplate:
+    """Rs − TLM (pure De Levie)  [EXT-20]"""
+    pn = ["Rs", "Ri", "Ydl", "nt"]
+    lb = [1e-6, 1e-4, 1e-14, 0.3]
+    ub = [1e4, 1e5, 1e2, 1.0]
+
+    def model(p, o):
+        Rs, Ri, Ydl, nt = p
+        return Rs + _tlm_h(o, Ri, Ydl, nt)
+
+    def init(o, z):
+        rs = _rs_from_z(z)
+        sp = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array([rs, sp * 0.1, 1e-7, 0.50])
+
+    return CircuitTemplate(
+        name="Rs-TLM",
+        param_names=pn,
+        bounds=(lb, ub),
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − TLM",
+        description="Pure De Levie TLM without a kinetic arc. Purely capacitive "
+        "porous electrode with distributed ionic resistance.",
+        physical_meaning={
+            "Rs": "External resistance",
+            "Ri": "Pore ionic resistance per unit length",
+            "Ydl": "DL admittance per unit length",
+            "nt": "Distributed CPE exponent (0.5 = ideal)",
+        },
+        typical_systems=[
+            "Ideal EDLC porous carbon electrodes",
+            "Pure double-layer supercapacitors without redox",
+        ],
+    )
+
+
+def _make_ext_zarc3_gerischer() -> CircuitTemplate:
+    """Rs − ZARC₁ − ZARC₂ − ZARC₃ − Gerischer  [EXT-21]"""
+    pn = ["Rs", "R1", "Q1", "n1", "R2", "Q2", "n2", "R3", "Q3", "n3", "Rg", "Tg"]
+    lb = [1e-6, 1e-3, 1e-14, 0.3, 1e-3, 1e-14, 0.3, 1e-3, 1e-14, 0.3, 1e-3, 1e-6]
+    ub = [1e4, 1e7, 1.0, 1.0, 1e7, 1.0, 1.0, 1e8, 1.0, 1.0, 1e7, 1e4]
+
+    def model(p, o):
+        Rs, R1, Q1, n1, R2, Q2, n2, R3, Q3, n3, Rg, Tg = p
+        return (
+            Rs
+            + _zarc_h(o, R1, Q1, n1)
+            + _zarc_h(o, R2, Q2, n2)
+            + _zarc_h(o, R3, Q3, n3)
+            + _ger_h(o, Rg, Tg)
+        )
+
+    def init(o, z):
+        rs = _rs_from_z(z)
+        sp = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array(
+            [
+                rs,
+                sp * 0.1,
+                1e-12,
+                0.95,
+                sp * 0.2,
+                1e-10,
+                0.85,
+                sp * 0.3,
+                1e-8,
+                0.75,
+                sp * 0.2,
+                1e-3,
+            ]
+        )
+
+    return CircuitTemplate(
+        name="Rs-ZARC-ZARC-ZARC-Gerischer",
+        param_names=pn,
+        bounds=(lb, ub),
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − ZARC₁ − ZARC₂ − ZARC₃ − Gerischer",
+        description="Three ZARC arcs plus Gerischer element. Complex SOFC ceramics "
+        "with bulk, grain-boundary, electrode and distributed reaction processes.",
+        physical_meaning={
+            "Rs": "Geometric resistance",
+            "R1": "Bulk arc resistance",
+            "Q1": "Bulk arc CPE prefactor",
+            "n1": "Bulk arc CPE exponent",
+            "R2": "Grain-boundary arc resistance",
+            "Q2": "GB arc CPE prefactor",
+            "n2": "GB arc CPE exponent",
+            "R3": "Electrode arc resistance",
+            "Q3": "Electrode arc CPE prefactor",
+            "n3": "Electrode arc CPE exponent",
+            "Rg": "Gerischer resistance",
+            "Tg": "Gerischer time constant",
+        },
+        typical_systems=[
+            "SOFC polycrystalline cathode ceramics",
+            "MIEC with three distinct microstructural features",
+        ],
+    )
+
+
+def _make_ext_zarc_tlm_w() -> CircuitTemplate:
+    """Rs − ZARC − TLM − W  [EXT-22]"""
+    pn = ["Rs", "R", "Q", "n", "Ri", "Ydl", "nt", "Sigma"]
+    lb = [1e-6, 1e-3, 1e-14, 0.3, 1e-4, 1e-14, 0.3, 1e-10]
+    ub = [1e4, 1e7, 1.0, 1.0, 1e5, 1e2, 1.0, 1e5]
+
+    def model(p, o):
+        Rs, R, Q, n, Ri, Ydl, nt, sigma = p
+        return Rs + _zarc_h(o, R, Q, n) + _tlm_h(o, Ri, Ydl, nt) + _warburg(o, sigma)
+
+    def init(o, z):
+        rs = _rs_from_z(z)
+        sp = float(max(z.real.max() - z.real.min(), 0.1))
+        return np.array([rs, sp * 0.3, 1e-9, 0.85, sp * 0.1, 1e-7, 0.5, 0.01])
+
+    return CircuitTemplate(
+        name="Rs-ZARC-TLM-W",
+        param_names=pn,
+        bounds=(lb, ub),
+        model_fn=model,
+        init_fn=init,
+        diagram="Rs − ZARC − TLM − W",
+        description="ZARC arc + porous TLM + semi-infinite Warburg. Asymmetric "
+        "supercapacitors with a faradaic electrode, porous carbon and bulk diffusion.",
+        physical_meaning={
+            "Rs": "Series resistance",
+            "R": "Arc resistance",
+            "Q": "DL CPE",
+            "n": "CPE exp",
+            "Ri": "Pore resistance",
+            "Ydl": "DL admittance",
+            "nt": "TLM exp",
+            "Sigma": "Warburg coefficient",
+        },
+        typical_systems=[
+            "Asymmetric supercapacitors",
+            "Hybrid EDLC/battery electrodes with porous structure",
+        ],
+    )
+
+
+# ── Auto-register all built-in circuits at import time ───────────────
 _BUILTIN_MAKERS = [
+    # Base circuits (11)
     _make_randles_cpe_w,
     _make_two_arc_cpe,
     _make_inductive_cpe,
@@ -1106,10 +2133,34 @@ _BUILTIN_MAKERS = [
     _make_warburg_short,
     _make_gerischer,
     _make_three_zarc,
+    # Registry-specific circuits (4)
     _make_porous_coating_tlm,
     _make_mxene_intercalation,
     _make_de_levie_tlm,
     _make_pseudo_capacitance,
+    # Extended circuits (22)
+    _make_ext_zarc_tlm,
+    _make_ext_zarc2_wfinite,
+    _make_ext_zarc2_wshort,
+    _make_ext_zarc2_gerischer,
+    _make_ext_zarc2_tlm,
+    _make_ext_rc_zarc_w,
+    _make_ext_zarc_rc_wfinite,
+    _make_ext_l_zarc_w,
+    _make_ext_l_zarc_wfinite,
+    _make_ext_l_zarc2,
+    _make_ext_zarc3_w,
+    _make_ext_zarc3_wfinite,
+    _make_ext_zarc_cpe,
+    _make_ext_rc_w,
+    _make_ext_rc_wfinite,
+    _make_ext_zarc2_cpe,
+    _make_ext_rc_zarc_wfinite,
+    _make_ext_zarc_rc_wshort,
+    _make_ext_l_zarc2_w,
+    _make_ext_tlm,
+    _make_ext_zarc3_gerischer,
+    _make_ext_zarc_tlm_w,
 ]
 
 

@@ -218,8 +218,9 @@ def _ask_report_config(
     logo_cb.pack(side="left")
     if logo_path:
         with contextlib.suppress(Exception):
-            from PIL import Image as _PilImg
             import customtkinter as _ctk_inner2
+            from PIL import Image as _PilImg
+
             _img = _PilImg.open(logo_path)
             _img.thumbnail((40, 40))
             _ctk_img = _ctk_inner2.CTkImage(_img, size=_img.size)
@@ -1066,7 +1067,9 @@ class PipelineApp(ctk.CTk):
             fg_color="#1565c0",
             hover_color="#0d47a1",
         )
-        self.btn_train_classifier.grid(row=29, column=0, padx=16, pady=(0, 12), sticky="ew")
+        self.btn_train_classifier.grid(
+            row=29, column=0, padx=16, pady=(0, 12), sticky="ew"
+        )
 
         ctk.CTkLabel(sidebar, text=tr("Tema"), anchor="w").grid(
             row=14, column=0, padx=16, pady=(0, 4), sticky="ew"
@@ -1859,8 +1862,14 @@ class PipelineApp(ctk.CTk):
 
     def _destroy_interactive(self):
         if self.interactive_win is not None and self.interactive_win.winfo_exists():
+            win = self.interactive_win
             with contextlib.suppress(Exception):
-                self.interactive_win.destroy()
+                win.destroy()
+            # Force Tcl-level destruction as fallback: customtkinter's DropdownMenu
+            # has a bug (missing _font attr) that can cause destroy() to raise
+            # mid-cleanup, leaving underlying Tk widgets (and their menus) alive.
+            with contextlib.suppress(Exception):
+                win.tk.call("destroy", win._w)
         self.interactive_win = None
 
     def _save_plot(self, path: str):
@@ -2877,20 +2886,18 @@ class PipelineApp(ctk.CTk):
                     text=f"Sem dados para {sample}",
                 ).pack(pady=20)
 
-        menu = ctk.CTkOptionMenu(
+        # Use ttk.Combobox instead of ctk.CTkOptionMenu: the latter creates a
+        # tkinter.Menu internally, and Windows limits the total number of menus
+        # to ~500.  ttk.Combobox uses a native combobox widget with no Menu.
+        menu = ttk.Combobox(
             control,
             values=names,
-            command=_update,
-            fg_color="#e2e8f0",
-            button_color="#0b84ff",
-            button_hover_color="#0c76e0",
-            text_color="#0f172a",
-            dropdown_fg_color="#ffffff",
-            dropdown_hover_color="#e2e8f0",
-            dropdown_text_color="#0f172a",
+            state="readonly",
+            width=max(len(n) for n in names) + 2,
         )
         menu.set(initial)
         menu.pack(side="left", padx=(0, 12))
+        menu.bind("<<ComboboxSelected>>", lambda e: _update(menu.get()))
 
         def _save(_tab=tab):
             container = getattr(_tab, "_sel_container", None)
@@ -4299,11 +4306,9 @@ class PipelineApp(ctk.CTk):
 
         def _worker():
             try:
-                from scripts.gen_synthetic_eis import (
-                    generate as _gen_eis,
-                    _MODELS as _EIS_MODELS,
-                )
                 from scripts.gen_synthetic_cycling import generate as _gen_cic
+                from scripts.gen_synthetic_eis import _MODELS as _EIS_MODELS
+                from scripts.gen_synthetic_eis import generate as _gen_eis
                 from src.config import PipelineConfig
 
                 cfg = PipelineConfig.default()
@@ -4318,7 +4323,11 @@ class PipelineApp(ctk.CTk):
                     noise_level=0.02,
                     seed=None,
                 )
-                cic_files = _gen_cic(n_files=n_cic, out_dir=cic_dir, seed=None) if n_cic > 0 else []
+                cic_files = (
+                    _gen_cic(n_files=n_cic, out_dir=cic_dir, seed=None)
+                    if n_cic > 0
+                    else []
+                )
 
                 n_eis_total = len(eis_files)
                 n_cic_total = len(cic_files)
@@ -4326,7 +4335,11 @@ class PipelineApp(ctk.CTk):
                     0,
                     lambda: self._append_log(
                         f"Sintéticos gerados: {n_eis_total} EIS em '{eis_dir}'"
-                        + (f", {n_cic_total} Ciclagem em '{cic_dir}'" if n_cic_total else "")
+                        + (
+                            f", {n_cic_total} Ciclagem em '{cic_dir}'"
+                            if n_cic_total
+                            else ""
+                        )
                         + ". Execute o Pipeline para treinar o ML."
                     ),
                 )
@@ -4353,15 +4366,11 @@ class PipelineApp(ctk.CTk):
         cic_dir = Path(cfg.processed_dir)
 
         eis_count = len(list(eis_dir.glob("SYN_*.txt"))) if eis_dir.exists() else 0
-        cic_count = (
-            len(list(cic_dir.glob("SYN_CIC_*.txt"))) if cic_dir.exists() else 0
-        )
+        cic_count = len(list(cic_dir.glob("SYN_CIC_*.txt"))) if cic_dir.exists() else 0
         total = eis_count + cic_count
 
         if total == 0:
-            self._append_log(
-                "Nenhum arquivo sintético (SYN_) encontrado para excluir."
-            )
+            self._append_log("Nenhum arquivo sintético (SYN_) encontrado para excluir.")
             return
 
         confirmed = _mb.askyesno(
@@ -4376,8 +4385,8 @@ class PipelineApp(ctk.CTk):
 
         def _worker():
             try:
-                from scripts.gen_synthetic_eis import clean_synthetic as _clean_eis
                 from scripts.gen_synthetic_cycling import clean_synthetic as _clean_cic
+                from scripts.gen_synthetic_eis import clean_synthetic as _clean_eis
 
                 n_eis = _clean_eis(eis_dir) if eis_dir.exists() else 0
                 n_cic = _clean_cic(cic_dir) if cic_dir.exists() else 0
@@ -4420,7 +4429,9 @@ class PipelineApp(ctk.CTk):
             )
             return
 
-        self.btn_train_classifier.configure(text="⏳ " + tr("Treinando..."), state="disabled")
+        self.btn_train_classifier.configure(
+            text="⏳ " + tr("Treinando..."), state="disabled"
+        )
 
         def _worker():
             try:
@@ -4475,7 +4486,9 @@ class PipelineApp(ctk.CTk):
 
         threading.Thread(target=_worker, daemon=True).start()
 
-    def _show_train_result(self, n_samples: int, n_classes: int, cv_accuracy: float, model_path: str) -> None:
+    def _show_train_result(
+        self, n_samples: int, n_classes: int, cv_accuracy: float, model_path: str
+    ) -> None:
         """Show a small dialog with training results."""
         import tkinter.messagebox as _mb
 
@@ -5484,6 +5497,30 @@ class PipelineApp(ctk.CTk):
         _rcfg = report_cfg
         _fmt = fmt
 
+        # Build circuit info dict from the best-fit circuit in the last EIS result
+        _circuit_info: Optional[Dict[str, Any]] = None
+        with contextlib.suppress(Exception):
+            from src.circuit_registry import CircuitRegistry
+
+            _eis = getattr(self, "last_eis_result", None)
+            if _eis is not None:
+                _ctbl = getattr(_eis, "circuit_table", None)
+                if (
+                    _ctbl is not None
+                    and not _ctbl.empty
+                    and "Circuito" in _ctbl.columns
+                ):
+                    _best_name = str(_ctbl["Circuito"].value_counts().index[0])
+                    _tmpl = CircuitRegistry.get(_best_name)
+                    if _tmpl is not None:
+                        _circuit_info = {
+                            "name": _tmpl.name,
+                            "diagram": getattr(_tmpl, "diagram", ""),
+                            "description": getattr(_tmpl, "description", ""),
+                            "physical_meaning": getattr(_tmpl, "physical_meaning", {}),
+                            "typical_systems": getattr(_tmpl, "typical_systems", []),
+                        }
+
         def worker():
             try:
                 gen = ReportGenerator(report_config=_rcfg)
@@ -5523,6 +5560,7 @@ class PipelineApp(ctk.CTk):
                     if _rcfg.include_fitting_report
                     else None,
                     kk_text=_kk if _rcfg.include_kk else None,
+                    circuit_info=_circuit_info,
                 )
                 self.log_queue.put(("log", f"Relatório gerado: {', '.join(paths)}"))
             except Exception as exc:
@@ -6657,7 +6695,10 @@ class PipelineApp(ctk.CTk):
         btn_row.pack(pady=(0, 16))
 
         from src.updater import is_frozen
-        _has_installer = is_frozen() and bool(getattr(info, "installer_asset_url", None))
+
+        _has_installer = is_frozen() and bool(
+            getattr(info, "installer_asset_url", None)
+        )
         _btn_label = (
             "⬇ " + tr("Instalar agora  (automático)")
             if _has_installer
@@ -6673,7 +6714,9 @@ class PipelineApp(ctk.CTk):
             btn_update.configure(state="disabled")
             btn_later.configure(state="disabled")
             self._update_progress_label.configure(
-                text="⬇ A verificar instalador…" if _has_installer else "A preparar instruções…"
+                text="⬇ A verificar instalador…"
+                if _has_installer
+                else "A preparar instruções…"
             )
             threading.Thread(
                 target=self._do_download_update,
@@ -6749,8 +6792,11 @@ class PipelineApp(ctk.CTk):
                     self.log_queue.put(("_update_msg", msg))
 
                 download_asset(installer_url, installer_path, on_progress=_progress)
-                self.log_queue.put(("_update_msg", "⚙ A instalar… aguarde alguns segundos"))
+                self.log_queue.put(
+                    ("_update_msg", "⚙ A instalar… aguarde alguns segundos")
+                )
                 import time
+
                 time.sleep(1)
                 # Starts installer silently then exits this process.
                 # The installer detects the existing path via registry AppId,
@@ -6760,27 +6806,38 @@ class PipelineApp(ctk.CTk):
             elif is_frozen() and not installer_url:
                 # Frozen but no .exe asset published — open GitHub page
                 import webbrowser
+
                 webbrowser.open(info.html_url)
-                self.log_queue.put((
-                    "_update_done",
-                    (dialog, "", tr("Instalador não encontrado — página GitHub aberta.\nBaixe o Setup manualmente.")),
-                ))
+                self.log_queue.put(
+                    (
+                        "_update_done",
+                        (
+                            dialog,
+                            "",
+                            tr(
+                                "Instalador não encontrado — página GitHub aberta.\nBaixe o Setup manualmente."
+                            ),
+                        ),
+                    )
+                )
 
             else:
                 # Source / developer mode
-                self.log_queue.put((
-                    "_update_done",
+                self.log_queue.put(
                     (
-                        dialog,
-                        "",
+                        "_update_done",
                         (
-                            "Modo código-fonte — execute no terminal:\n\n"
-                            "  git pull\n"
-                            "  pip install -e .\n\n"
-                            "Depois reinicie a GUI."
+                            dialog,
+                            "",
+                            (
+                                "Modo código-fonte — execute no terminal:\n\n"
+                                "  git pull\n"
+                                "  pip install -e .\n\n"
+                                "Depois reinicie a GUI."
+                            ),
                         ),
-                    ),
-                ))
+                    )
+                )
 
         except Exception as exc:
             self.log_queue.put(("_update_msg", f"{tr('Erro na atualização')}: {exc}"))

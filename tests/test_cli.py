@@ -6,13 +6,9 @@ All pipeline calls are mocked to isolate CLI logic.
 """
 
 import json
-import os
-import tempfile
 from pathlib import Path
-from unittest import mock
 from unittest.mock import MagicMock, patch
 
-import numpy as np
 import pandas as pd
 import pytest
 
@@ -20,9 +16,9 @@ from src.cli import (
     RC_ERROR,
     RC_OK,
     RC_WARNING,
-    _ProgressReporter,
     _load_config,
     _print_json,
+    _ProgressReporter,
     _use_json,
     build_parser,
     cmd_analyze,
@@ -36,10 +32,10 @@ from src.cli import (
 )
 from src.config import PipelineConfig
 
-
 # ═══════════════════════════════════════════════════════════════════════
 # Fixtures
 # ═══════════════════════════════════════════════════════════════════════
+
 
 @pytest.fixture()
 def tmp_dir(tmp_path):
@@ -96,6 +92,7 @@ def _make_drt_result():
 # Test build_parser
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class TestBuildParser:
     """Tests for the argument parser construction."""
 
@@ -107,13 +104,23 @@ class TestBuildParser:
     def test_subcommands_exist(self):
         parser = build_parser()
         # Parsing each subcommand should not raise
-        for cmd in ["eis", "cycling", "drt", "analyze", "config", "validate", "version"]:
+        for cmd in [
+            "eis",
+            "cycling",
+            "drt",
+            "analyze",
+            "config",
+            "validate",
+            "version",
+        ]:
             args = parser.parse_args([cmd])
             assert args.command == cmd
 
     def test_global_flags(self):
         parser = build_parser()
-        args = parser.parse_args(["--json", "--verbose", "--config", "my.json", "version"])
+        args = parser.parse_args(
+            ["--json", "--verbose", "--config", "my.json", "version"]
+        )
         assert args.json is True
         assert args.verbose is True
         assert args.config == "my.json"
@@ -136,7 +143,9 @@ class TestBuildParser:
 
     def test_analyze_args(self):
         parser = build_parser()
-        args = parser.parse_args(["analyze", "--all", "--ai", "--export-pdf", "rpt.pdf"])
+        args = parser.parse_args(
+            ["analyze", "--all", "--ai", "--export-pdf", "rpt.pdf"]
+        )
         assert args.all is True
         assert args.ai is True
         assert args.export_pdf == "rpt.pdf"
@@ -166,6 +175,7 @@ class TestBuildParser:
 # ═══════════════════════════════════════════════════════════════════════
 # Test _load_config
 # ═══════════════════════════════════════════════════════════════════════
+
 
 class TestLoadConfig:
     """Tests for config loading from CLI args."""
@@ -203,6 +213,7 @@ class TestLoadConfig:
 # Test _use_json / _print_json
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class TestJSONHelpers:
     """Tests for JSON mode utilities."""
 
@@ -225,6 +236,7 @@ class TestJSONHelpers:
 # ═══════════════════════════════════════════════════════════════════════
 # Test ProgressReporter
 # ═══════════════════════════════════════════════════════════════════════
+
 
 class TestProgressReporter:
     """Tests for the progress reporting wrapper."""
@@ -260,6 +272,7 @@ class TestProgressReporter:
 # Test cmd_version
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class TestCmdVersion:
     """Tests for the version subcommand."""
 
@@ -281,6 +294,7 @@ class TestCmdVersion:
 # ═══════════════════════════════════════════════════════════════════════
 # Test cmd_eis
 # ═══════════════════════════════════════════════════════════════════════
+
 
 class TestCmdEIS:
     """Tests for the EIS subcommand."""
@@ -355,13 +369,18 @@ class TestCmdEIS:
         args = build_parser().parse_args(["eis", "--data-dir", "/custom"])
         cmd_eis(args)
         call_args = mock_pipeline.call_args
-        cfg_used = call_args[1].get("config") or call_args[0][0] if call_args[0] else call_args[1]["config"]
+        cfg_used = (
+            call_args[1].get("config") or call_args[0][0]
+            if call_args[0]
+            else call_args[1]["config"]
+        )
         assert cfg_used.data_dir == "/custom"
 
 
 # ═══════════════════════════════════════════════════════════════════════
 # Test cmd_cycling
 # ═══════════════════════════════════════════════════════════════════════
+
 
 class TestCmdCycling:
     """Tests for the cycling subcommand."""
@@ -395,14 +414,18 @@ class TestCmdCycling:
         assert call_kwargs["scan_rate"] == 0.5
 
     @patch("src.cli.PipelineConfig.ensure_dirs")
-    @patch("main_cycling.run_ciclagem_pipeline", side_effect=FileNotFoundError("missing"))
+    @patch(
+        "main_cycling.run_ciclagem_pipeline", side_effect=FileNotFoundError("missing")
+    )
     def test_cycling_error(self, mock_pipeline, mock_dirs, capsys):
         args = build_parser().parse_args(["cycling"])
         rc = cmd_cycling(args)
         assert rc == RC_ERROR
 
     @patch("src.cli.PipelineConfig.ensure_dirs")
-    @patch("main_cycling.run_ciclagem_pipeline", side_effect=FileNotFoundError("missing"))
+    @patch(
+        "main_cycling.run_ciclagem_pipeline", side_effect=FileNotFoundError("missing")
+    )
     def test_cycling_error_json(self, mock_pipeline, mock_dirs, capsys):
         args = build_parser().parse_args(["--json", "cycling"])
         rc = cmd_cycling(args)
@@ -421,6 +444,7 @@ class TestCmdCycling:
 # ═══════════════════════════════════════════════════════════════════════
 # Test cmd_drt
 # ═══════════════════════════════════════════════════════════════════════
+
 
 class TestCmdDRT:
     """Tests for the DRT subcommand."""
@@ -492,6 +516,7 @@ class TestCmdDRT:
 # Test cmd_analyze
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class TestCmdAnalyze:
     """Tests for the analyze subcommand."""
 
@@ -536,7 +561,9 @@ class TestCmdAnalyze:
     @patch("main_drt.run_drt_pipeline", side_effect=RuntimeError("drt fail"))
     @patch("main_cycling.run_ciclagem_pipeline")
     @patch("main.run_eis_pipeline")
-    def test_analyze_partial_failure(self, mock_eis, mock_cyc, mock_drt, mock_dirs, capsys):
+    def test_analyze_partial_failure(
+        self, mock_eis, mock_cyc, mock_drt, mock_dirs, capsys
+    ):
         mock_eis.return_value = _make_eis_result()
         mock_cyc.return_value = _make_cycling_result()
         args = build_parser().parse_args(["analyze", "--all"])
@@ -544,9 +571,13 @@ class TestCmdAnalyze:
         assert rc == RC_WARNING  # partial failure → warning
 
     @patch("src.cli.PipelineConfig.ensure_dirs")
+    @patch("main_drt.run_drt_pipeline")
+    @patch("main_cycling.run_ciclagem_pipeline")
     @patch("main.run_eis_pipeline")
-    def test_analyze_with_ai(self, mock_eis, mock_dirs, capsys):
+    def test_analyze_with_ai(self, mock_eis, mock_cyc, mock_drt, mock_dirs, capsys):
         mock_eis.return_value = _make_eis_result()
+        mock_cyc.return_value = _make_cycling_result()
+        mock_drt.return_value = _make_drt_result()
         args = build_parser().parse_args(["analyze", "--all", "--ai"])
         # AI analysis may fail on mock data — that's ok, should still not crash
         rc = cmd_analyze(args)
@@ -590,6 +621,7 @@ class TestCmdAnalyze:
 # Test cmd_config
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class TestCmdConfig:
     """Tests for the config subcommand."""
 
@@ -604,7 +636,9 @@ class TestCmdConfig:
 
     def test_config_init_json(self, tmp_path, capsys):
         out_path = str(tmp_path / "new_config.json")
-        args = build_parser().parse_args(["--json", "config", "--init", "--output", out_path])
+        args = build_parser().parse_args(
+            ["--json", "config", "--init", "--output", out_path]
+        )
         rc = cmd_config(args)
         assert rc == RC_OK
         obj = json.loads(capsys.readouterr().out)
@@ -665,16 +699,21 @@ class TestCmdConfig:
 # Test cmd_validate
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class TestCmdValidate:
     """Tests for the validate subcommand."""
 
     def test_validate_dir_not_found(self, capsys):
-        args = build_parser().parse_args(["validate", "--data-dir", "/nonexistent/path"])
+        args = build_parser().parse_args(
+            ["validate", "--data-dir", "/nonexistent/path"]
+        )
         rc = cmd_validate(args)
         assert rc == RC_ERROR
 
     def test_validate_dir_not_found_json(self, capsys):
-        args = build_parser().parse_args(["--json", "validate", "--data-dir", "/nonexistent/path"])
+        args = build_parser().parse_args(
+            ["--json", "validate", "--data-dir", "/nonexistent/path"]
+        )
         rc = cmd_validate(args)
         assert rc == RC_ERROR
         obj = json.loads(capsys.readouterr().out)
@@ -686,7 +725,9 @@ class TestCmdValidate:
         assert rc == RC_ERROR
 
     def test_validate_no_txt_files_json(self, tmp_path, capsys):
-        args = build_parser().parse_args(["--json", "validate", "--data-dir", str(tmp_path)])
+        args = build_parser().parse_args(
+            ["--json", "validate", "--data-dir", str(tmp_path)]
+        )
         rc = cmd_validate(args)
         assert rc == RC_ERROR
         obj = json.loads(capsys.readouterr().out)
@@ -696,9 +737,15 @@ class TestCmdValidate:
     @patch("src.validation.validate_eis_full")
     @patch("src.preprocessing.preprocess")
     @patch("src.loader.load_eis_file")
-    def test_validate_all_valid(self, mock_load, mock_preprocess, mock_validate, mock_kk_cls, tmp_dir, capsys):
-        mock_load.return_value = pd.DataFrame({"frequency": [1.0], "zreal": [1.0], "zimag": [-1.0]})
-        mock_preprocess.return_value = pd.DataFrame({"frequency": [1.0], "zreal": [1.0], "zimag": [-1.0]})
+    def test_validate_all_valid(
+        self, mock_load, mock_preprocess, mock_validate, mock_kk_cls, tmp_dir, capsys
+    ):
+        mock_load.return_value = pd.DataFrame(
+            {"frequency": [1.0], "zreal": [1.0], "zimag": [-1.0]}
+        )
+        mock_preprocess.return_value = pd.DataFrame(
+            {"frequency": [1.0], "zreal": [1.0], "zimag": [-1.0]}
+        )
         vr = MagicMock()
         vr.ok = True
         vr.errors = []
@@ -722,9 +769,15 @@ class TestCmdValidate:
     @patch("src.validation.validate_eis_full")
     @patch("src.preprocessing.preprocess")
     @patch("src.loader.load_eis_file")
-    def test_validate_all_valid_json(self, mock_load, mock_preprocess, mock_validate, mock_kk_cls, tmp_dir, capsys):
-        mock_load.return_value = pd.DataFrame({"frequency": [1.0], "zreal": [1.0], "zimag": [-1.0]})
-        mock_preprocess.return_value = pd.DataFrame({"frequency": [1.0], "zreal": [1.0], "zimag": [-1.0]})
+    def test_validate_all_valid_json(
+        self, mock_load, mock_preprocess, mock_validate, mock_kk_cls, tmp_dir, capsys
+    ):
+        mock_load.return_value = pd.DataFrame(
+            {"frequency": [1.0], "zreal": [1.0], "zimag": [-1.0]}
+        )
+        mock_preprocess.return_value = pd.DataFrame(
+            {"frequency": [1.0], "zreal": [1.0], "zimag": [-1.0]}
+        )
         vr = MagicMock()
         vr.ok = True
         vr.errors = []
@@ -740,7 +793,9 @@ class TestCmdValidate:
         kk_instance.validate.return_value = kk_result
         mock_kk_cls.return_value = kk_instance
 
-        args = build_parser().parse_args(["--json", "validate", "--data-dir", str(tmp_dir)])
+        args = build_parser().parse_args(
+            ["--json", "validate", "--data-dir", str(tmp_dir)]
+        )
         rc = cmd_validate(args)
         assert rc == RC_OK
         obj = json.loads(capsys.readouterr().out)
@@ -751,9 +806,15 @@ class TestCmdValidate:
     @patch("src.validation.validate_eis_full")
     @patch("src.preprocessing.preprocess")
     @patch("src.loader.load_eis_file")
-    def test_validate_some_invalid(self, mock_load, mock_preprocess, mock_validate, mock_kk_cls, tmp_dir, capsys):
-        mock_load.return_value = pd.DataFrame({"frequency": [1.0], "zreal": [1.0], "zimag": [-1.0]})
-        mock_preprocess.return_value = pd.DataFrame({"frequency": [1.0], "zreal": [1.0], "zimag": [-1.0]})
+    def test_validate_some_invalid(
+        self, mock_load, mock_preprocess, mock_validate, mock_kk_cls, tmp_dir, capsys
+    ):
+        mock_load.return_value = pd.DataFrame(
+            {"frequency": [1.0], "zreal": [1.0], "zimag": [-1.0]}
+        )
+        mock_preprocess.return_value = pd.DataFrame(
+            {"frequency": [1.0], "zreal": [1.0], "zimag": [-1.0]}
+        )
         vr = MagicMock()
         vr.ok = False
         vr.errors = ["bad col"]
@@ -781,7 +842,9 @@ class TestCmdValidate:
 
     @patch("src.loader.load_eis_file", side_effect=Exception("parse error"))
     def test_validate_file_errors_json(self, mock_load, tmp_dir, capsys):
-        args = build_parser().parse_args(["--json", "validate", "--data-dir", str(tmp_dir)])
+        args = build_parser().parse_args(
+            ["--json", "validate", "--data-dir", str(tmp_dir)]
+        )
         rc = cmd_validate(args)
         assert rc == RC_ERROR
         obj = json.loads(capsys.readouterr().out)
@@ -791,6 +854,7 @@ class TestCmdValidate:
 # ═══════════════════════════════════════════════════════════════════════
 # Test main() entry-point
 # ═══════════════════════════════════════════════════════════════════════
+
 
 class TestMain:
     """Tests for the main() dispatching function."""
@@ -836,6 +900,7 @@ class TestMain:
 # Test return codes
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class TestReturnCodes:
     """Verify return code constants and semantics."""
 
@@ -852,6 +917,7 @@ class TestReturnCodes:
 # Test edge cases
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class TestEdgeCases:
     """Edge cases and integration scenarios."""
 
@@ -862,7 +928,9 @@ class TestEdgeCases:
         assert "ionflow config --init" in parser.epilog
 
     def test_config_file_not_found_uses_default(self):
-        args = build_parser().parse_args(["--config", "/nonexistent/config.json", "version"])
+        args = build_parser().parse_args(
+            ["--config", "/nonexistent/config.json", "version"]
+        )
         cfg = _load_config(args)
         # Should fall back to default
         assert cfg.data_dir == "data/raw"
@@ -897,7 +965,9 @@ class TestEdgeCases:
     @patch("main_drt.run_drt_pipeline")
     @patch("main_cycling.run_ciclagem_pipeline")
     @patch("main.run_eis_pipeline")
-    def test_analyze_json_output_structure(self, mock_eis, mock_cyc, mock_drt, mock_dirs, capsys):
+    def test_analyze_json_output_structure(
+        self, mock_eis, mock_cyc, mock_drt, mock_dirs, capsys
+    ):
         mock_eis.return_value = _make_eis_result()
         mock_cyc.return_value = _make_cycling_result()
         mock_drt.return_value = _make_drt_result()

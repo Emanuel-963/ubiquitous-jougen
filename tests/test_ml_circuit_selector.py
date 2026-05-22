@@ -16,16 +16,17 @@ Coverage targets
 
 from __future__ import annotations
 
-import numpy as np
-import pytest
 from pathlib import Path
 from typing import Dict, List
 
-from src.feature_store import FeatureStore
-from src.ml_circuit_selector import CircuitMLSelector, _FEATURE_KEYS
+import numpy as np
+import pytest
 
+from src.feature_store import FeatureStore
+from src.ml_circuit_selector import _FEATURE_KEYS, CircuitMLSelector
 
 # ─── Synthetic data helpers ──────────────────────────────────────────
+
 
 def _make_features(
     base: Dict[str, float] | None = None,
@@ -45,10 +46,15 @@ def _make_features(
         "mag_range": 50.0,
         "zreal_min": 1.0,
         "zreal_max": 51.0,
+        "kk_residual_real": 0.01,
+        "kk_residual_imag": 0.01,
+        "kk_valid": 1.0,
     }
-    base = base or default
-    return {k: float(base[k] + rng.normal(0, noise * abs(base[k]) + 0.01))
-            for k in _FEATURE_KEYS}
+    merged = {**default, **(base or {})}
+    return {
+        k: float(merged[k] + rng.normal(0, noise * abs(merged[k]) + 0.01))
+        for k in _FEATURE_KEYS
+    }
 
 
 def _populate_store(
@@ -69,22 +75,46 @@ def _populate_store(
     # Create distinct feature profiles per circuit
     profiles = {
         "Randles-CPE-W": {
-            "logf_slope_low": -0.35, "logf_slope_high": -0.90,
-            "phase_min": -78.0, "phase_max": -5.0, "phase_range": 73.0,
-            "freq_at_phase_min": 1.0, "mag_range": 50.0,
-            "zreal_min": 1.0, "zreal_max": 51.0,
+            "logf_slope_low": -0.35,
+            "logf_slope_high": -0.90,
+            "phase_min": -78.0,
+            "phase_max": -5.0,
+            "phase_range": 73.0,
+            "freq_at_phase_min": 1.0,
+            "mag_range": 50.0,
+            "zreal_min": 1.0,
+            "zreal_max": 51.0,
+            "kk_residual_real": 0.01,
+            "kk_residual_imag": 0.01,
+            "kk_valid": 1.0,
         },
         "Two-Arc-CPE": {
-            "logf_slope_low": -0.15, "logf_slope_high": -0.50,
-            "phase_min": -85.0, "phase_max": -10.0, "phase_range": 75.0,
-            "freq_at_phase_min": 0.1, "mag_range": 200.0,
-            "zreal_min": 5.0, "zreal_max": 205.0,
+            "logf_slope_low": -0.15,
+            "logf_slope_high": -0.50,
+            "phase_min": -85.0,
+            "phase_max": -10.0,
+            "phase_range": 75.0,
+            "freq_at_phase_min": 0.1,
+            "mag_range": 200.0,
+            "zreal_min": 5.0,
+            "zreal_max": 205.0,
+            "kk_residual_real": 0.02,
+            "kk_residual_imag": 0.02,
+            "kk_valid": 1.0,
         },
         "Inductive-CPE": {
-            "logf_slope_low": -0.60, "logf_slope_high": -0.30,
-            "phase_min": -40.0, "phase_max": 15.0, "phase_range": 55.0,
-            "freq_at_phase_min": 100.0, "mag_range": 20.0,
-            "zreal_min": 0.5, "zreal_max": 20.5,
+            "logf_slope_low": -0.60,
+            "logf_slope_high": -0.30,
+            "phase_min": -40.0,
+            "phase_max": 15.0,
+            "phase_range": 55.0,
+            "freq_at_phase_min": 100.0,
+            "mag_range": 20.0,
+            "zreal_min": 0.5,
+            "zreal_max": 20.5,
+            "kk_residual_real": 0.05,
+            "kk_residual_imag": 0.05,
+            "kk_valid": 0.0,
         },
     }
 
@@ -98,21 +128,24 @@ def _populate_store(
         prof = profiles.get(circ, profiles["Randles-CPE-W"])
         for _ in range(count):
             feats = _make_features(prof, noise=0.05, rng=rng)
-            records.append({
-                "sample_id": f"syn_{idx:04d}.txt",
-                "circuit_name": circ,
-                "spectral_features": feats,
-                "bic": float(-100 - rng.normal(0, 10)),
-                "confidence": float(rng.uniform(0.6, 0.95)),
-                "params": {"Rs": float(rng.uniform(0.5, 5.0))},
-                "user_label": None,
-            })
+            records.append(
+                {
+                    "sample_id": f"syn_{idx:04d}.txt",
+                    "circuit_name": circ,
+                    "spectral_features": feats,
+                    "bic": float(-100 - rng.normal(0, 10)),
+                    "confidence": float(rng.uniform(0.6, 0.95)),
+                    "params": {"Rs": float(rng.uniform(0.5, 5.0))},
+                    "user_label": None,
+                }
+            )
             idx += 1
 
     store.add_records(records)
 
 
 # ─── Fixtures ────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def tmp_store_path(tmp_path: Path) -> Path:
@@ -148,6 +181,7 @@ def selector() -> CircuitMLSelector:
 # Init & properties
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class TestInit:
     def test_default_state(self, selector: CircuitMLSelector):
         assert not selector.is_trained
@@ -168,18 +202,25 @@ class TestInit:
 # Train
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class TestTrain:
-    def test_train_empty_store(self, selector: CircuitMLSelector, empty_store: FeatureStore):
+    def test_train_empty_store(
+        self, selector: CircuitMLSelector, empty_store: FeatureStore
+    ):
         result = selector.train(empty_store)
         assert result is False
         assert not selector.is_trained
 
-    def test_train_small_store_fallback(self, selector: CircuitMLSelector, small_store: FeatureStore):
+    def test_train_small_store_fallback(
+        self, selector: CircuitMLSelector, small_store: FeatureStore
+    ):
         result = selector.train(small_store)
         assert result is False
         assert not selector.is_trained
 
-    def test_train_populated_store(self, selector: CircuitMLSelector, populated_store: FeatureStore):
+    def test_train_populated_store(
+        self, selector: CircuitMLSelector, populated_store: FeatureStore
+    ):
         result = selector.train(populated_store)
         assert result is True
         assert selector.is_trained
@@ -215,55 +256,90 @@ class TestTrain:
 # Predict
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class TestPredict:
     def test_predict_untrained_returns_empty(self, selector: CircuitMLSelector):
         feats = _make_features()
         assert selector.predict(feats) == []
 
-    def test_predict_randles_profile(self, selector: CircuitMLSelector, populated_store: FeatureStore):
+    def test_predict_randles_profile(
+        self, selector: CircuitMLSelector, populated_store: FeatureStore
+    ):
         selector.train(populated_store)
         # Features similar to Randles-CPE-W profile
-        feats = _make_features({
-            "logf_slope_low": -0.35, "logf_slope_high": -0.90,
-            "phase_min": -78.0, "phase_max": -5.0, "phase_range": 73.0,
-            "freq_at_phase_min": 1.0, "mag_range": 50.0,
-            "zreal_min": 1.0, "zreal_max": 51.0,
-        }, noise=0.01)
+        feats = _make_features(
+            {
+                "logf_slope_low": -0.35,
+                "logf_slope_high": -0.90,
+                "phase_min": -78.0,
+                "phase_max": -5.0,
+                "phase_range": 73.0,
+                "freq_at_phase_min": 1.0,
+                "mag_range": 50.0,
+                "zreal_min": 1.0,
+                "zreal_max": 51.0,
+            },
+            noise=0.01,
+        )
         ranked = selector.predict(feats, top_n=3)
         assert len(ranked) <= 3
         assert "Randles-CPE-W" in ranked
 
-    def test_predict_two_arc_profile(self, selector: CircuitMLSelector, populated_store: FeatureStore):
+    def test_predict_two_arc_profile(
+        self, selector: CircuitMLSelector, populated_store: FeatureStore
+    ):
         selector.train(populated_store)
-        feats = _make_features({
-            "logf_slope_low": -0.15, "logf_slope_high": -0.50,
-            "phase_min": -85.0, "phase_max": -10.0, "phase_range": 75.0,
-            "freq_at_phase_min": 0.1, "mag_range": 200.0,
-            "zreal_min": 5.0, "zreal_max": 205.0,
-        }, noise=0.01)
+        feats = _make_features(
+            {
+                "logf_slope_low": -0.15,
+                "logf_slope_high": -0.50,
+                "phase_min": -85.0,
+                "phase_max": -10.0,
+                "phase_range": 75.0,
+                "freq_at_phase_min": 0.1,
+                "mag_range": 200.0,
+                "zreal_min": 5.0,
+                "zreal_max": 205.0,
+            },
+            noise=0.01,
+        )
         ranked = selector.predict(feats, top_n=3)
         assert len(ranked) <= 3
         assert "Two-Arc-CPE" in ranked
 
-    def test_predict_inductive_profile(self, selector: CircuitMLSelector, populated_store: FeatureStore):
+    def test_predict_inductive_profile(
+        self, selector: CircuitMLSelector, populated_store: FeatureStore
+    ):
         selector.train(populated_store)
-        feats = _make_features({
-            "logf_slope_low": -0.60, "logf_slope_high": -0.30,
-            "phase_min": -40.0, "phase_max": 15.0, "phase_range": 55.0,
-            "freq_at_phase_min": 100.0, "mag_range": 20.0,
-            "zreal_min": 0.5, "zreal_max": 20.5,
-        }, noise=0.01)
+        feats = _make_features(
+            {
+                "logf_slope_low": -0.60,
+                "logf_slope_high": -0.30,
+                "phase_min": -40.0,
+                "phase_max": 15.0,
+                "phase_range": 55.0,
+                "freq_at_phase_min": 100.0,
+                "mag_range": 20.0,
+                "zreal_min": 0.5,
+                "zreal_max": 20.5,
+            },
+            noise=0.01,
+        )
         ranked = selector.predict(feats, top_n=3)
         assert len(ranked) <= 3
         assert "Inductive-CPE" in ranked
 
-    def test_predict_top_n_respects_limit(self, selector: CircuitMLSelector, populated_store: FeatureStore):
+    def test_predict_top_n_respects_limit(
+        self, selector: CircuitMLSelector, populated_store: FeatureStore
+    ):
         selector.train(populated_store)
         feats = _make_features()
         ranked = selector.predict(feats, top_n=1)
         assert len(ranked) == 1
 
-    def test_predict_nan_features_returns_empty(self, selector: CircuitMLSelector, populated_store: FeatureStore):
+    def test_predict_nan_features_returns_empty(
+        self, selector: CircuitMLSelector, populated_store: FeatureStore
+    ):
         selector.train(populated_store)
         bad = {k: float("nan") for k in _FEATURE_KEYS}
         assert selector.predict(bad) == []
@@ -273,25 +349,32 @@ class TestPredict:
 # Confidence
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class TestConfidence:
     def test_confidence_untrained_returns_empty(self, selector: CircuitMLSelector):
         feats = _make_features()
         assert selector.confidence(feats) == {}
 
-    def test_confidence_sums_to_one(self, selector: CircuitMLSelector, populated_store: FeatureStore):
+    def test_confidence_sums_to_one(
+        self, selector: CircuitMLSelector, populated_store: FeatureStore
+    ):
         selector.train(populated_store)
         feats = _make_features()
         probs = selector.confidence(feats)
         assert len(probs) == 3
         assert abs(sum(probs.values()) - 1.0) < 1e-6
 
-    def test_confidence_keys_are_circuit_names(self, selector: CircuitMLSelector, populated_store: FeatureStore):
+    def test_confidence_keys_are_circuit_names(
+        self, selector: CircuitMLSelector, populated_store: FeatureStore
+    ):
         selector.train(populated_store)
         feats = _make_features()
         probs = selector.confidence(feats)
         assert set(probs.keys()) == {"Randles-CPE-W", "Two-Arc-CPE", "Inductive-CPE"}
 
-    def test_confidence_nan_features_returns_empty(self, selector: CircuitMLSelector, populated_store: FeatureStore):
+    def test_confidence_nan_features_returns_empty(
+        self, selector: CircuitMLSelector, populated_store: FeatureStore
+    ):
         selector.train(populated_store)
         bad = {k: float("nan") for k in _FEATURE_KEYS}
         assert selector.confidence(bad) == {}
@@ -301,6 +384,7 @@ class TestConfidence:
 # Explain
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class TestExplain:
     def test_explain_untrained(self, selector: CircuitMLSelector):
         feats = _make_features()
@@ -308,7 +392,9 @@ class TestExplain:
         assert "heurística" in text
         assert "30" in text  # min_samples
 
-    def test_explain_trained_has_key_info(self, selector: CircuitMLSelector, populated_store: FeatureStore):
+    def test_explain_trained_has_key_info(
+        self, selector: CircuitMLSelector, populated_store: FeatureStore
+    ):
         selector.train(populated_store)
         feats = _make_features()
         text = selector.explain(feats)
@@ -316,13 +402,17 @@ class TestExplain:
         assert "%" in text
         assert "Features mais influentes" in text
 
-    def test_explain_includes_alternative(self, selector: CircuitMLSelector, populated_store: FeatureStore):
+    def test_explain_includes_alternative(
+        self, selector: CircuitMLSelector, populated_store: FeatureStore
+    ):
         selector.train(populated_store)
         feats = _make_features()
         text = selector.explain(feats)
         assert "Alternativa" in text
 
-    def test_explain_includes_slope_and_phase(self, selector: CircuitMLSelector, populated_store: FeatureStore):
+    def test_explain_includes_slope_and_phase(
+        self, selector: CircuitMLSelector, populated_store: FeatureStore
+    ):
         selector.train(populated_store)
         feats = _make_features()
         text = selector.explain(feats)
@@ -334,18 +424,23 @@ class TestExplain:
 # Feature importances
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class TestFeatureImportances:
     def test_importances_untrained_empty(self, selector: CircuitMLSelector):
         assert selector.feature_importances() == {}
 
-    def test_importances_trained(self, selector: CircuitMLSelector, populated_store: FeatureStore):
+    def test_importances_trained(
+        self, selector: CircuitMLSelector, populated_store: FeatureStore
+    ):
         selector.train(populated_store)
         imp = selector.feature_importances()
         assert set(imp.keys()) == set(_FEATURE_KEYS)
         assert all(isinstance(v, float) for v in imp.values())
         assert abs(sum(imp.values()) - 1.0) < 1e-6  # RF importances sum to 1
 
-    def test_importances_all_non_negative(self, selector: CircuitMLSelector, populated_store: FeatureStore):
+    def test_importances_all_non_negative(
+        self, selector: CircuitMLSelector, populated_store: FeatureStore
+    ):
         selector.train(populated_store)
         imp = selector.feature_importances()
         assert all(v >= 0 for v in imp.values())
@@ -355,30 +450,39 @@ class TestFeatureImportances:
 # _build_dataset / _features_to_array
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class TestInternalHelpers:
     def test_build_dataset_empty(self, empty_store: FeatureStore):
         X, y = CircuitMLSelector._build_dataset(empty_store)
-        assert X.shape == (0, 9)
+        assert X.shape == (0, 12)
         assert y.shape == (0,)
 
     def test_build_dataset_filters_incomplete(self, empty_store: FeatureStore):
         """Records without spectral_features or with NaN are excluded."""
-        empty_store.add_records([
-            {"sample_id": "a.txt", "circuit_name": "X"},  # no features
-            {"sample_id": "b.txt", "circuit_name": "Y",
-             "spectral_features": {k: float("nan") for k in _FEATURE_KEYS}},
-            {"sample_id": "c.txt", "circuit_name": "Z",
-             "spectral_features": {k: 1.0 for k in _FEATURE_KEYS}},
-        ])
+        empty_store.add_records(
+            [
+                {"sample_id": "a.txt", "circuit_name": "X"},  # no features
+                {
+                    "sample_id": "b.txt",
+                    "circuit_name": "Y",
+                    "spectral_features": {k: float("nan") for k in _FEATURE_KEYS},
+                },
+                {
+                    "sample_id": "c.txt",
+                    "circuit_name": "Z",
+                    "spectral_features": {k: 1.0 for k in _FEATURE_KEYS},
+                },
+            ]
+        )
         X, y = CircuitMLSelector._build_dataset(empty_store)
-        assert X.shape == (1, 9)
+        assert X.shape == (1, 12)
         assert y[0] == "Z"
 
     def test_features_to_array_valid(self):
         feats = {k: float(i) for i, k in enumerate(_FEATURE_KEYS)}
         arr = CircuitMLSelector._features_to_array(feats)
         assert arr is not None
-        assert arr.shape == (1, 9)
+        assert arr.shape == (1, 12)
 
     def test_features_to_array_nan_returns_none(self):
         feats = {k: float("nan") for k in _FEATURE_KEYS}
@@ -394,10 +498,11 @@ class TestInternalHelpers:
 # Integration with shortlist_circuits and run_shortlist_fit
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class TestShortlistIntegration:
     def test_shortlist_accepts_ml_ranked(self):
         """shortlist_circuits should accept ml_ranked parameter."""
-        from src.circuit_fitting import shortlist_circuits, circuit_catalog
+        from src.circuit_fitting import circuit_catalog, shortlist_circuits
 
         catalog = circuit_catalog()
         feats = _make_features()
@@ -410,7 +515,7 @@ class TestShortlistIntegration:
 
     def test_shortlist_ml_ranked_empty_falls_back(self):
         """Empty ml_ranked → heuristic fallback."""
-        from src.circuit_fitting import shortlist_circuits, circuit_catalog
+        from src.circuit_fitting import circuit_catalog, shortlist_circuits
 
         catalog = circuit_catalog()
         feats = _make_features()
@@ -423,29 +528,33 @@ class TestShortlistIntegration:
 
     def test_shortlist_ml_ranked_unknown_name_falls_back(self):
         """ML names not in catalog → heuristic fallback."""
-        from src.circuit_fitting import shortlist_circuits, circuit_catalog
+        from src.circuit_fitting import circuit_catalog, shortlist_circuits
 
         catalog = circuit_catalog()
         feats = _make_features()
 
-        result = shortlist_circuits(feats, catalog, top_n=3,
-                                    ml_ranked=["Nonexistent-Circuit"])
+        result = shortlist_circuits(
+            feats, catalog, top_n=3, ml_ranked=["Nonexistent-Circuit"]
+        )
         # Should fall back to heuristic (first pick is Randles-CPE-W)
         assert result[0].name == "Randles-CPE-W"
 
     def test_run_shortlist_fit_accepts_ml_ranked(self):
         """run_shortlist_fit should accept ml_ranked keyword."""
         import pandas as pd
+
         from src.circuit_fitting import run_shortlist_fit
 
         freq = np.logspace(-1, 5, 30)
         omega = 2 * np.pi * freq
         z = 10 + 100 / (1 + 1j * omega * 1e-3)
-        df = pd.DataFrame({
-            "frequency": freq,
-            "zreal": z.real,
-            "zimag": z.imag,
-        })
+        df = pd.DataFrame(
+            {
+                "frequency": freq,
+                "zreal": z.real,
+                "zimag": z.imag,
+            }
+        )
 
         result = run_shortlist_fit(df, ml_ranked=["Two-Arc-CPE", "Randles-CPE-W"])
         assert "shortlist" in result
@@ -455,6 +564,7 @@ class TestShortlistIntegration:
 # ═══════════════════════════════════════════════════════════════════════
 # End-to-end: FeatureStore → train → predict cycle
 # ═══════════════════════════════════════════════════════════════════════
+
 
 class TestEndToEnd:
     def test_full_cycle(self, tmp_store_path: Path):
@@ -467,12 +577,20 @@ class TestEndToEnd:
         assert sel.is_trained
 
         # Randles-like features → should predict Randles
-        feats_randles = _make_features({
-            "logf_slope_low": -0.35, "logf_slope_high": -0.90,
-            "phase_min": -78.0, "phase_max": -5.0, "phase_range": 73.0,
-            "freq_at_phase_min": 1.0, "mag_range": 50.0,
-            "zreal_min": 1.0, "zreal_max": 51.0,
-        }, noise=0.005)
+        feats_randles = _make_features(
+            {
+                "logf_slope_low": -0.35,
+                "logf_slope_high": -0.90,
+                "phase_min": -78.0,
+                "phase_max": -5.0,
+                "phase_range": 73.0,
+                "freq_at_phase_min": 1.0,
+                "mag_range": 50.0,
+                "zreal_min": 1.0,
+                "zreal_max": 51.0,
+            },
+            noise=0.005,
+        )
 
         ranked = sel.predict(feats_randles)
         assert "Randles-CPE-W" in ranked
@@ -487,6 +605,7 @@ class TestEndToEnd:
     def test_init_re_exports(self):
         """CircuitMLSelector should be importable from src."""
         from src import CircuitMLSelector as CLS
+
         assert CLS is not None
 
     def test_persistent_training(self, tmp_store_path: Path):
