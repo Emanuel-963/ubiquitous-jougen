@@ -1108,6 +1108,7 @@ class PipelineApp(ctk.CTk):
         self.tab_diag = self.tabs.add("🩺 " + tr("Diagnóstico Fitting"))
         self.tab_report_text = self.tabs.add("📝 " + tr("Relatório Fitting"))
         self.tab_compare = self.tabs.add("🔄 " + tr("Comparar Amostras"))
+        self.tab_orientador = self.tabs.add("🎓 " + tr("Modo Orientador"))
         self.tab_settings = self.tabs.add("⚙️ " + tr("Configurações"))
 
         # ── AI Analysis tab content ──────────────────────────────
@@ -1207,6 +1208,35 @@ class PipelineApp(ctk.CTk):
             diag_frame, wrap="word", font=ctk.CTkFont(size=13)
         )
         self.diag_textbox.pack(fill="both", expand=True, padx=8, pady=8)
+
+        # ── Modo Orientador tab content ───────────────────────────
+        orientador_frame = ctk.CTkFrame(self.tab_orientador)
+        orientador_frame.pack(fill="both", expand=True, padx=12, pady=12)
+
+        orientador_top = ctk.CTkFrame(orientador_frame)
+        orientador_top.pack(fill="x", padx=8, pady=(8, 4))
+
+        ctk.CTkButton(
+            orientador_top,
+            text="🎓 " + tr("Avaliação Crítica do Experimento"),
+            command=self._run_orientador_clicked,
+            fg_color="#1a5c96",
+            hover_color="#154d80",
+        ).pack(side="left", padx=8)
+
+        ctk.CTkLabel(
+            orientador_top,
+            text=tr("Nota 0–10 por critério · Erros de operação · Frase para artigo"),
+            font=ctk.CTkFont(size=11),
+            text_color="gray",
+        ).pack(side="left", padx=16)
+
+        self.orientador_textbox = ctk.CTkTextbox(
+            orientador_frame,
+            wrap="word",
+            font=ctk.CTkFont(family="Courier New", size=12),
+        )
+        self.orientador_textbox.pack(fill="both", expand=True, padx=8, pady=8)
 
         # ── Fitting Report tab content ───────────────────────────
         report_txt_frame = ctk.CTkFrame(self.tab_report_text)
@@ -5324,6 +5354,84 @@ class PipelineApp(ctk.CTk):
 
         threading.Thread(target=worker, daemon=True).start()
 
+    def _run_orientador_clicked(self):
+        """Run Modo Orientador — critical experiment evaluation."""
+        self._append_log(tr("Executando Avaliação Crítica (Modo Orientador)..."))
+        self.tabs.set("🎓 " + tr("Modo Orientador"))
+
+        def worker():
+            try:
+                from src.experiment_evaluator import ExperimentEvaluator, format_report
+                from src.kramers_kronig import KramersKronigValidator
+
+                raw = getattr(self, "raw_eis", {}) or {}
+                if not raw:
+                    self.log_queue.put(
+                        ("orientador_result", tr("Nenhum dado EIS carregado."))
+                    )
+                    return
+
+                circuit_table = getattr(self, "circuit_df", None)
+                evaluator = ExperimentEvaluator()
+                kk_validator = KramersKronigValidator()
+                all_reports: list[str] = []
+
+                for name, df in raw.items():
+                    try:
+                        freq = df.iloc[:, 0].values.astype(float)
+                        zr = df.iloc[:, 1].values.astype(float)
+                        zi = df.iloc[:, 2].values.astype(float)
+                        z = zr + 1j * zi
+
+                        kk_result = kk_validator.validate(freq, z)
+
+                        # Try to find matching fit_result from circuit_df
+                        fit_result = None
+                        if circuit_table is not None and not circuit_table.empty:
+                            rows = circuit_table[
+                                circuit_table["sample"].astype(str) == str(name)
+                                if "sample" in circuit_table.columns
+                                else circuit_table["Arquivo"].astype(str) == str(name)
+                            ]
+                            if not rows.empty:
+                                row = rows.iloc[0]
+                                fit_result = {
+                                    "template": row.get(
+                                        "best_circuit",
+                                        row.get("Circuito", ""),
+                                    ),
+                                    "rss": row.get("rss", row.get("RSS", None)),
+                                    "bic": row.get("bic", row.get("BIC", None)),
+                                    "n_params": row.get("n_params", None),
+                                    "n_points": row.get("n_points", None),
+                                    "success": row.get("success", None),
+                                    "res_autocorr": row.get("res_autocorr", 0.0),
+                                    "res_structured": row.get("res_structured", False),
+                                    "bound_hits": row.get("bound_hits", 0),
+                                    "chi2_over_nu": row.get("chi2_over_nu", None),
+                                    "params": row.get("params", {}),
+                                    "params_std": row.get("params_std", {}),
+                                }
+
+                        evaluation = evaluator.evaluate(
+                            sample_name=name,
+                            freq=freq,
+                            z=z,
+                            fit_result=fit_result,
+                            kk_result=kk_result,
+                        )
+                        all_reports.append(format_report(evaluation))
+                    except Exception as exc:
+                        all_reports.append(f"⚠️ {name}: erro na avaliação — {exc}")
+
+                self.log_queue.put(("orientador_result", "\n\n".join(all_reports)))
+            except Exception as exc:
+                self.log_queue.put(
+                    ("orientador_result", f"Erro Modo Orientador: {exc}")
+                )
+
+        threading.Thread(target=worker, daemon=True).start()
+
     def _run_batch_clicked(self):
         """Run batch processing on a selected folder."""
         folder = filedialog.askdirectory(
@@ -5822,6 +5930,9 @@ class PipelineApp(ctk.CTk):
                 elif msg_type == "fitting_report_result":
                     self.fitting_report_textbox.delete("1.0", "end")
                     self.fitting_report_textbox.insert("1.0", item[1])
+                elif msg_type == "orientador_result":
+                    self.orientador_textbox.delete("1.0", "end")
+                    self.orientador_textbox.insert("1.0", item[1])
                 elif msg_type == "status_update":
                     self._update_status_bar(**item[1])
                 elif msg_type == "update_available":
