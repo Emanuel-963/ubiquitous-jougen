@@ -931,8 +931,16 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
             result = run_eis_pipeline(config=cfg)
             table = result.circuit_table
 
+        cfg = _load_config(args)
+        objective_profiles = getattr(cfg, "benchmark_objective_profiles", None)
+
         bench = prepare_benchmark_table(table)
-        rec = recommend_best_configuration(bench, objective=objective, top_k=top_k)
+        rec = recommend_best_configuration(
+            bench,
+            objective=objective,
+            top_k=top_k,
+            objective_profiles=objective_profiles,
+        )
 
         if json_mode:
             _print_json(
@@ -947,7 +955,14 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
                 }
             )
         else:
-            print(benchmark_report(bench, objectives=[objective], top_k=top_k))
+            print(
+                benchmark_report(
+                    bench,
+                    objectives=[objective],
+                    top_k=top_k,
+                    objective_profiles=objective_profiles,
+                )
+            )
 
         return RC_OK
 
@@ -1123,6 +1138,8 @@ def cmd_paper_first(args: argparse.Namespace) -> int:
                     "figures_index": result.figures_index_path,
                     "tables_dir": result.tables_dir,
                     "figures_dir": result.figures_dir,
+                    "joss_template": result.joss_template_path,
+                    "ieee_template": result.ieee_template_path,
                 }
             )
         else:
@@ -1131,6 +1148,8 @@ def cmd_paper_first(args: argparse.Namespace) -> int:
             print(f"   Figures index: {result.figures_index_path}")
             print(f"   Tables: {result.tables_dir}")
             print(f"   Figures: {result.figures_dir}")
+            print(f"   JOSS template: {result.joss_template_path}")
+            print(f"   IEEE template: {result.ieee_template_path}")
 
         return RC_OK
 
@@ -1440,8 +1459,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--objective",
         type=str,
         default="balanced",
-        choices=["low_rs", "high_rp", "high_capacitance", "balanced"],
-        help="Optimization objective for recommendation.",
+        help=(
+            "Optimization objective for recommendation. Supports built-ins and "
+            "custom objectives declared in config.benchmark_objective_profiles."
+        ),
     )
     sp_bench.add_argument(
         "--top-k",

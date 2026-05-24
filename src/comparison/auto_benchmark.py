@@ -13,7 +13,7 @@ It is designed for lab decision support, not only ranking.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -28,6 +28,47 @@ class BenchmarkRecommendation:
     score: float
     rationale: str
     top_candidates: List[Tuple[str, float]]
+
+
+DEFAULT_OBJECTIVE_PROFILES: Dict[str, Dict[str, float]] = {
+    "low_rs": {
+        "rs": -0.55,
+        "chi2_over_nu": -0.20,
+        "kk_valid": 0.15,
+        "confidence": 0.10,
+    },
+    "high_rp": {
+        "rp": 0.50,
+        "chi2_over_nu": -0.20,
+        "kk_valid": 0.20,
+        "confidence": 0.10,
+    },
+    "high_capacitance": {
+        "c_mean": 0.45,
+        "rp": 0.20,
+        "chi2_over_nu": -0.20,
+        "kk_valid": 0.15,
+    },
+    "balanced": {
+        "rs": -0.23,
+        "rp": 0.23,
+        "c_mean": 0.19,
+        "chi2_over_nu": -0.15,
+        "kk_valid": 0.10,
+        "confidence": 0.10,
+    },
+}
+
+_OBJECTIVE_ALIASES = {
+    "min_rs": "low_rs",
+    "conductivity": "low_rs",
+    "stability": "high_rp",
+    "corrosion_resistance": "high_rp",
+    "capacitance": "high_capacitance",
+    "energy_storage": "high_capacitance",
+    "overall": "balanced",
+    "health": "balanced",
+}
 
 
 def _coalesce(
@@ -129,54 +170,65 @@ def prepare_benchmark_table(circuit_table: pd.DataFrame) -> pd.DataFrame:
 def score_objective(
     bench: pd.DataFrame,
     objective: str,
+    objective_profiles: Optional[Dict[str, Dict[str, float]]] = None,
 ) -> pd.Series:
     """Score rows for a named objective; higher score is better."""
     objective = objective.strip().lower()
 
-    rs_good = _normalize(bench["rs"], higher_is_better=False)
-    rp_good = _normalize(bench["rp"], higher_is_better=True)
-    c_good = _normalize(bench["c_mean"], higher_is_better=True)
+    profiles = objective_profiles or DEFAULT_OBJECTIVE_PROFILES
+    objective = _OBJECTIVE_ALIASES.get(objective, objective)
 
-    # Lower chi2 is better; unknown chi2 gets neutral 0.5
-    chi2_raw = bench["chi2_over_nu"].copy()
-    chi2_raw = chi2_raw.where(np.isfinite(chi2_raw), np.nan)
-    chi2_good = _normalize(
-        chi2_raw.fillna(chi2_raw.median(skipna=True)), higher_is_better=False
-    )
-    chi2_good = chi2_good.where(chi2_raw.notna(), 0.5)
+    if objective not in profiles:
+        valid = ", ".join(sorted(profiles.keys()))
+        raise ValueError(f"Unknown objective '{objective}'. Available: {valid}")
 
-    conf_good = _normalize(bench["confidence"], higher_is_better=True)
-    kk_good = bench["kk_valid"].copy()
-    kk_good = kk_good.where(np.isfinite(kk_good), 0.5)
-    kk_good = kk_good.clip(0.0, 1.0)
+    profile = profiles[objective]
 
-    if objective in {"low_rs", "min_rs", "conductivity"}:
-        score = 0.55 * rs_good + 0.2 * chi2_good + 0.15 * kk_good + 0.1 * conf_good
-    elif objective in {"high_rp", "stability", "corrosion_resistance"}:
-        score = 0.5 * rp_good + 0.2 * chi2_good + 0.2 * kk_good + 0.1 * conf_good
-    elif objective in {"high_capacitance", "capacitance", "energy_storage"}:
-        score = 0.45 * c_good + 0.2 * rp_good + 0.2 * chi2_good + 0.15 * kk_good
-    elif objective in {"balanced", "overall", "health"}:
-        score = (
-            0.23 * rs_good
-            + 0.23 * rp_good
-            + 0.19 * c_good
-            + 0.15 * chi2_good
-            + 0.1 * kk_good
-            + 0.1 * conf_good
+    # Cache normalized metrics only once.
+    metric_norm: Dict[str, pd.Series] = {}
+    for metric in profile.keys():
+        if metric == "kk_valid":
+            s = (
+                bench[metric].copy()
+                if metric in bench.columns
+                else pd.Series(0.5, index=bench.index)
+            )
+            s = s.where(np.isfinite(s), 0.5).clip(0.0, 1.0)
+            metric_norm[metric] = s
+            continue
+
+        raw = (
+            bench[metric].copy()
+            if metric in bench.columns
+            else pd.Series(np.nan, index=bench.index)
         )
-    else:
-        raise ValueError(
-            "Unknown objective. Use: low_rs, high_rp, high_capacitance, balanced"
-        )
+        raw = pd.to_numeric(raw, errors="coerce")
+        metric_norm[metric] = raw
 
-    return score.fillna(0.0)
+    score = pd.Series(0.0, index=bench.index, dtype=float)
+    total = 0.0
+    for metric, weight in profile.items():
+        if abs(weight) <= 1e-15:
+            continue
+        s = metric_norm[metric]
+        if metric != "kk_valid":
+            norm = _normalize(s, higher_is_better=(weight > 0.0))
+        else:
+            norm = s if weight > 0.0 else (1.0 - s)
+        w = abs(weight)
+        score += w * norm
+        total += w
+
+    if total <= 1e-15:
+        return pd.Series(0.0, index=bench.index, dtype=float)
+    return (score / total).fillna(0.0)
 
 
 def recommend_best_configuration(
     circuit_table: pd.DataFrame,
     objective: str = "balanced",
     top_k: int = 3,
+    objective_profiles: Optional[Dict[str, Dict[str, float]]] = None,
 ) -> BenchmarkRecommendation:
     """Compute objective-driven recommendation from circuit table."""
     bench = prepare_benchmark_table(circuit_table)
@@ -189,7 +241,7 @@ def recommend_best_configuration(
             top_candidates=[],
         )
 
-    score = score_objective(bench, objective)
+    score = score_objective(bench, objective, objective_profiles=objective_profiles)
     ranked = bench.assign(objective_score=score).sort_values(
         "objective_score", ascending=False
     )
@@ -219,6 +271,7 @@ def benchmark_report(
     circuit_table: pd.DataFrame,
     objectives: Optional[List[str]] = None,
     top_k: int = 3,
+    objective_profiles: Optional[Dict[str, Dict[str, float]]] = None,
 ) -> str:
     """Generate a human-readable benchmark recommendation report."""
     if objectives is None:
@@ -230,7 +283,12 @@ def benchmark_report(
     lines.append("=" * 72)
 
     for obj in objectives:
-        rec = recommend_best_configuration(circuit_table, objective=obj, top_k=top_k)
+        rec = recommend_best_configuration(
+            circuit_table,
+            objective=obj,
+            top_k=top_k,
+            objective_profiles=objective_profiles,
+        )
         lines.append("")
         lines.append(f"Objective: {rec.objective}")
         lines.append(f"  Melhor configuracao: {rec.sample}  (score={rec.score:.3f})")

@@ -64,3 +64,19 @@ def test_report_contains_objective():
     text = benchmark_report(_table(), objectives=["balanced"], top_k=2)
     assert "Objective: balanced" in text
     assert "Melhor configuracao" in text
+
+
+def test_custom_objective_profile_from_config_style_dict():
+    custom_profiles = {
+        "prefer_capacitance": {
+            "c_mean": 0.8,
+            "chi2_over_nu": -0.2,
+        }
+    }
+    rec = recommend_best_configuration(
+        _table(),
+        objective="prefer_capacitance",
+        top_k=2,
+        objective_profiles=custom_profiles,
+    )
+    assert rec.sample == "Nb4_NH4F_500"

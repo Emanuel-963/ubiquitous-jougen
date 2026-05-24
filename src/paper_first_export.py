@@ -32,6 +32,8 @@ class PaperFirstResult:
     figures_index_path: str
     tables_dir: str
     figures_dir: str
+    joss_template_path: str
+    ieee_template_path: str
 
 
 def _safe_df(obj: Any) -> Optional[pd.DataFrame]:
@@ -80,6 +82,74 @@ def _discussion_draft(eis_best: str, kk_hint: str, drt_hint: str, cyc_hint: str)
         "stability over cycling. Future work should include replicate experiments, "
         "independent surface characterization (e.g., SEM/XPS), and robustness checks "
         "across electrolyte composition and temperature windows.\n"
+    )
+
+
+def _build_joss_template(
+    *,
+    title: str,
+    author: str,
+    institution: str,
+    body_text: str,
+) -> str:
+    """Create a JOSS-ready markdown skeleton from the draft text."""
+    return (
+        "---\n"
+        f"title: '{title}'\n"
+        "tags:\n"
+        "  - Python\n"
+        "  - electrochemistry\n"
+        "authors:\n"
+        f"  - name: {author}\n"
+        "    orcid: 0000-0000-0000-0000\n"
+        "    affiliation: 1\n"
+        "affiliations:\n"
+        f"  - name: {institution or 'TODO — institution'}\n"
+        "    index: 1\n"
+        "date: TODO\n"
+        "bibliography: paper.bib\n"
+        "---\n\n"
+        "# Summary\n\n"
+        "TODO — concise software summary for JOSS.\n\n"
+        "# Statement of Need\n\n"
+        "TODO — explain scientific gap and user community.\n\n"
+        "# Functionality\n\n"
+        "TODO — describe key capabilities and workflows.\n\n"
+        "# Paper-First Draft Excerpt\n\n"
+        f"{body_text}\n\n"
+        "# Acknowledgements\n\n"
+        "TODO — funding and institutional acknowledgements.\n"
+    )
+
+
+def _build_ieee_template(
+    *,
+    title: str,
+    author: str,
+    institution: str,
+    body_text: str,
+) -> str:
+    """Create an IEEE-style starter markdown file from the draft text."""
+    return (
+        f"# {title} (IEEE Draft)\n\n"
+        f"**Author:** {author}  \n"
+        f"**Affiliation:** {institution or 'TODO — affiliation'}\n\n"
+        "## Abstract\n\n"
+        "TODO — 150-250 words summarizing objective, method, and results.\n\n"
+        "## Index Terms\n\n"
+        "Electrochemical impedance spectroscopy, equivalent circuit fitting, DRT, battery diagnostics.\n\n"
+        "## I. Introduction\n\n"
+        "TODO — background, related work, and contribution highlights.\n\n"
+        "## II. Methods\n\n"
+        "TODO — experimental setup and software pipeline.\n\n"
+        "## III. Results\n\n"
+        "TODO — quantitative findings and benchmarks.\n\n"
+        "## IV. Discussion\n\n"
+        f"{body_text}\n\n"
+        "## V. Conclusion\n\n"
+        "TODO — main conclusions and future work.\n\n"
+        "## References\n\n"
+        "TODO — IEEE reference list.\n"
     )
 
 
@@ -190,9 +260,34 @@ def build_paper_first_package(
 
     manuscript.write_text("\n".join(body), encoding="utf-8")
 
+    # Journal templates derived from paper-first draft
+    draft_text = "\n".join(body)
+    joss_template = out / "paper_first_joss_template.md"
+    ieee_template = out / "paper_first_ieee_template.md"
+    joss_template.write_text(
+        _build_joss_template(
+            title=title,
+            author=author,
+            institution=institution,
+            body_text=draft_text,
+        ),
+        encoding="utf-8",
+    )
+    ieee_template.write_text(
+        _build_ieee_template(
+            title=title,
+            author=author,
+            institution=institution,
+            body_text=draft_text,
+        ),
+        encoding="utf-8",
+    )
+
     return PaperFirstResult(
         manuscript_path=str(manuscript),
         figures_index_path=str(fig_index),
         tables_dir=str(tables_dir),
         figures_dir=str(figs_dir),
+        joss_template_path=str(joss_template),
+        ieee_template_path=str(ieee_template),
     )

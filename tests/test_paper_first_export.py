@@ -73,8 +73,15 @@ def test_paper_first_creates_files(tmp_path):
     assert Path(result.manuscript_path).exists()
     assert Path(result.figures_index_path).exists()
     assert Path(result.tables_dir).exists()
+    assert Path(result.joss_template_path).exists()
+    assert Path(result.ieee_template_path).exists()
 
     txt = Path(result.manuscript_path).read_text(encoding="utf-8")
     assert "## Methods (Draft)" in txt
     assert "## Results (Draft)" in txt
     assert "## Draft Discussion" in txt
+
+    joss_txt = Path(result.joss_template_path).read_text(encoding="utf-8")
+    ieee_txt = Path(result.ieee_template_path).read_text(encoding="utf-8")
+    assert "# Summary" in joss_txt
+    assert "## I. Introduction" in ieee_txt

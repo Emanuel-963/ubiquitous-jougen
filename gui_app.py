@@ -1109,6 +1109,7 @@ class PipelineApp(ctk.CTk):
         self.tab_report_text = self.tabs.add("📝 " + tr("Relatório Fitting"))
         self.tab_compare = self.tabs.add("🔄 " + tr("Comparar Amostras"))
         self.tab_orientador = self.tabs.add("🎓 " + tr("Modo Orientador"))
+        self.tab_lab = self.tabs.add("🧠 " + tr("Lab Intelligence"))
         self.tab_settings = self.tabs.add("⚙️ " + tr("Configurações"))
 
         # ── AI Analysis tab content ──────────────────────────────
@@ -1237,6 +1238,85 @@ class PipelineApp(ctk.CTk):
             font=ctk.CTkFont(family="Courier New", size=12),
         )
         self.orientador_textbox.pack(fill="both", expand=True, padx=8, pady=8)
+
+        # ── Lab Intelligence tab content ──────────────────────────
+        lab_frame = ctk.CTkFrame(self.tab_lab)
+        lab_frame.pack(fill="both", expand=True, padx=12, pady=12)
+
+        lab_top = ctk.CTkFrame(lab_frame)
+        lab_top.pack(fill="x", padx=8, pady=(8, 4))
+
+        from src.config import PipelineConfig as _PipelineConfig
+
+        _lab_cfg = getattr(self, "_active_pipeline_config", _PipelineConfig.default())
+        _objective_values = sorted(
+            list(getattr(_lab_cfg, "benchmark_objective_profiles", {}).keys())
+        ) or ["balanced", "low_rs", "high_rp", "high_capacitance"]
+
+        self.lab_objective_var = ctk.StringVar(value="balanced")
+        if self.lab_objective_var.get() not in _objective_values:
+            self.lab_objective_var.set(_objective_values[0])
+
+        ctk.CTkLabel(lab_top, text=tr("Objetivo"), font=ctk.CTkFont(size=11)).pack(
+            side="left", padx=(8, 4)
+        )
+        self.lab_objective_menu = ctk.CTkOptionMenu(
+            lab_top,
+            values=_objective_values,
+            variable=self.lab_objective_var,
+            width=180,
+        )
+        self.lab_objective_menu.pack(side="left", padx=(0, 8))
+
+        ctk.CTkLabel(lab_top, text="Top-K", font=ctk.CTkFont(size=11)).pack(
+            side="left", padx=(4, 4)
+        )
+        self.lab_topk_entry = ctk.CTkEntry(lab_top, width=55)
+        self.lab_topk_entry.insert(0, "3")
+        self.lab_topk_entry.pack(side="left", padx=(0, 10))
+
+        ctk.CTkLabel(
+            lab_top, text=tr("Amostra consulta"), font=ctk.CTkFont(size=11)
+        ).pack(side="left", padx=(4, 4))
+        self.lab_query_entry = ctk.CTkEntry(lab_top, width=180)
+        self.lab_query_entry.pack(side="left", padx=(0, 8))
+
+        ctk.CTkButton(
+            lab_top,
+            text="🏆 " + tr("Benchmark"),
+            command=self._run_lab_benchmark_clicked,
+            width=120,
+        ).pack(side="left", padx=4)
+        ctk.CTkButton(
+            lab_top,
+            text="🧬 " + tr("Memória"),
+            command=self._run_lab_memory_clicked,
+            width=120,
+        ).pack(side="left", padx=4)
+        ctk.CTkButton(
+            lab_top,
+            text="📄 " + tr("Paper-first"),
+            command=self._run_lab_paper_first_clicked,
+            width=130,
+            fg_color="#265f7e",
+            hover_color="#1f4e69",
+        ).pack(side="left", padx=4)
+
+        ctk.CTkLabel(
+            lab_frame,
+            text=tr(
+                "Benchmark + Similaridade histórica + Export JOSS/IEEE a partir do draft"
+            ),
+            text_color="gray",
+            font=ctk.CTkFont(size=11),
+        ).pack(anchor="w", padx=12, pady=(4, 2))
+
+        self.lab_textbox = ctk.CTkTextbox(
+            lab_frame,
+            wrap="word",
+            font=ctk.CTkFont(family="Courier New", size=12),
+        )
+        self.lab_textbox.pack(fill="both", expand=True, padx=8, pady=8)
 
         # ── Fitting Report tab content ───────────────────────────
         report_txt_frame = ctk.CTkFrame(self.tab_report_text)
@@ -4391,7 +4471,8 @@ class PipelineApp(ctk.CTk):
 
         from src.config import PipelineConfig
 
-        cfg = PipelineConfig.default()
+        cfg = getattr(self, "_active_pipeline_config", PipelineConfig.default())
+        self._active_pipeline_config = cfg
         eis_dir = Path(cfg.data_dir)
         cic_dir = Path(cfg.processed_dir)
 
@@ -5432,6 +5513,160 @@ class PipelineApp(ctk.CTk):
 
         threading.Thread(target=worker, daemon=True).start()
 
+    def _run_lab_benchmark_clicked(self):
+        """Run objective-driven benchmark recommendation in GUI."""
+        self._append_log(tr("Executando benchmark automático..."))
+        self.tabs.set("🧠 " + tr("Lab Intelligence"))
+
+        def worker():
+            try:
+                from src.comparison.auto_benchmark import benchmark_report
+
+                table = getattr(self, "circuit_df", None)
+                if table is None or (hasattr(table, "empty") and table.empty):
+                    self.log_queue.put(
+                        ("lab_result", tr("Execute o pipeline EIS primeiro."))
+                    )
+                    return
+
+                objective = (self.lab_objective_var.get() or "balanced").strip()
+                try:
+                    top_k = max(1, int(self.lab_topk_entry.get().strip() or "3"))
+                except Exception:
+                    top_k = 3
+
+                cfg = self._read_settings_to_config()
+                profiles = getattr(cfg, "benchmark_objective_profiles", None)
+
+                text = benchmark_report(
+                    table,
+                    objectives=[objective],
+                    top_k=top_k,
+                    objective_profiles=profiles,
+                )
+                self.log_queue.put(("lab_result", text))
+            except Exception as exc:
+                self.log_queue.put(("lab_result", f"Erro benchmark: {exc}"))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _run_lab_memory_clicked(self):
+        """Store/query historical memory and show similarity report."""
+        self._append_log(tr("Executando memória experimental..."))
+        self.tabs.set("🧠 " + tr("Lab Intelligence"))
+
+        def worker():
+            try:
+                from src.comparison.auto_benchmark import prepare_benchmark_table
+                from src.lab_memory import ExperimentalMemory, similarity_report
+
+                table = getattr(self, "circuit_df", None)
+                if table is None or (hasattr(table, "empty") and table.empty):
+                    self.log_queue.put(
+                        ("lab_result", tr("Execute o pipeline EIS primeiro."))
+                    )
+                    return
+
+                bench = prepare_benchmark_table(table)
+                if bench.empty:
+                    self.log_queue.put(("lab_result", "Sem amostras para memória."))
+                    return
+
+                mem = ExperimentalMemory("data/knowledge/lab_memory.db")
+                inserted = mem.add_from_benchmark_table(
+                    bench,
+                    notes="GUI automatic memory update",
+                )
+
+                qname = (self.lab_query_entry.get() or "").strip()
+                if qname:
+                    rows = bench[bench["sample"].astype(str) == str(qname)]
+                    qrow = rows.iloc[0] if not rows.empty else bench.iloc[0]
+                else:
+                    qrow = bench.iloc[0]
+
+                qsig = {
+                    "rs": float(qrow.get("rs", float("nan"))),
+                    "rp": float(qrow.get("rp", float("nan"))),
+                    "c_mean": float(qrow.get("c_mean", float("nan"))),
+                    "chi2_over_nu": float(qrow.get("chi2_over_nu", float("nan"))),
+                    "confidence": float(qrow.get("confidence", float("nan"))),
+                    "kk_valid": float(qrow.get("kk_valid", float("nan"))),
+                }
+
+                report = similarity_report(
+                    mem,
+                    query_name=str(qrow.get("sample", "unknown")),
+                    query_signature=qsig,
+                    top_k=5,
+                )
+                header = f"Memória atualizada com {inserted} assinatura(s).\n\n"
+                self.log_queue.put(("lab_result", header + report))
+            except Exception as exc:
+                self.log_queue.put(("lab_result", f"Erro memória: {exc}"))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _run_lab_paper_first_clicked(self):
+        """Export paper-first package from current GUI results (incl. JOSS/IEEE)."""
+        self._append_log(tr("Gerando export paper-first..."))
+        self.tabs.set("🧠 " + tr("Lab Intelligence"))
+
+        out_dir = filedialog.askdirectory(
+            title=tr("Selecionar pasta de saída do paper-first"),
+            initialdir="outputs",
+        )
+        if not out_dir:
+            return
+
+        def worker():
+            try:
+                from src.paper_first_export import build_paper_first_package
+
+                results: Dict[str, Any] = {}
+                if getattr(self, "last_eis_result", None) is not None:
+                    results["eis"] = self.last_eis_result
+                if getattr(self, "last_cycling_result", None) is not None:
+                    results["cycling"] = self.last_cycling_result
+                if getattr(self, "last_drt_result", None) is not None:
+                    results["drt"] = self.last_drt_result
+
+                if "eis" not in results:
+                    self.log_queue.put(
+                        (
+                            "lab_result",
+                            tr("Resultado EIS não disponível. Execute o pipeline EIS."),
+                        )
+                    )
+                    return
+
+                title = "IonFlow Paper-First Draft"
+                author = str(self.gui_settings.get("report_author", "IonFlow Pipeline"))
+                institution = str(self.gui_settings.get("report_institution", ""))
+
+                out = build_paper_first_package(
+                    results,
+                    output_dir=out_dir,
+                    title=title,
+                    author=author or "IonFlow Pipeline",
+                    institution=institution,
+                )
+
+                lines = [
+                    "✅ Export paper-first concluído",
+                    f"- Manuscript: {out.manuscript_path}",
+                    f"- Figures index: {out.figures_index_path}",
+                    f"- Tables: {out.tables_dir}",
+                    f"- Figures: {out.figures_dir}",
+                    f"- JOSS template: {out.joss_template_path}",
+                    f"- IEEE template: {out.ieee_template_path}",
+                ]
+                self.log_queue.put(("lab_result", "\n".join(lines)))
+            except Exception as exc:
+                self.log_queue.put(("lab_result", f"Erro paper-first: {exc}"))
+
+        threading.Thread(target=worker, daemon=True).start()
+
     def _run_batch_clicked(self):
         """Run batch processing on a selected folder."""
         folder = filedialog.askdirectory(
@@ -5933,6 +6168,9 @@ class PipelineApp(ctk.CTk):
                 elif msg_type == "orientador_result":
                     self.orientador_textbox.delete("1.0", "end")
                     self.orientador_textbox.insert("1.0", item[1])
+                elif msg_type == "lab_result":
+                    self.lab_textbox.delete("1.0", "end")
+                    self.lab_textbox.insert("1.0", item[1])
                 elif msg_type == "status_update":
                     self._update_status_bar(**item[1])
                 elif msg_type == "update_available":
@@ -6620,7 +6858,13 @@ class PipelineApp(ctk.CTk):
         """Read Settings tab entries and return a populated PipelineConfig."""
         from src.config import PipelineConfig
 
+        base_cfg = getattr(self, "_active_pipeline_config", None)
         cfg = PipelineConfig.default()
+        if base_cfg is not None:
+            with contextlib.suppress(Exception):
+                cfg.benchmark_objective_profiles = dict(
+                    getattr(base_cfg, "benchmark_objective_profiles", {})
+                )
 
         def _get(key: str, cast=str, fallback=None):
             entry = self._settings_entries.get(key)
@@ -6666,6 +6910,16 @@ class PipelineApp(ctk.CTk):
     def _apply_settings_from_form(self) -> None:
         """Apply Settings tab entries to sidebar widgets and gui_settings."""
         cfg = self._read_settings_to_config()
+        self._active_pipeline_config = cfg
+
+        # Refresh Lab objective menu from active config (custom objectives in JSON)
+        with contextlib.suppress(Exception):
+            values = sorted(list(cfg.benchmark_objective_profiles.keys()))
+            if not values:
+                values = ["balanced", "low_rs", "high_rp", "high_capacitance"]
+            self.lab_objective_menu.configure(values=values)
+            if self.lab_objective_var.get() not in values:
+                self.lab_objective_var.set(values[0])
 
         # Sync sidebar scan_rate entry
         with contextlib.suppress(Exception):
@@ -6746,7 +7000,20 @@ class PipelineApp(ctk.CTk):
             return
         try:
             cfg = PipelineConfig.from_json(path)
+            self._active_pipeline_config = cfg
             self._populate_settings_from_config(cfg)
+            with contextlib.suppress(Exception):
+                values = sorted(list(cfg.benchmark_objective_profiles.keys()))
+                if not values:
+                    values = [
+                        "balanced",
+                        "low_rs",
+                        "high_rp",
+                        "high_capacitance",
+                    ]
+                self.lab_objective_menu.configure(values=values)
+                if self.lab_objective_var.get() not in values:
+                    self.lab_objective_var.set(values[0])
             self._append_log(f"{tr('Configuração carregada')}: {path}")
         except Exception as exc:
             self._append_log(f"{tr('Erro ao carregar configuração')}: {exc}")
@@ -6755,7 +7022,13 @@ class PipelineApp(ctk.CTk):
         """Reset all Settings tab entries to PipelineConfig defaults."""
         from src.config import PipelineConfig
 
-        self._populate_settings_from_config(PipelineConfig.default())
+        cfg = PipelineConfig.default()
+        self._active_pipeline_config = cfg
+        self._populate_settings_from_config(cfg)
+        with contextlib.suppress(Exception):
+            values = sorted(list(cfg.benchmark_objective_profiles.keys()))
+            self.lab_objective_menu.configure(values=values)
+            self.lab_objective_var.set(values[0] if values else "balanced")
         self._append_log(tr("Configurações redefinidas para padrão."))
 
     # ── Auto-update dialog ────────────────────────────────────────────

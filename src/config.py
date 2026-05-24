@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -28,6 +28,7 @@ _UNSET = object()
 # ---------------------------------------------------------------------------
 # Main dataclass
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PipelineConfig:
@@ -99,35 +100,95 @@ class PipelineConfig:
     kmeans_variance_threshold: float = 1e-12
     """Minimum total variance in (Rs, Rp) to proceed with clustering."""
 
-    score_weights: Dict[str, float] = field(default_factory=lambda: {
-        "Rp_fit": 0.35,
-        "Rs_fit": -0.25,
-        "C_mean": 0.25,
-        "Energy_mean": 0.15,
-    })
+    score_weights: Dict[str, float] = field(
+        default_factory=lambda: {
+            "Rp_fit": 0.35,
+            "Rs_fit": -0.25,
+            "C_mean": 0.25,
+            "Energy_mean": 0.15,
+        }
+    )
     """Weights for the composite ranking score (sign encodes direction)."""
 
+    benchmark_objective_profiles: Dict[str, Dict[str, float]] = field(
+        default_factory=lambda: {
+            "low_rs": {
+                "rs": -0.55,
+                "chi2_over_nu": -0.20,
+                "kk_valid": 0.15,
+                "confidence": 0.10,
+            },
+            "high_rp": {
+                "rp": 0.50,
+                "chi2_over_nu": -0.20,
+                "kk_valid": 0.20,
+                "confidence": 0.10,
+            },
+            "high_capacitance": {
+                "c_mean": 0.45,
+                "rp": 0.20,
+                "chi2_over_nu": -0.20,
+                "kk_valid": 0.15,
+            },
+            "balanced": {
+                "rs": -0.23,
+                "rp": 0.23,
+                "c_mean": 0.19,
+                "chi2_over_nu": -0.15,
+                "kk_valid": 0.10,
+                "confidence": 0.10,
+            },
+        }
+    )
+    """Objective profiles for benchmark recommendations.
+
+    Each objective maps metric -> signed weight.
+    Positive weight means "higher is better"; negative means "lower is better".
+    """
+
     # ── PCA (src/pca_analysis.py) ────────────────────────────────────
-    pca_columns: List[str] = field(default_factory=lambda: [
-        "Rs_fit", "Rp_fit", "Q", "n", "Sigma",
-    ])
+    pca_columns: List[str] = field(
+        default_factory=lambda: [
+            "Rs_fit",
+            "Rp_fit",
+            "Q",
+            "n",
+            "Sigma",
+        ]
+    )
     """Columns used as input to PCA."""
 
     pca_min_rows: int = 3
     """Minimum samples for PCA to be meaningful."""
 
     # ── Stability (src/stability.py) ─────────────────────────────────
-    stability_columns: List[str] = field(default_factory=lambda: [
-        "Rs_fit", "Rp_fit", "Q", "n",
-    ])
+    stability_columns: List[str] = field(
+        default_factory=lambda: [
+            "Rs_fit",
+            "Rp_fit",
+            "Q",
+            "n",
+        ]
+    )
     """Parameters evaluated for inter-replica stability (CV)."""
 
     # ── Correlation (src/visualization.py) ───────────────────────────
-    correlation_columns: List[str] = field(default_factory=lambda: [
-        "Rs_fit", "Rp_fit", "Q", "n", "Sigma",
-        "C_mean", "C_lowfreq", "Energy_mean",
-        "Tau", "Dispersion", "Score", "Rank",
-    ])
+    correlation_columns: List[str] = field(
+        default_factory=lambda: [
+            "Rs_fit",
+            "Rp_fit",
+            "Q",
+            "n",
+            "Sigma",
+            "C_mean",
+            "C_lowfreq",
+            "Energy_mean",
+            "Tau",
+            "Dispersion",
+            "Score",
+            "Rank",
+        ]
+    )
     """Columns included in the Spearman correlation heatmap."""
 
     # ── DRT (src/drt_analysis.py) ────────────────────────────────────
@@ -300,7 +361,9 @@ class PipelineConfig:
         try:
             return cls.from_json(path)
         except Exception as exc:
-            logger.warning("Failed to load config from %s: %s — using defaults", path, exc)
+            logger.warning(
+                "Failed to load config from %s: %s — using defaults", path, exc
+            )
             return cls.default()
 
     # ── Helpers ───────────────────────────────────────────────────────
