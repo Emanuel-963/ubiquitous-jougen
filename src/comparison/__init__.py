@@ -11,6 +11,13 @@ available_timeline_params — Which default params exist in a DataFrame
 plot_parameter_timeline   — Evolution of EIS params vs sample order
 """
 
+from src.comparison.auto_benchmark import (
+    BenchmarkRecommendation,
+    benchmark_report,
+    prepare_benchmark_table,
+    recommend_best_configuration,
+    score_objective,
+)
 from src.comparison.health_score import (
     DEFAULT_WEIGHTS,
     METRIC_LABELS,
@@ -30,6 +37,11 @@ __all__ = [
     "compute_health_score",
     "health_score_label",
     "health_score_color",
+    "BenchmarkRecommendation",
+    "prepare_benchmark_table",
+    "score_objective",
+    "recommend_best_configuration",
+    "benchmark_report",
     "plot_nyquist_overlay",
     "plot_bode_overlay",
     "available_timeline_params",

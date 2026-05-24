@@ -28,10 +28,10 @@ import json
 import logging
 import os
 import sys
-import time
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
+
+import numpy as np
 
 from src.config import PipelineConfig
 from src.logger import setup_logging
@@ -47,6 +47,7 @@ RC_WARNING = 2
 # ═══════════════════════════════════════════════════════════════════════
 # Progress helper
 # ═══════════════════════════════════════════════════════════════════════
+
 
 class _ProgressReporter:
     """Thin wrapper for tqdm-style progress.  Falls back to print if tqdm
@@ -65,6 +66,7 @@ class _ProgressReporter:
 
         try:
             from tqdm import tqdm  # type: ignore[import-untyped]
+
             self._bar = tqdm(total=total, desc=desc, unit="step", ncols=80)
         except ImportError:
             pass
@@ -87,6 +89,7 @@ class _ProgressReporter:
 # ═══════════════════════════════════════════════════════════════════════
 # Config loader helper
 # ═══════════════════════════════════════════════════════════════════════
+
 
 def _load_config(args: argparse.Namespace) -> PipelineConfig:
     """Build a PipelineConfig from CLI arguments."""
@@ -128,6 +131,7 @@ def _print_json(data: Dict[str, Any]) -> None:
 # Subcommand: eis
 # ═══════════════════════════════════════════════════════════════════════
 
+
 def cmd_eis(args: argparse.Namespace) -> int:
     """Run the EIS analysis pipeline."""
     cfg = _load_config(args)
@@ -154,15 +158,21 @@ def cmd_eis(args: argparse.Namespace) -> int:
         progress.close()
 
         if json_mode:
-            _print_json({
-                "status": "success",
-                "pipeline": "eis",
-                "files_processed": n_files,
-                "output_dir": str(out_dir),
-                "has_ranked_df": result.ranked_df is not None if result else False,
-                "has_pca": result.pca is not None and result.pca.df_pca is not None if result else False,
-                "has_circuit_table": result.circuit_table is not None if result else False,
-            })
+            _print_json(
+                {
+                    "status": "success",
+                    "pipeline": "eis",
+                    "files_processed": n_files,
+                    "output_dir": str(out_dir),
+                    "has_ranked_df": result.ranked_df is not None if result else False,
+                    "has_pca": result.pca is not None and result.pca.df_pca is not None
+                    if result
+                    else False,
+                    "has_circuit_table": result.circuit_table is not None
+                    if result
+                    else False,
+                }
+            )
         else:
             print(f"\n✅ EIS pipeline complete — {n_files} files processed")
             print(f"   Output: {out_dir}")
@@ -190,6 +200,7 @@ def cmd_eis(args: argparse.Namespace) -> int:
 # ═══════════════════════════════════════════════════════════════════════
 # Subcommand: cycling
 # ═══════════════════════════════════════════════════════════════════════
+
 
 def cmd_cycling(args: argparse.Namespace) -> int:
     """Run the cycling analysis pipeline."""
@@ -223,12 +234,14 @@ def cmd_cycling(args: argparse.Namespace) -> int:
         progress.close()
 
         if json_mode:
-            _print_json({
-                "status": "success",
-                "pipeline": "cycling",
-                "scan_rate": scan_rate,
-                "files_processed": n_files,
-            })
+            _print_json(
+                {
+                    "status": "success",
+                    "pipeline": "cycling",
+                    "scan_rate": scan_rate,
+                    "files_processed": n_files,
+                }
+            )
         else:
             print(f"\n✅ Cycling pipeline complete — {n_files} files processed")
             print(f"   Scan rate: {scan_rate} A/g")
@@ -256,6 +269,7 @@ def cmd_cycling(args: argparse.Namespace) -> int:
 # ═══════════════════════════════════════════════════════════════════════
 # Subcommand: drt
 # ═══════════════════════════════════════════════════════════════════════
+
 
 def cmd_drt(args: argparse.Namespace) -> int:
     """Run the DRT analysis pipeline."""
@@ -288,13 +302,15 @@ def cmd_drt(args: argparse.Namespace) -> int:
         rc = RC_OK if n_failed == 0 else RC_WARNING
 
         if json_mode:
-            _print_json({
-                "status": "success" if n_failed == 0 else "warning",
-                "pipeline": "drt",
-                "lambda_reg": lambda_reg,
-                "files_success": n_success,
-                "files_failed": n_failed,
-            })
+            _print_json(
+                {
+                    "status": "success" if n_failed == 0 else "warning",
+                    "pipeline": "drt",
+                    "lambda_reg": lambda_reg,
+                    "files_success": n_success,
+                    "files_failed": n_failed,
+                }
+            )
         else:
             icon = "✅" if n_failed == 0 else "⚠️"
             print(f"\n{icon} DRT pipeline complete — {n_success} OK, {n_failed} failed")
@@ -324,6 +340,7 @@ def cmd_drt(args: argparse.Namespace) -> int:
 # Subcommand: analyze
 # ═══════════════════════════════════════════════════════════════════════
 
+
 def cmd_analyze(args: argparse.Namespace) -> int:
     """Run combined analysis with optional AI interpretation."""
     cfg = _load_config(args)
@@ -337,7 +354,9 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     warnings: List[str] = []
     errors: List[str] = []
 
-    total_steps = (3 if run_all else 0) + (1 if run_ai else 0) + (1 if export_pdf else 0) + 1
+    total_steps = (
+        (3 if run_all else 0) + (1 if run_ai else 0) + (1 if export_pdf else 0) + 1
+    )
     progress = _ProgressReporter(total_steps, "Analysis", use_json=json_mode)
 
     try:
@@ -350,6 +369,7 @@ def cmd_analyze(args: argparse.Namespace) -> int:
             progress.update(msg="Running EIS pipeline")
             try:
                 from main import run_eis_pipeline
+
                 eis_result = run_eis_pipeline(config=cfg)
                 pipelines_run.append("eis")
                 pipeline_results["eis"] = eis_result
@@ -361,8 +381,11 @@ def cmd_analyze(args: argparse.Namespace) -> int:
             progress.update(msg="Running cycling pipeline")
             try:
                 from main_cycling import run_ciclagem_pipeline
+
                 cyc_result = run_ciclagem_pipeline(
-                    scan_rate=cfg.scan_rate, show_plots=False, config=cfg,
+                    scan_rate=cfg.scan_rate,
+                    show_plots=False,
+                    config=cfg,
                 )
                 pipelines_run.append("cycling")
                 pipeline_results["cycling"] = cyc_result
@@ -374,6 +397,7 @@ def cmd_analyze(args: argparse.Namespace) -> int:
             progress.update(msg="Running DRT pipeline")
             try:
                 from main_drt import run_drt_pipeline
+
                 drt_result = run_drt_pipeline(show_plots=False, config=cfg)
                 pipelines_run.append("drt")
                 pipeline_results["drt"] = drt_result
@@ -386,8 +410,8 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         if run_ai:
             progress.update(msg="Running AI analysis")
             try:
-                from src.gui.tabs.ai_panel import run_ai_analysis, AIPanelConfig
                 from src.gui.models import AppState
+                from src.gui.tabs.ai_panel import AIPanelConfig, run_ai_analysis
 
                 state = AppState()
                 # Populate state from pipeline results
@@ -419,6 +443,7 @@ def cmd_analyze(args: argparse.Namespace) -> int:
             progress.update(msg="Exporting PDF")
             try:
                 from src.report_generator import ReportGenerator
+
                 gen = ReportGenerator(config=cfg)
                 gen.generate(export_pdf, pipeline_results, ai_summary=ai_summary)
             except ImportError:
@@ -440,7 +465,9 @@ def cmd_analyze(args: argparse.Namespace) -> int:
 
         if json_mode:
             output = {
-                "status": "success" if rc == RC_OK else ("warning" if rc == RC_WARNING else "error"),
+                "status": "success"
+                if rc == RC_OK
+                else ("warning" if rc == RC_WARNING else "error"),
                 "pipelines_run": pipelines_run,
                 "warnings": warnings,
                 "errors": errors,
@@ -450,7 +477,9 @@ def cmd_analyze(args: argparse.Namespace) -> int:
             _print_json(output)
         else:
             icon = "✅" if rc == RC_OK else ("⚠️" if rc == RC_WARNING else "❌")
-            print(f"\n{icon} Analysis complete — pipelines: {', '.join(pipelines_run) or 'none'}")
+            print(
+                f"\n{icon} Analysis complete — pipelines: {', '.join(pipelines_run) or 'none'}"
+            )
             if ai_summary:
                 print(f"\n🤖 AI Summary:\n{ai_summary}")
             if export_pdf:
@@ -476,6 +505,7 @@ def cmd_analyze(args: argparse.Namespace) -> int:
 # Subcommand: config
 # ═══════════════════════════════════════════════════════════════════════
 
+
 def cmd_config(args: argparse.Namespace) -> int:
     """Manage pipeline configuration."""
     json_mode = _use_json(args)
@@ -487,11 +517,13 @@ def cmd_config(args: argparse.Namespace) -> int:
         cfg = PipelineConfig.default()
         cfg.to_json(output_path)
         if json_mode:
-            _print_json({
-                "status": "success",
-                "action": "config_init",
-                "path": str(output_path),
-            })
+            _print_json(
+                {
+                    "status": "success",
+                    "action": "config_init",
+                    "path": str(output_path),
+                }
+            )
         else:
             print(f"✅ Default config written to {output_path}")
         return RC_OK
@@ -511,10 +543,12 @@ def cmd_config(args: argparse.Namespace) -> int:
 
     # No action specified — show help
     if json_mode:
-        _print_json({
-            "status": "error",
-            "error": "No config action specified. Use --init or --show.",
-        })
+        _print_json(
+            {
+                "status": "error",
+                "error": "No config action specified. Use --init or --show.",
+            }
+        )
     else:
         print("No config action specified. Use --init or --show.", file=sys.stderr)
     return RC_ERROR
@@ -523,6 +557,7 @@ def cmd_config(args: argparse.Namespace) -> int:
 # ═══════════════════════════════════════════════════════════════════════
 # Subcommand: validate
 # ═══════════════════════════════════════════════════════════════════════
+
 
 def cmd_validate(args: argparse.Namespace) -> int:
     """Validate EIS data files (quality check + Kramers-Kronig)."""
@@ -534,7 +569,9 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
     if not data_path.exists():
         if json_mode:
-            _print_json({"status": "error", "error": f"Directory not found: {data_dir}"})
+            _print_json(
+                {"status": "error", "error": f"Directory not found: {data_dir}"}
+            )
         else:
             print(f"❌ Directory not found: {data_dir}", file=sys.stderr)
         return RC_ERROR
@@ -554,15 +591,12 @@ def cmd_validate(args: argparse.Namespace) -> int:
     n_invalid = 0
     n_errors = 0
 
+    import numpy as np
+
+    from src.kramers_kronig import KramersKronigValidator
     from src.loader import load_eis_file
     from src.preprocessing import preprocess
-    from src.validation import (
-        validate_eis_full,
-        detect_powerline_noise,
-    )
-    from src.kramers_kronig import KramersKronigValidator
-
-    import numpy as np
+    from src.validation import detect_powerline_noise, validate_eis_full
 
     kk_validator = KramersKronigValidator()
 
@@ -629,14 +663,18 @@ def cmd_validate(args: argparse.Namespace) -> int:
         rc = RC_OK
 
     if json_mode:
-        _print_json({
-            "status": "success" if rc == RC_OK else ("warning" if rc == RC_WARNING else "error"),
-            "total_files": len(txt_files),
-            "valid": n_valid,
-            "invalid": n_invalid,
-            "errors": n_errors,
-            "files": results,
-        })
+        _print_json(
+            {
+                "status": "success"
+                if rc == RC_OK
+                else ("warning" if rc == RC_WARNING else "error"),
+                "total_files": len(txt_files),
+                "valid": n_valid,
+                "invalid": n_invalid,
+                "errors": n_errors,
+                "files": results,
+            }
+        )
     else:
         icon = "✅" if rc == RC_OK else ("⚠️" if rc == RC_WARNING else "❌")
         print(f"\n{icon} Validation complete — {len(txt_files)} files")
@@ -668,6 +706,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
 # Subcommand: preprocess  (Orazem/Tribollet 2026 metrological filters)
 # ═══════════════════════════════════════════════════════════════════════
 
+
 def cmd_preprocess(args: argparse.Namespace) -> int:
     """Apply Orazem/Tribollet 2026 metrological pre-processing to EIS files.
 
@@ -696,8 +735,7 @@ def cmd_preprocess(args: argparse.Namespace) -> int:
         return RC_ERROR
 
     output_dir = Path(
-        getattr(args, "output", None)
-        or (data_dir.parent / "preprocessed")
+        getattr(args, "output", None) or (data_dir.parent / "preprocessed")
     )
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -840,9 +878,11 @@ def cmd_preprocess(args: argparse.Namespace) -> int:
 # Subcommand: version
 # ═══════════════════════════════════════════════════════════════════════
 
+
 def cmd_version(args: argparse.Namespace) -> int:
     """Print version information."""
     from src import __version__
+
     json_mode = _use_json(args)
 
     if json_mode:
@@ -853,8 +893,260 @@ def cmd_version(args: argparse.Namespace) -> int:
 
 
 # ═══════════════════════════════════════════════════════════════════════
+# Subcommand: benchmark
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def cmd_benchmark(args: argparse.Namespace) -> int:
+    """Run automatic benchmark and objective-driven recommendations."""
+    json_mode = _use_json(args)
+    objective = getattr(args, "objective", "balanced")
+    top_k = int(getattr(args, "top_k", 3) or 3)
+    table_path = getattr(args, "table", None)
+
+    try:
+        import pandas as pd
+
+        from src.comparison.auto_benchmark import (
+            benchmark_report,
+            prepare_benchmark_table,
+            recommend_best_configuration,
+        )
+
+        if table_path:
+            path = Path(table_path)
+            if not path.exists():
+                msg = f"Table file not found: {table_path}"
+                if json_mode:
+                    _print_json({"status": "error", "error": msg})
+                else:
+                    print(f"❌ {msg}", file=sys.stderr)
+                return RC_ERROR
+            sep = "\t" if path.suffix.lower() in {".tsv", ".txt"} else ","
+            table = pd.read_csv(path, sep=sep)
+        else:
+            cfg = _load_config(args)
+            from main import run_eis_pipeline
+
+            result = run_eis_pipeline(config=cfg)
+            table = result.circuit_table
+
+        bench = prepare_benchmark_table(table)
+        rec = recommend_best_configuration(bench, objective=objective, top_k=top_k)
+
+        if json_mode:
+            _print_json(
+                {
+                    "status": "success",
+                    "objective": rec.objective,
+                    "recommended_sample": rec.sample,
+                    "score": round(rec.score, 6),
+                    "top_candidates": [
+                        {"sample": n, "score": float(s)} for n, s in rec.top_candidates
+                    ],
+                }
+            )
+        else:
+            print(benchmark_report(bench, objectives=[objective], top_k=top_k))
+
+        return RC_OK
+
+    except Exception as exc:
+        logger.error("Benchmark failed: %s", exc, exc_info=True)
+        if json_mode:
+            _print_json({"status": "error", "error": str(exc)})
+        else:
+            print(f"❌ Benchmark failed: {exc}", file=sys.stderr)
+        return RC_ERROR
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Subcommand: memory
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def cmd_memory(args: argparse.Namespace) -> int:
+    """Update/query laboratory experimental memory using similarity search."""
+    json_mode = _use_json(args)
+    table_path = getattr(args, "table", None)
+    top_k = int(getattr(args, "top_k", 5) or 5)
+    db_path = getattr(args, "db", None) or "data/knowledge/lab_memory.db"
+    notes = getattr(args, "notes", "") or ""
+
+    try:
+        import pandas as pd
+
+        from src.comparison.auto_benchmark import prepare_benchmark_table
+        from src.lab_memory import ExperimentalMemory, similarity_report
+
+        if table_path:
+            path = Path(table_path)
+            if not path.exists():
+                msg = f"Table file not found: {table_path}"
+                if json_mode:
+                    _print_json({"status": "error", "error": msg})
+                else:
+                    print(f"❌ {msg}", file=sys.stderr)
+                return RC_ERROR
+            sep = "\t" if path.suffix.lower() in {".tsv", ".txt"} else ","
+            table = pd.read_csv(path, sep=sep)
+        else:
+            cfg = _load_config(args)
+            from main import run_eis_pipeline
+
+            result = run_eis_pipeline(config=cfg)
+            table = result.circuit_table
+
+        bench = prepare_benchmark_table(table)
+        if bench.empty:
+            msg = "No rows available to update/query memory."
+            if json_mode:
+                _print_json({"status": "error", "error": msg})
+            else:
+                print(f"❌ {msg}", file=sys.stderr)
+            return RC_ERROR
+
+        memory = ExperimentalMemory(db_path=db_path)
+        inserted = memory.add_from_benchmark_table(bench, notes=notes)
+
+        query_sample = getattr(args, "query_sample", None)
+        if query_sample:
+            rows = bench[bench["sample"].astype(str) == str(query_sample)]
+            if rows.empty:
+                query_row = bench.iloc[0]
+            else:
+                query_row = rows.iloc[0]
+        else:
+            query_row = bench.iloc[0]
+
+        query_sig = {
+            "rs": float(query_row.get("rs", np.nan)),
+            "rp": float(query_row.get("rp", np.nan)),
+            "c_mean": float(query_row.get("c_mean", np.nan)),
+            "chi2_over_nu": float(query_row.get("chi2_over_nu", np.nan)),
+            "confidence": float(query_row.get("confidence", np.nan)),
+            "kk_valid": float(query_row.get("kk_valid", np.nan)),
+        }
+
+        hits = memory.find_similar(query_sig, top_k=top_k)
+
+        if json_mode:
+            _print_json(
+                {
+                    "status": "success",
+                    "db_path": db_path,
+                    "rows_inserted": inserted,
+                    "query_sample": str(query_row.get("sample", "unknown")),
+                    "hits": [
+                        {
+                            "sample": h.sample_name,
+                            "timestamp": h.timestamp,
+                            "similarity": round(h.similarity, 6),
+                            "notes": h.notes,
+                        }
+                        for h in hits
+                    ],
+                }
+            )
+        else:
+            print(
+                similarity_report(
+                    memory,
+                    query_name=str(query_row.get("sample", "unknown")),
+                    query_signature=query_sig,
+                    top_k=top_k,
+                )
+            )
+
+        return RC_OK
+
+    except Exception as exc:
+        logger.error("Memory command failed: %s", exc, exc_info=True)
+        if json_mode:
+            _print_json({"status": "error", "error": str(exc)})
+        else:
+            print(f"❌ Memory command failed: {exc}", file=sys.stderr)
+        return RC_ERROR
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Subcommand: paper-first
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def cmd_paper_first(args: argparse.Namespace) -> int:
+    """Export a paper-oriented package (sections + figures + tables + discussion)."""
+    json_mode = _use_json(args)
+    cfg = _load_config(args)
+    output_dir = getattr(args, "output_dir", None) or "outputs/paper_first"
+    run_cycling = bool(getattr(args, "with_cycling", False))
+    run_drt = bool(getattr(args, "with_drt", False))
+
+    try:
+        from main import run_eis_pipeline
+        from src.paper_first_export import build_paper_first_package
+
+        pipeline_results: Dict[str, Any] = {}
+
+        eis_result = run_eis_pipeline(config=cfg)
+        pipeline_results["eis"] = eis_result
+
+        if run_cycling:
+            from main_cycling import run_ciclagem_pipeline
+
+            cyc_result = run_ciclagem_pipeline(
+                scan_rate=cfg.scan_rate,
+                show_plots=False,
+                config=cfg,
+            )
+            pipeline_results["cycling"] = cyc_result
+
+        if run_drt:
+            from main_drt import run_drt_pipeline
+
+            drt_result = run_drt_pipeline(show_plots=False, config=cfg)
+            pipeline_results["drt"] = drt_result
+
+        result = build_paper_first_package(
+            pipeline_results,
+            output_dir=output_dir,
+            title=getattr(args, "title", None) or "IonFlow Paper-First Draft",
+            author=getattr(args, "author", None) or "IonFlow Pipeline",
+            institution=getattr(args, "institution", None) or "",
+        )
+
+        if json_mode:
+            _print_json(
+                {
+                    "status": "success",
+                    "manuscript": result.manuscript_path,
+                    "figures_index": result.figures_index_path,
+                    "tables_dir": result.tables_dir,
+                    "figures_dir": result.figures_dir,
+                }
+            )
+        else:
+            print("✅ Paper-first export completed")
+            print(f"   Manuscript: {result.manuscript_path}")
+            print(f"   Figures index: {result.figures_index_path}")
+            print(f"   Tables: {result.tables_dir}")
+            print(f"   Figures: {result.figures_dir}")
+
+        return RC_OK
+
+    except Exception as exc:
+        logger.error("Paper-first export failed: %s", exc, exc_info=True)
+        if json_mode:
+            _print_json({"status": "error", "error": str(exc)})
+        else:
+            print(f"❌ Paper-first export failed: {exc}", file=sys.stderr)
+        return RC_ERROR
+
+
+# ═══════════════════════════════════════════════════════════════════════
 # Argument parser
 # ═══════════════════════════════════════════════════════════════════════
+
 
 def build_parser() -> argparse.ArgumentParser:
     """Build the full CLI argument parser with all subcommands.
@@ -874,6 +1166,9 @@ def build_parser() -> argparse.ArgumentParser:
             "  ionflow cycling --scan-rate 0.1\n"
             "  ionflow drt --lambda 1e-3\n"
             "  ionflow analyze --all --ai\n"
+            "  ionflow benchmark --objective low_rs\n"
+            "  ionflow memory --query-sample sample_01\n"
+            "  ionflow paper-first --with-cycling --with-drt\n"
             "  ionflow config --init\n"
             "  ionflow validate --data-dir data/raw\n"
             "  ionflow preprocess --data-dir data/raw --output data/clean\n"
@@ -883,20 +1178,29 @@ def build_parser() -> argparse.ArgumentParser:
 
     # Global flags
     parser.add_argument(
-        "--json", action="store_true", default=False,
+        "--json",
+        action="store_true",
+        default=False,
         help="Output results as JSON (for programmatic integration)",
     )
     parser.add_argument(
-        "--config", type=str, default=None,
+        "--config",
+        type=str,
+        default=None,
         help="Path to a config.json file",
     )
     parser.add_argument(
-        "--language", type=str, default=None,
+        "--language",
+        type=str,
+        default=None,
         choices=["pt", "en", "es"],
         help="Interface language",
     )
     parser.add_argument(
-        "--verbose", "-v", action="store_true", default=False,
+        "--verbose",
+        "-v",
+        action="store_true",
+        default=False,
         help="Enable verbose (DEBUG) logging",
     )
 
@@ -904,115 +1208,160 @@ def build_parser() -> argparse.ArgumentParser:
 
     # ── eis ───────────────────────────────────────────────────────
     sp_eis = subparsers.add_parser(
-        "eis", help="Run the EIS impedance analysis pipeline",
+        "eis",
+        help="Run the EIS impedance analysis pipeline",
     )
     sp_eis.add_argument(
-        "--data-dir", type=str, default=None,
+        "--data-dir",
+        type=str,
+        default=None,
         help="Directory containing raw EIS .txt files (default: data/raw)",
     )
     sp_eis.add_argument(
-        "--output", type=str, default=None,
+        "--output",
+        type=str,
+        default=None,
         help="Output directory (default: outputs/)",
     )
     sp_eis.set_defaults(func=cmd_eis)
 
     # ── cycling ──────────────────────────────────────────────────
     sp_cyc = subparsers.add_parser(
-        "cycling", help="Run the galvanostatic cycling analysis pipeline",
+        "cycling",
+        help="Run the galvanostatic cycling analysis pipeline",
     )
     sp_cyc.add_argument(
-        "--data-dir", type=str, default=None,
+        "--data-dir",
+        type=str,
+        default=None,
         help="Directory containing processed cycling .txt files",
     )
     sp_cyc.add_argument(
-        "--scan-rate", type=float, default=None,
+        "--scan-rate",
+        type=float,
+        default=None,
         help="Scan rate in A/g (default: from config)",
     )
     sp_cyc.add_argument(
-        "--output", type=str, default=None,
+        "--output",
+        type=str,
+        default=None,
         help="Output directory",
     )
     sp_cyc.set_defaults(func=cmd_cycling)
 
     # ── drt ──────────────────────────────────────────────────────
     sp_drt = subparsers.add_parser(
-        "drt", help="Run the DRT (Distribution of Relaxation Times) pipeline",
+        "drt",
+        help="Run the DRT (Distribution of Relaxation Times) pipeline",
     )
     sp_drt.add_argument(
-        "--data-dir", type=str, default=None,
+        "--data-dir",
+        type=str,
+        default=None,
         help="Directory containing raw EIS .txt files for DRT",
     )
     sp_drt.add_argument(
-        "--lambda", dest="lambda_reg", type=float, default=None,
+        "--lambda",
+        dest="lambda_reg",
+        type=float,
+        default=None,
         help="Tikhonov regularisation parameter λ (default: 1e-3)",
     )
     sp_drt.add_argument(
-        "--output", type=str, default=None,
+        "--output",
+        type=str,
+        default=None,
         help="Output directory",
     )
     sp_drt.set_defaults(func=cmd_drt)
 
     # ── analyze ──────────────────────────────────────────────────
     sp_analyze = subparsers.add_parser(
-        "analyze", help="Run combined analysis with optional AI",
+        "analyze",
+        help="Run combined analysis with optional AI",
     )
     sp_analyze.add_argument(
-        "--all", action="store_true", default=False,
+        "--all",
+        action="store_true",
+        default=False,
         help="Run all pipelines (EIS + Cycling + DRT)",
     )
     sp_analyze.add_argument(
-        "--ai", action="store_true", default=False,
+        "--ai",
+        action="store_true",
+        default=False,
         help="Include AI-powered interpretation",
     )
     sp_analyze.add_argument(
-        "--export-pdf", type=str, default=None, metavar="FILE",
+        "--export-pdf",
+        type=str,
+        default=None,
+        metavar="FILE",
         help="Export results to a PDF report",
     )
     sp_analyze.add_argument(
-        "--data-dir", type=str, default=None,
+        "--data-dir",
+        type=str,
+        default=None,
         help="Data directory",
     )
     sp_analyze.add_argument(
-        "--output", type=str, default=None,
+        "--output",
+        type=str,
+        default=None,
         help="Output directory",
     )
     sp_analyze.set_defaults(func=cmd_analyze)
 
     # ── config ───────────────────────────────────────────────────
     sp_config = subparsers.add_parser(
-        "config", help="Manage pipeline configuration",
+        "config",
+        help="Manage pipeline configuration",
     )
     sp_config.add_argument(
-        "--init", action="store_true", default=False,
+        "--init",
+        action="store_true",
+        default=False,
         help="Generate a default config.json file",
     )
     sp_config.add_argument(
-        "--show", action="store_true", default=False,
+        "--show",
+        action="store_true",
+        default=False,
         help="Display current configuration values",
     )
     sp_config.add_argument(
-        "--output", type=str, default=None,
+        "--output",
+        type=str,
+        default=None,
         help="Output path for --init (default: config.json)",
     )
     sp_config.set_defaults(func=cmd_config)
 
     # ── validate ─────────────────────────────────────────────────
     sp_validate = subparsers.add_parser(
-        "validate", help="Validate EIS data files (quality + Kramers-Kronig)",
+        "validate",
+        help="Validate EIS data files (quality + Kramers-Kronig)",
     )
     sp_validate.add_argument(
-        "--data-dir", type=str, default=None,
+        "--data-dir",
+        type=str,
+        default=None,
         help="Directory containing EIS .txt files to validate",
     )
     sp_validate.add_argument(
-        "--output", type=str, default=None,
+        "--output",
+        type=str,
+        default=None,
         help="Output directory (for logs)",
     )
     sp_validate.set_defaults(func=cmd_validate)
 
     # ── version ──────────────────────────────────────────────────
     sp_version = subparsers.add_parser(
-        "version", help="Show version information",
+        "version",
+        help="Show version information",
     )
     sp_version.set_defaults(func=cmd_version)
 
@@ -1025,37 +1374,186 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     sp_pre.add_argument(
-        "--data-dir", type=str, default=None,
+        "--data-dir",
+        type=str,
+        default=None,
         help="Directory containing raw EIS .txt files",
     )
     sp_pre.add_argument(
-        "--output", type=str, default=None,
+        "--output",
+        type=str,
+        default=None,
         help="Directory to write cleaned files (default: <data-dir>/../preprocessed/)",
     )
     sp_pre.add_argument(
-        "--no-remove-hf", action="store_true", default=False,
+        "--no-remove-hf",
+        action="store_true",
+        default=False,
         help="Skip removal of the highest-frequency point",
     )
     sp_pre.add_argument(
-        "--no-powerline-filter", action="store_true", default=False,
+        "--no-powerline-filter",
+        action="store_true",
+        default=False,
         help="Skip 50/100 Hz powerline noise filter",
     )
     sp_pre.add_argument(
-        "--fc-truncate", action="store_true", default=False,
+        "--fc-truncate",
+        action="store_true",
+        default=False,
         help=(
             "Truncate frequencies above fc = 1/(2πRe·C∞). "
             "Requires --re and --cinf to be supplied."
         ),
     )
     sp_pre.add_argument(
-        "--re", type=float, default=None, metavar="OHMS",
+        "--re",
+        type=float,
+        default=None,
+        metavar="OHMS",
         help="Ohmic resistance Re (Ω) for fc calculation",
     )
     sp_pre.add_argument(
-        "--cinf", type=float, default=None, metavar="FARADS",
+        "--cinf",
+        type=float,
+        default=None,
+        metavar="FARADS",
         help="High-frequency capacitance C∞ (F) for fc calculation",
     )
     sp_pre.set_defaults(func=cmd_preprocess)
+
+    # ── benchmark ───────────────────────────────────────────────
+    sp_bench = subparsers.add_parser(
+        "benchmark",
+        help=(
+            "Benchmark samples automatically and recommend best configuration "
+            "for an objective"
+        ),
+    )
+    sp_bench.add_argument(
+        "--table",
+        type=str,
+        default=None,
+        help="Path to circuit-table CSV/TSV. If omitted, runs EIS pipeline.",
+    )
+    sp_bench.add_argument(
+        "--objective",
+        type=str,
+        default="balanced",
+        choices=["low_rs", "high_rp", "high_capacitance", "balanced"],
+        help="Optimization objective for recommendation.",
+    )
+    sp_bench.add_argument(
+        "--top-k",
+        type=int,
+        default=3,
+        help="Number of top candidates to display.",
+    )
+    sp_bench.add_argument(
+        "--data-dir", type=str, default=None, help="Data directory for EIS run"
+    )
+    sp_bench.add_argument(
+        "--output", type=str, default=None, help="Output directory for EIS run"
+    )
+    sp_bench.set_defaults(func=cmd_benchmark)
+
+    # ── memory ──────────────────────────────────────────────────
+    sp_mem = subparsers.add_parser(
+        "memory",
+        help=(
+            "Update/query laboratory experimental memory using similarity "
+            "search across historical signatures"
+        ),
+    )
+    sp_mem.add_argument(
+        "--table",
+        type=str,
+        default=None,
+        help="Path to circuit-table CSV/TSV. If omitted, runs EIS pipeline.",
+    )
+    sp_mem.add_argument(
+        "--db",
+        type=str,
+        default="data/knowledge/lab_memory.db",
+        help="SQLite memory database path.",
+    )
+    sp_mem.add_argument(
+        "--query-sample",
+        type=str,
+        default=None,
+        help="Sample name to query against historical memory.",
+    )
+    sp_mem.add_argument(
+        "--top-k",
+        type=int,
+        default=5,
+        help="Number of similar historical hits to return.",
+    )
+    sp_mem.add_argument(
+        "--notes",
+        type=str,
+        default="",
+        help="Optional notes stored with inserted signatures.",
+    )
+    sp_mem.add_argument(
+        "--data-dir", type=str, default=None, help="Data directory for EIS run"
+    )
+    sp_mem.add_argument(
+        "--output", type=str, default=None, help="Output directory for EIS run"
+    )
+    sp_mem.set_defaults(func=cmd_memory)
+
+    # ── paper-first ─────────────────────────────────────────────
+    sp_paper = subparsers.add_parser(
+        "paper-first",
+        help=(
+            "Export paper-oriented package with manuscript draft, figures, "
+            "tables, and discussion starter"
+        ),
+    )
+    sp_paper.add_argument(
+        "--output-dir",
+        type=str,
+        default="outputs/paper_first",
+        help="Output directory for paper-first artifacts.",
+    )
+    sp_paper.add_argument(
+        "--with-cycling",
+        action="store_true",
+        default=False,
+        help="Include cycling pipeline and artifacts.",
+    )
+    sp_paper.add_argument(
+        "--with-drt",
+        action="store_true",
+        default=False,
+        help="Include DRT pipeline and artifacts.",
+    )
+    sp_paper.add_argument(
+        "--title",
+        type=str,
+        default="IonFlow Paper-First Draft",
+        help="Title used in manuscript draft.",
+    )
+    sp_paper.add_argument(
+        "--author",
+        type=str,
+        default="IonFlow Pipeline",
+        help="Author line used in manuscript draft.",
+    )
+    sp_paper.add_argument(
+        "--institution",
+        type=str,
+        default="",
+        help="Institution line used in manuscript draft.",
+    )
+    sp_paper.add_argument(
+        "--data-dir", type=str, default=None, help="Data directory for EIS run"
+    )
+    sp_paper.add_argument(
+        "--output", type=str, default=None, help="Output directory for pipelines"
+    )
+    sp_paper.set_defaults(func=cmd_paper_first)
 
     return parser
 
@@ -1063,6 +1561,7 @@ def build_parser() -> argparse.ArgumentParser:
 # ═══════════════════════════════════════════════════════════════════════
 # Main entry-point
 # ═══════════════════════════════════════════════════════════════════════
+
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     """Parse arguments and dispatch to the appropriate subcommand.
