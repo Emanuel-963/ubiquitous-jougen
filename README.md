@@ -3,10 +3,10 @@
 **Plataforma profissional de análise eletroquímica** — EIS, ciclagem galvanostática, DRT — com agente IA, relatórios PDF, CLI e GUI interativa.
 
 [![CI](https://github.com/Emanuel-963/ubiquitous-jougen/actions/workflows/ci.yml/badge.svg)](https://github.com/Emanuel-963/ubiquitous-jougen/actions/workflows/ci.yml)
-![Version](https://img.shields.io/badge/version-0.4.9-blue)
+![Version](https://img.shields.io/badge/version-0.4.10-blue)
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License MIT](https://img.shields.io/badge/license-MIT-green)
-![Tests](https://img.shields.io/badge/tests-235%2B%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-2263%2B%20passing-brightgreen)
 
 ---
 
@@ -28,11 +28,11 @@ ionflow analyze --all --ai --export-pdf report.pdf
 
 ---
 
-## ✨ Funcionalidades (v0.4.9)
+## ✨ Funcionalidades (v0.4.10)
 
 | Módulo | Descrição |
 |---|---|
-| **Pipeline EIS** | 33 circuitos equivalentes, ML shortlist, Monte Carlo, Kramers-Kronig |
+| **Pipeline EIS** | 37 circuitos equivalentes, ML shortlist, Monte Carlo, Kramers-Kronig |
 | **Metrologia Orazem** | σ = α\|Zⱼ\|+β\|Zᵣ\|, χ²/ν, IC 95%, parâmetro-zumbi, Porous-TLM |
 | **Pipeline DRT** | Tikhonov regularisation, detecção de picos, overlay multi-amostra |
 | **Pipeline Ciclagem** | Ragone com zonas de referência, gap analysis vs targets |
@@ -53,7 +53,7 @@ ionflow analyze --all --ai --export-pdf report.pdf
 
 ## 🔬 Para Pesquisadores
 
-### Fluxo típico de análise (v0.4.9 — estilo Orazem & Tribollet 2026)
+### Fluxo típico de análise (v0.4.10 — estilo Orazem & Tribollet 2026)
 
 1. **Preparar dados** — Colocar ficheiros EIS (`.csv`/`.txt`) em `data/raw/`
 2. **Pré-processar** (recomendado):
@@ -225,7 +225,7 @@ Ou use o script automático:
 **Verificar se está tudo OK:**
 
 ```powershell
-python -c "import src; print(src.__version__)"   # deve mostrar 0.4.9 ou superior
+python -c "import src; print(src.__version__)"   # deve mostrar 0.4.10 ou superior
 python -m pytest tests/ -q --tb=no               # deve passar todos os testes
 ```
 
@@ -299,7 +299,7 @@ python main_drt.py      # Pipeline DRT
 
 ```bash
 pip install -e ".[dev]"
-pytest -q                # 1782 testes
+pytest -q                # 2263+ testes
 black . && isort .       # formatação
 flake8 .                 # linting
 mypy src                 # type checking
@@ -323,6 +323,23 @@ mypy src                 # type checking
 | Health Score + PCA | ❌ | ❌ | ✅ |
 | SQLite + Dashboard | ❌ | ❌ | ✅ **Streamlit localhost:8501** |
 | Auto-update | ❌ | ❌ | ✅ |
+
+---
+
+## ⚠️ Status atual e limitações conhecidas
+
+> **Beta estável** — pipeline principal (EIS / ciclagem / DRT) testado e funcional.
+> Adequado para investigação científica; ainda **não** submetido a revisão por pares.
+
+| Área | Estado / Limitação |
+|------|--------------------|
+| **Formatos EIS testados** | Gamry `.dta`, BioLogic `.mpr`/`.mpt`, Autolab `.csv`, Zahner `.isc`, genérico CSV/TXT |
+| **Classificador ML** | 30 % acc. (37 classes flat); ~62 % acc. hierárquico por família. Validar sempre o circuito sugerido. |
+| **Validação KK** | Diagnóstico — não bloqueia o ajuste automaticamente. |
+| **DRT** | Regularização de Tikhonov; adequado para análise qualitativa de picos. |
+| **Plataformas** | Testado em Windows 10/11. Linux/macOS via `install_linux.sh` (experimental). |
+| **GPU** | Não utilizado em nenhuma etapa. |
+| **Coeficientes Orazem α/β** | Calibrados para sistemas aquosos em temperatura ambiente; ajustar para meios não-aquosos ou temperaturas extremas. |
 
 ---
 

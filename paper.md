@@ -9,11 +9,11 @@ tags:
   - DRT
   - open source
 authors:
-  - name: Emanuel
-    orcid: 0000-0000-0000-0000   # TODO: insert your ORCID
+  - name: Emanuel de Souza Silva Oliveira
+    orcid: 0009-0007-2573-9628
     affiliation: 1
 affiliations:
-  - name: TODO — insert your institution name here
+  - name: Universidade do Vale do Paraíba (UNIVAP), Faculdade de Engenharia, Arquitetura e Urbanismo (FEAU), São José dos Campos, São Paulo, Brasil; Instituto de Aeronáutica e Espaço (IAE), Laboratório de Materiais (AMR), São José dos Campos, São Paulo, Brasil
     index: 1
 date: 11 May 2026
 bibliography: paper.bib
@@ -104,6 +104,6 @@ df     = result.feature_table      # pandas DataFrame of fitted parameters
 
 # Acknowledgements
 
-TODO — add funding acknowledgement here (e.g. grant number, institution).
+This work received no external funding.
 
 # References
