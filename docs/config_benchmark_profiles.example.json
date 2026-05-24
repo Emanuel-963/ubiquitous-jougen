@@ -1,0 +1,24 @@
+{
+  "benchmark_objective_profiles": {
+    "estabilidade": {
+      "kk_valid": 0.35,
+      "confidence": 0.30,
+      "chi2_over_nu": -0.25,
+      "rs": -0.10
+    },
+    "capacitancia": {
+      "c_mean": 0.60,
+      "rp": 0.20,
+      "chi2_over_nu": -0.15,
+      "kk_valid": 0.05
+    },
+    "balanced": {
+      "rs": -0.23,
+      "rp": 0.23,
+      "c_mean": 0.19,
+      "chi2_over_nu": -0.15,
+      "kk_valid": 0.10,
+      "confidence": 0.10
+    }
+  }
+}

@@ -26,6 +26,12 @@ ionflow eis --data-dir data/clean --output outputs/
 ionflow analyze --all --ai --export-pdf report.pdf
 ```
 
+### Perfis benchmark por config (GUI/CLI)
+
+- Exemplo pronto: `docs/config_benchmark_profiles.example.json`
+- Para aplicar no CLI: `ionflow config load --path docs/config_benchmark_profiles.example.json`
+- Na GUI: carregar o mesmo arquivo em **Config > Load** para usar os objetivos customizados no tab **Lab Intelligence**.
+
 ---
 
 ## ✨ Funcionalidades (v0.4.10)
