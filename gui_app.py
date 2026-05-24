@@ -491,11 +491,76 @@ class PipelineApp(ctk.CTk):
             "mode": "Espectro",
             "overlay_text": "",
         }
+        self._main_tab_labels_full = {
+            "plots": tr("Gráficos"),
+            "tables": tr("Tabelas"),
+            "logs": tr("Logs"),
+            "ai": "🤖 " + tr("Análise IA"),
+            "kk": "🔬 " + tr("Validação KK"),
+            "diag": "🩺 " + tr("Diagnóstico Fitting"),
+            "report": "📝 " + tr("Relatório Fitting"),
+            "compare": "🔄 " + tr("Comparar Amostras"),
+            "orientador": "🎓 " + tr("Modo Orientador"),
+            "lab": "🧠 " + tr("Lab Intelligence"),
+            "settings": "⚙️ " + tr("Configurações"),
+        }
+        self._main_tab_labels_compact = {
+            "plots": tr("Gráficos"),
+            "tables": tr("Tabelas"),
+            "logs": tr("Logs"),
+            "ai": "IA",
+            "kk": "KK",
+            "diag": "Diag",
+            "report": "Relat.",
+            "compare": "Comp.",
+            "orientador": "Guia",
+            "lab": "Lab",
+            "settings": "Config",
+        }
+        self._main_tab_labels_current = dict(self._main_tab_labels_full)
+        self._sidebar_buttons: List[ctk.CTkButton] = []
+        self._responsive_after_id: Optional[str] = None
+        self._last_sidebar_btn_font_size: Optional[int] = None
+        self._compact_segmented_labels = False
+
+        self._appearance_labels_full = [tr("Claro"), tr("Escuro"), tr("Sistema")]
+        self._appearance_labels_compact = ["C", "E", "S"]
+        self._appearance_label_to_mode = {
+            tr("Claro"): "light",
+            tr("Escuro"): "dark",
+            tr("Sistema"): "system",
+            "C": "light",
+            "E": "dark",
+            "S": "system",
+        }
+
+        self._language_labels_full = ["Português", "English", "Español"]
+        self._language_labels_compact = ["PT", "EN", "ES"]
+        self._language_label_to_code = {
+            "Português": "pt",
+            "English": "en",
+            "Español": "es",
+            "PT": "pt",
+            "EN": "en",
+            "ES": "es",
+        }
+
+        self._llm_provider_labels_full = [tr("Nenhum"), "OpenAI", "Ollama"]
+        self._llm_provider_labels_compact = ["Off", "OpenAI", "Local"]
+        self._llm_provider_label_to_code = {
+            tr("Nenhum"): "none",
+            "Off": "none",
+            "OpenAI": "openai",
+            "Ollama": "ollama",
+            "Local": "ollama",
+        }
 
         self._build_layout()
         self._setup_shortcuts()
         self._restore_ui_preferences()
         self._restore_language()
+        self.bind("<Configure>", self._schedule_responsive_layout)
+        self.after(100, self._apply_responsive_layout)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self._after_queue_id = self.after(100, self._process_queue)
         self._after_update_id = self.after(2000, self._check_for_updates_async)
@@ -539,12 +604,80 @@ class PipelineApp(ctk.CTk):
         return mapping.get(str(mode).lower(), "Escuro")
 
     def _mode_from_appearance_label(self, label: str) -> str:
-        mapping = {
-            "Claro": "light",
-            "Escuro": "dark",
-            "Sistema": "system",
-        }
-        return mapping.get(label, "dark")
+        return self._appearance_label_to_mode.get(label, "dark")
+
+    def _appearance_label_for_mode(self, mode: str, compact: bool) -> str:
+        normalized = str(mode).lower()
+        labels = (
+            self._appearance_labels_compact if compact else self._appearance_labels_full
+        )
+        if normalized == "light":
+            return labels[0]
+        if normalized == "system":
+            return labels[2]
+        return labels[1]
+
+    def _language_label_for_code(self, lang: str, compact: bool) -> str:
+        normalized = str(lang).lower()
+        labels = (
+            self._language_labels_compact if compact else self._language_labels_full
+        )
+        if normalized == "en":
+            return labels[1]
+        if normalized == "es":
+            return labels[2]
+        return labels[0]
+
+    def _llm_provider_label_for_code(self, provider: str, compact: bool) -> str:
+        normalized = str(provider).lower()
+        labels = (
+            self._llm_provider_labels_compact
+            if compact
+            else self._llm_provider_labels_full
+        )
+        if normalized == "openai":
+            return labels[1]
+        if normalized == "ollama":
+            return labels[2]
+        return labels[0]
+
+    def _apply_segmented_compact_labels(self, compact: bool):
+        if self._compact_segmented_labels == compact:
+            return
+
+        self._compact_segmented_labels = compact
+
+        with contextlib.suppress(Exception):
+            appearance_mode = ctk.get_appearance_mode().lower()
+            appearance_values = (
+                self._appearance_labels_compact
+                if compact
+                else self._appearance_labels_full
+            )
+            self.appearance_mode_selector.configure(values=appearance_values)
+            self.appearance_mode_selector.set(
+                self._appearance_label_for_mode(appearance_mode, compact)
+            )
+
+        with contextlib.suppress(Exception):
+            lang = get_language()
+            language_values = (
+                self._language_labels_compact if compact else self._language_labels_full
+            )
+            self.language_selector.configure(values=language_values)
+            self.language_selector.set(self._language_label_for_code(lang, compact))
+
+        with contextlib.suppress(Exception):
+            provider = self.gui_settings.get("llm_provider", "none")
+            provider_values = (
+                self._llm_provider_labels_compact
+                if compact
+                else self._llm_provider_labels_full
+            )
+            self.llm_provider_selector.configure(values=provider_values)
+            self.llm_provider_selector.set(
+                self._llm_provider_label_for_code(provider, compact)
+            )
 
     def _set_appearance_mode(self, mode: str, persist: bool = True):
         normalized = str(mode).lower()
@@ -556,7 +689,10 @@ class PipelineApp(ctk.CTk):
         if hasattr(self, "appearance_mode_selector"):
             with contextlib.suppress(Exception):
                 self.appearance_mode_selector.set(
-                    self._label_from_appearance_mode(normalized)
+                    self._appearance_label_for_mode(
+                        normalized,
+                        self._compact_segmented_labels,
+                    )
                 )
 
         if persist:
@@ -573,8 +709,7 @@ class PipelineApp(ctk.CTk):
 
     def _on_language_change(self, value: str):
         """Switch the application language and persist the preference."""
-        lang_map = {"English": "en", "Português": "pt", "Español": "es"}
-        lang = lang_map.get(value, "pt")
+        lang = self._language_label_to_code.get(value, "pt")
         set_language(lang)
         self.gui_settings["language"] = lang
         self._save_gui_settings()
@@ -687,10 +822,10 @@ class PipelineApp(ctk.CTk):
         if lang not in ("pt", "en", "es"):
             lang = "pt"
         set_language(lang)
-        label_map = {"en": "English", "pt": "Português", "es": "Español"}
-        label = label_map.get(lang, "Português")
         with contextlib.suppress(Exception):
-            self.language_selector.set(label)
+            self.language_selector.set(
+                self._language_label_for_code(lang, self._compact_segmented_labels)
+            )
 
     def _restore_ui_preferences(self):
         appearance_mode = self.gui_settings.get("appearance_mode", "dark")
@@ -726,7 +861,11 @@ class PipelineApp(ctk.CTk):
         with contextlib.suppress(Exception):
             main_tab = self.gui_settings.get("main_tab")
             if isinstance(main_tab, str):
-                self.tabs.set(main_tab)
+                resolved_main_tab = self._resolve_main_tab_name(main_tab)
+                if resolved_main_tab:
+                    self.tabs.set(resolved_main_tab)
+                else:
+                    self.tabs.set(main_tab)
 
         with contextlib.suppress(Exception):
             table_tab = self.gui_settings.get("table_tab")
@@ -751,6 +890,108 @@ class PipelineApp(ctk.CTk):
                 "mode": mode if isinstance(mode, str) else "Espectro",
                 "overlay_text": (overlay_text if isinstance(overlay_text, str) else ""),
             }
+
+    def _main_tab_label(self, key: str) -> str:
+        return self._main_tab_labels_current.get(key, self._main_tab_labels_full[key])
+
+    def _resolve_main_tab_name(self, tab_name: str) -> Optional[str]:
+        if not isinstance(tab_name, str):
+            return None
+        for key in self._main_tab_labels_full:
+            candidates = {
+                self._main_tab_labels_full[key],
+                self._main_tab_labels_compact[key],
+                self._main_tab_labels_current.get(key, ""),
+            }
+            if tab_name in candidates:
+                return self._main_tab_label(key)
+        return None
+
+    def _set_main_tab(self, key: str):
+        with contextlib.suppress(Exception):
+            self.tabs.set(self._main_tab_label(key))
+
+    def _apply_main_tab_labels(self, compact: bool):
+        target_map = (
+            self._main_tab_labels_compact if compact else self._main_tab_labels_full
+        )
+        if self._main_tab_labels_current == target_map:
+            return
+
+        current_tab_name = ""
+        with contextlib.suppress(Exception):
+            current_tab_name = self.tabs.get()
+
+        current_key = None
+        for key in self._main_tab_labels_full:
+            if current_tab_name in {
+                self._main_tab_labels_current.get(key, ""),
+                self._main_tab_labels_full[key],
+                self._main_tab_labels_compact[key],
+            }:
+                current_key = key
+                break
+
+        for key in self._main_tab_labels_full:
+            old_name = self._main_tab_labels_current.get(key, "")
+            new_name = target_map[key]
+            if old_name and old_name != new_name:
+                with contextlib.suppress(Exception):
+                    self.tabs.rename(old_name, new_name)
+
+        self._main_tab_labels_current = dict(target_map)
+        if current_key:
+            self._set_main_tab(current_key)
+
+    def _schedule_responsive_layout(self, _event=None):
+        if not hasattr(self, "tabs"):
+            return
+        if self._responsive_after_id:
+            with contextlib.suppress(Exception):
+                self.after_cancel(self._responsive_after_id)
+        self._responsive_after_id = self.after(80, self._apply_responsive_layout)
+
+    def _apply_responsive_layout(self):
+        self._responsive_after_id = None
+        width = self.winfo_width()
+        if width <= 1:
+            return
+
+        if width >= 1900:
+            sidebar_width = 360
+        elif width >= 1700:
+            sidebar_width = 330
+        elif width >= 1500:
+            sidebar_width = 300
+        elif width >= 1320:
+            sidebar_width = 280
+        else:
+            sidebar_width = 260
+
+        if hasattr(self, "_sidebar_outer"):
+            with contextlib.suppress(Exception):
+                self._sidebar_outer.configure(width=sidebar_width)
+
+        compact_tabs = width < 1760
+        compact_segmented = width < 1520
+        self._apply_main_tab_labels(compact=compact_tabs)
+        self._apply_segmented_compact_labels(compact=compact_segmented)
+
+        if width >= 1700:
+            font_size = 13
+        elif width >= 1450:
+            font_size = 12
+        elif width >= 1280:
+            font_size = 11
+        else:
+            font_size = 10
+        if self._last_sidebar_btn_font_size == font_size:
+            return
+        self._last_sidebar_btn_font_size = font_size
+
+        for button in self._sidebar_buttons:
+            with contextlib.suppress(Exception):
+                button.configure(font=ctk.CTkFont(size=font_size))
 
     def _on_close(self):
         with contextlib.suppress(Exception):
@@ -793,10 +1034,11 @@ class PipelineApp(ctk.CTk):
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        _sidebar_outer = ctk.CTkFrame(self, corner_radius=12)
-        _sidebar_outer.grid(row=0, column=0, sticky="nsw", padx=16, pady=16)
+        self._sidebar_outer = ctk.CTkFrame(self, corner_radius=12, width=290)
+        self._sidebar_outer.grid(row=0, column=0, sticky="nsw", padx=16, pady=16)
+        self._sidebar_outer.grid_propagate(False)
         sidebar = ctk.CTkScrollableFrame(
-            _sidebar_outer, fg_color="transparent", corner_radius=0
+            self._sidebar_outer, fg_color="transparent", corner_radius=0
         )
         sidebar.pack(fill="both", expand=True)
         sidebar.grid_columnconfigure(0, weight=1)
@@ -824,6 +1066,7 @@ class PipelineApp(ctk.CTk):
             ),
         )
         self.btn_import_raw.grid(row=3, column=0, padx=16, pady=(0, 8), sticky="ew")
+        self._sidebar_buttons.append(self.btn_import_raw)
 
         self.btn_import_processed = ctk.CTkButton(
             sidebar,
@@ -840,6 +1083,7 @@ class PipelineApp(ctk.CTk):
             pady=(0, 12),
             sticky="ew",
         )
+        self._sidebar_buttons.append(self.btn_import_processed)
 
         self.btn_interactive = ctk.CTkButton(
             sidebar,
@@ -847,6 +1091,7 @@ class PipelineApp(ctk.CTk):
             command=self._open_interactive_window,
         )
         self.btn_interactive.grid(row=5, column=0, padx=16, pady=(0, 12), sticky="ew")
+        self._sidebar_buttons.append(self.btn_interactive)
 
         self.btn_eis = ctk.CTkButton(
             sidebar,
@@ -854,6 +1099,7 @@ class PipelineApp(ctk.CTk):
             command=self._run_eis_clicked,
         )
         self.btn_eis.grid(row=6, column=0, padx=16, pady=8, sticky="ew")
+        self._sidebar_buttons.append(self.btn_eis)
 
         self.btn_ciclagem = ctk.CTkButton(
             sidebar,
@@ -861,6 +1107,7 @@ class PipelineApp(ctk.CTk):
             command=self._run_ciclagem_clicked,
         )
         self.btn_ciclagem.grid(row=7, column=0, padx=16, pady=8, sticky="ew")
+        self._sidebar_buttons.append(self.btn_ciclagem)
 
         self.btn_both = ctk.CTkButton(
             sidebar,
@@ -868,6 +1115,7 @@ class PipelineApp(ctk.CTk):
             command=self._run_both_clicked,
         )
         self.btn_both.grid(row=8, column=0, padx=16, pady=8, sticky="ew")
+        self._sidebar_buttons.append(self.btn_both)
 
         self.btn_drt = ctk.CTkButton(
             sidebar,
@@ -875,6 +1123,7 @@ class PipelineApp(ctk.CTk):
             command=self._run_drt_clicked,
         )
         self.btn_drt.grid(row=9, column=0, padx=16, pady=8, sticky="ew")
+        self._sidebar_buttons.append(self.btn_drt)
 
         drt_param_frame = ctk.CTkFrame(sidebar)
         drt_param_frame.grid(row=10, column=0, padx=16, pady=(6, 8), sticky="ew")
@@ -966,6 +1215,7 @@ class PipelineApp(ctk.CTk):
             command=self._generate_report_clicked,
         )
         self.btn_report.grid(row=10, column=0, padx=16, pady=(0, 8), sticky="ew")
+        self._sidebar_buttons.append(self.btn_report)
 
         self.btn_export = ctk.CTkButton(
             sidebar,
@@ -973,6 +1223,7 @@ class PipelineApp(ctk.CTk):
             command=self._export_eis_clicked,
         )
         self.btn_export.grid(row=11, column=0, padx=16, pady=(0, 8), sticky="ew")
+        self._sidebar_buttons.append(self.btn_export)
 
         self.btn_compare = ctk.CTkButton(
             sidebar,
@@ -980,6 +1231,7 @@ class PipelineApp(ctk.CTk):
             command=self._open_compare_tab,
         )
         self.btn_compare.grid(row=12, column=0, padx=16, pady=(0, 8), sticky="ew")
+        self._sidebar_buttons.append(self.btn_compare)
 
         self.btn_export_xlsx = ctk.CTkButton(
             sidebar,
@@ -987,6 +1239,7 @@ class PipelineApp(ctk.CTk):
             command=self._export_all_xlsx,
         )
         self.btn_export_xlsx.grid(row=13, column=0, padx=16, pady=(0, 8), sticky="ew")
+        self._sidebar_buttons.append(self.btn_export_xlsx)
 
         self.btn_batch = ctk.CTkButton(
             sidebar,
@@ -994,6 +1247,7 @@ class PipelineApp(ctk.CTk):
             command=self._run_batch_clicked,
         )
         self.btn_batch.grid(row=18, column=0, padx=16, pady=(0, 8), sticky="ew")
+        self._sidebar_buttons.append(self.btn_batch)
 
         self.btn_compose = ctk.CTkButton(
             sidebar,
@@ -1001,6 +1255,7 @@ class PipelineApp(ctk.CTk):
             command=self._run_compose_clicked,
         )
         self.btn_compose.grid(row=19, column=0, padx=16, pady=(0, 8), sticky="ew")
+        self._sidebar_buttons.append(self.btn_compose)
 
         self.btn_save_config = ctk.CTkButton(
             sidebar,
@@ -1008,6 +1263,7 @@ class PipelineApp(ctk.CTk):
             command=self._save_config_clicked,
         )
         self.btn_save_config.grid(row=20, column=0, padx=16, pady=(0, 8), sticky="ew")
+        self._sidebar_buttons.append(self.btn_save_config)
 
         # ── LLM Provider selector ────────────────────────────────
         ctk.CTkLabel(sidebar, text=tr("Provedor IA"), anchor="w").grid(
@@ -1015,13 +1271,13 @@ class PipelineApp(ctk.CTk):
         )
         self.llm_provider_selector = ctk.CTkSegmentedButton(
             sidebar,
-            values=[tr("Nenhum"), "OpenAI", "Ollama"],
+            values=self._llm_provider_labels_full,
             command=self._on_llm_provider_change,
         )
         self.llm_provider_selector.grid(
             row=22, column=0, padx=16, pady=(0, 12), sticky="ew"
         )
-        self.llm_provider_selector.set(tr("Nenhum"))
+        self.llm_provider_selector.set(self._llm_provider_labels_full[0])
 
         self.status_label = ctk.CTkLabel(sidebar, text=tr("Status: pronto"), anchor="w")
         self.status_label.grid(row=23, column=0, padx=16, pady=8, sticky="ew")
@@ -1050,6 +1306,7 @@ class PipelineApp(ctk.CTk):
             hover_color="#1b5e20",
         )
         self.btn_gen_synthetic.grid(row=27, column=0, padx=16, pady=(4, 4), sticky="ew")
+        self._sidebar_buttons.append(self.btn_gen_synthetic)
 
         self.btn_del_synthetic = ctk.CTkButton(
             sidebar,
@@ -1059,6 +1316,7 @@ class PipelineApp(ctk.CTk):
             hover_color="#7f0000",
         )
         self.btn_del_synthetic.grid(row=28, column=0, padx=16, pady=(0, 4), sticky="ew")
+        self._sidebar_buttons.append(self.btn_del_synthetic)
 
         self.btn_train_classifier = ctk.CTkButton(
             sidebar,
@@ -1070,47 +1328,48 @@ class PipelineApp(ctk.CTk):
         self.btn_train_classifier.grid(
             row=29, column=0, padx=16, pady=(0, 12), sticky="ew"
         )
+        self._sidebar_buttons.append(self.btn_train_classifier)
 
         ctk.CTkLabel(sidebar, text=tr("Tema"), anchor="w").grid(
             row=14, column=0, padx=16, pady=(0, 4), sticky="ew"
         )
         self.appearance_mode_selector = ctk.CTkSegmentedButton(
             sidebar,
-            values=[tr("Claro"), tr("Escuro"), tr("Sistema")],
+            values=self._appearance_labels_full,
             command=self._on_appearance_mode_change,
         )
         self.appearance_mode_selector.grid(
             row=15, column=0, padx=16, pady=(0, 12), sticky="ew"
         )
-        self.appearance_mode_selector.set(tr("Escuro"))
+        self.appearance_mode_selector.set(self._appearance_labels_full[1])
 
         ctk.CTkLabel(sidebar, text=tr("Idioma"), anchor="w").grid(
             row=16, column=0, padx=16, pady=(0, 4), sticky="ew"
         )
         self.language_selector = ctk.CTkSegmentedButton(
             sidebar,
-            values=["Português", "English", "Español"],
+            values=self._language_labels_full,
             command=self._on_language_change,
         )
         self.language_selector.grid(
             row=17, column=0, padx=16, pady=(0, 12), sticky="ew"
         )
-        self.language_selector.set("Português")
+        self.language_selector.set(self._language_labels_full[0])
 
         self.tabs = ctk.CTkTabview(self)
         self.tabs.grid(row=0, column=1, sticky="nsew", padx=16, pady=16)
 
-        self.tab_plots = self.tabs.add(tr("Gráficos"))
-        self.tab_tables = self.tabs.add(tr("Tabelas"))
-        self.tab_logs = self.tabs.add(tr("Logs"))
-        self.tab_ai = self.tabs.add("🤖 " + tr("Análise IA"))
-        self.tab_kk = self.tabs.add("🔬 " + tr("Validação KK"))
-        self.tab_diag = self.tabs.add("🩺 " + tr("Diagnóstico Fitting"))
-        self.tab_report_text = self.tabs.add("📝 " + tr("Relatório Fitting"))
-        self.tab_compare = self.tabs.add("🔄 " + tr("Comparar Amostras"))
-        self.tab_orientador = self.tabs.add("🎓 " + tr("Modo Orientador"))
-        self.tab_lab = self.tabs.add("🧠 " + tr("Lab Intelligence"))
-        self.tab_settings = self.tabs.add("⚙️ " + tr("Configurações"))
+        self.tab_plots = self.tabs.add(self._main_tab_label("plots"))
+        self.tab_tables = self.tabs.add(self._main_tab_label("tables"))
+        self.tab_logs = self.tabs.add(self._main_tab_label("logs"))
+        self.tab_ai = self.tabs.add(self._main_tab_label("ai"))
+        self.tab_kk = self.tabs.add(self._main_tab_label("kk"))
+        self.tab_diag = self.tabs.add(self._main_tab_label("diag"))
+        self.tab_report_text = self.tabs.add(self._main_tab_label("report"))
+        self.tab_compare = self.tabs.add(self._main_tab_label("compare"))
+        self.tab_orientador = self.tabs.add(self._main_tab_label("orientador"))
+        self.tab_lab = self.tabs.add(self._main_tab_label("lab"))
+        self.tab_settings = self.tabs.add(self._main_tab_label("settings"))
 
         # ── AI Analysis tab content ──────────────────────────────
         ai_frame = ctk.CTkFrame(self.tab_ai)
@@ -1672,7 +1931,7 @@ class PipelineApp(ctk.CTk):
                 if drt_path:
                     self._open_image_preview(f"{arquivo} - DRT", drt_path)
                 else:
-                    self.tabs.set("Gráficos")
+                    self._set_main_tab("plots")
                     self._append_log(f"Gráfico DRT não encontrado para: {arquivo}")
                 return
 
@@ -5017,8 +5276,7 @@ class PipelineApp(ctk.CTk):
 
     def _on_llm_provider_change(self, value: str):
         """Save LLM provider preference."""
-        provider_map = {"Nenhum": "none", "OpenAI": "openai", "Ollama": "ollama"}
-        provider = provider_map.get(value, "none")
+        provider = self._llm_provider_label_to_code.get(value, "none")
         self.gui_settings["llm_provider"] = provider
         self._save_gui_settings()
         self._append_log(f"Provedor IA: {value}")
@@ -5052,7 +5310,7 @@ class PipelineApp(ctk.CTk):
     def _run_kk_validation_clicked(self):
         """Run Kramers-Kronig validation on loaded EIS data."""
         self._append_log(tr("Executando validação Kramers-Kronig..."))
-        self.tabs.set("🔬 " + tr("Validação KK"))
+        self._set_main_tab("kk")
 
         def worker():
             try:
@@ -5091,7 +5349,7 @@ class PipelineApp(ctk.CTk):
         Implements Orazem & Tribollet 2026 pre-processing check.
         """
         self._append_log(tr("Verificando ruído de rede elétrica (50/100 Hz)..."))
-        self.tabs.set("🔬 " + tr("Validação KK"))
+        self._set_main_tab("kk")
 
         def worker():
             try:
@@ -5155,7 +5413,7 @@ class PipelineApp(ctk.CTk):
     def _run_fitting_diagnostics_clicked(self):
         """Generate fitting diagnostic plots and quality assessment."""
         self._append_log(tr("Gerando diagnósticos de fitting..."))
-        self.tabs.set("🩺 " + tr("Diagnóstico Fitting"))
+        self._set_main_tab("diag")
 
         def _chi2_emoji(val) -> str:
             """Return traffic-light emoji for χ²/ν (Orazem criterion)."""
@@ -5249,7 +5507,7 @@ class PipelineApp(ctk.CTk):
     def _run_fitting_report_clicked(self):
         """Generate textual fitting report."""
         self._append_log(tr("Gerando relatório textual de fitting..."))
-        self.tabs.set("📝 " + tr("Relatório Fitting"))
+        self._set_main_tab("report")
 
         def worker():
             try:
@@ -5335,7 +5593,7 @@ class PipelineApp(ctk.CTk):
     def _run_metrological_summary_clicked(self):
         """Show chi2/nu traffic-light summary (Orazem & Tribollet 2026)."""
         self._append_log(tr("Gerando resumo metrológico..."))
-        self.tabs.set("🩺 " + tr("Diagnóstico Fitting"))
+        self._set_main_tab("diag")
 
         def worker():
             try:
@@ -5438,7 +5696,7 @@ class PipelineApp(ctk.CTk):
     def _run_orientador_clicked(self):
         """Run Modo Orientador — critical experiment evaluation."""
         self._append_log(tr("Executando Avaliação Crítica (Modo Orientador)..."))
-        self.tabs.set("🎓 " + tr("Modo Orientador"))
+        self._set_main_tab("orientador")
 
         def worker():
             try:
@@ -5516,7 +5774,7 @@ class PipelineApp(ctk.CTk):
     def _run_lab_benchmark_clicked(self):
         """Run objective-driven benchmark recommendation in GUI."""
         self._append_log(tr("Executando benchmark automático..."))
-        self.tabs.set("🧠 " + tr("Lab Intelligence"))
+        self._set_main_tab("lab")
 
         def worker():
             try:
@@ -5553,7 +5811,7 @@ class PipelineApp(ctk.CTk):
     def _run_lab_memory_clicked(self):
         """Store/query historical memory and show similarity report."""
         self._append_log(tr("Executando memória experimental..."))
-        self.tabs.set("🧠 " + tr("Lab Intelligence"))
+        self._set_main_tab("lab")
 
         def worker():
             try:
@@ -5610,7 +5868,7 @@ class PipelineApp(ctk.CTk):
     def _run_lab_paper_first_clicked(self):
         """Export paper-first package from current GUI results (incl. JOSS/IEEE)."""
         self._append_log(tr("Gerando export paper-first..."))
-        self.tabs.set("🧠 " + tr("Lab Intelligence"))
+        self._set_main_tab("lab")
 
         out_dir = filedialog.askdirectory(
             title=tr("Selecionar pasta de saída do paper-first"),
@@ -5742,7 +6000,7 @@ class PipelineApp(ctk.CTk):
     def _run_ai_analysis_clicked(self):
         """Run AI analysis using current pipeline results."""
         self._append_log("Iniciando análise IA...")
-        self.tabs.set("🤖 " + tr("Análise IA"))
+        self._set_main_tab("ai")
 
         def worker():
             try:
@@ -7231,7 +7489,7 @@ class PipelineApp(ctk.CTk):
     def _open_compare_tab(self):
         """Switch to the Compare tab and refresh the sample list."""
         self._refresh_compare_sample_list()
-        self.tabs.set("🔄 " + tr("Comparar Amostras"))
+        self._set_main_tab("compare")
         # UX-02: update sidebar button to show current sample count
         n = len(self.raw_eis)
         label = (
