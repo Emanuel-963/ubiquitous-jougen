@@ -163,7 +163,7 @@ python scripts/gen_synthetic_eis.py --n 5 --output data/raw/
 | JOSS Paper (rascunho) | `paper.md` + `paper.bib` | Manuscrito para Journal of Open Source Software |
 | CHANGELOG | `CHANGELOG.md` | Histórico de todas as versões |
 | Tutoriais | `tutoriais/` | Guias passo-a-passo por funcionalidade |
-| Roadmap | `docs/ROADMAP_v0.3.0.md` | Próximos passos planejados |
+| Roadmap estratégico | `docs/ROADMAP_commercial.md` | Roadmap de longo prazo (academic + commercial) |
 
 ---
 

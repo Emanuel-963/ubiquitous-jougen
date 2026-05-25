@@ -389,6 +389,6 @@ Projeto desenvolvido para análise de materiais eletroquímicos em contexto de i
 - [PRESENTATION](docs/PRESENTATION.md) — Guia de apresentação
 - [ENTREGA_PROFESSOR](docs/ENTREGA_PROFESSOR.md) — Documento de entrega ao orientador
 - [SCIENTIFIC_VALIDATION](docs/SCIENTIFIC_VALIDATION.md) — Auditoria de validação científica por módulo
-- [UPGRADE_PLAN](docs/UPGRADE_PLAN_v0.2.0.md) — Plano de 30 dias
+- [ROADMAP](docs/ROADMAP_commercial.md) — Roadmap estratégico
 - [Tutoriais](tutoriais/) — Passo a passo
 

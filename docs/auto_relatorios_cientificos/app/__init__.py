@@ -1,3 +1,0 @@
-"""
-AUTO-RELATÓRIOS CIENTÍFICOS package
-"""
