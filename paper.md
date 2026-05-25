@@ -15,7 +15,7 @@ authors:
 affiliations:
   - name: Universidade do Vale do Paraíba (UNIVAP), Faculdade de Engenharia, Arquitetura e Urbanismo (FEAU), São José dos Campos, São Paulo, Brasil; Instituto de Aeronáutica e Espaço (IAE), Laboratório de Materiais (AMR), São José dos Campos, São Paulo, Brasil
     index: 1
-date: 11 May 2026
+date: 25 May 2026
 bibliography: paper.bib
 ---
 
@@ -47,6 +47,27 @@ Analyser) or require manual scripting without a user interface (impedance.py
 IonFlow Pipeline fills the gap by combining a polished desktop GUI with a
 fully testable Python library that can be integrated into automated workflows.
 
+Table 1 summarises the feature landscape relative to the most widely used tools
+in the community.  A quantitative accuracy benchmark against ZView and
+impedance.py on a common reference dataset is planned for the peer-review
+cycle and will be reported in an accompanying validation note.
+
+| Feature | IonFlow Pipeline | impedance.py | ZView | EC-Lab |
+|---------|:---:|:---:|:---:|:---:|
+| Open source | ✓ | ✓ | ✗ | ✗ |
+| Desktop GUI | ✓ | ✗ | ✓ | ✓ |
+| Kramers-Kronig validation | ✓ | ✓ | ✓ | ✓ |
+| DRT analysis | ✓ | ✗ | ✗ | ✗ |
+| Monte Carlo uncertainty | ✓ | partial | ✗ | ✗ |
+| Batch / CLI pipeline | ✓ | scripting | ✗ | ✗ |
+| Multi-vendor parsers | ✓ | partial | ✗ (proprietary) | ✗ (proprietary) |
+| Galvanostatic cycling | ✓ | ✗ | ✗ | ✓ |
+| PDF report generation | ✓ | ✗ | ✗ | ✓ |
+| Rule-based AI agent | ✓ | ✗ | ✗ | ✗ |
+| Automated test suite | 2000+ tests | limited | ✗ | ✗ |
+
+: Feature comparison (✓ = supported, ✗ = not supported, partial = limited support) {#tbl:comparison}
+
 Key differentiators:
 
 - **Multi-vendor parser**: reads CSV, Gamry `.dta`, BioLogic `.mpt`/`.mpr`
@@ -59,7 +80,7 @@ Key differentiators:
   reducing manual trial-and-error.
 - **DRT analysis**: regularised Tikhonov inversion of the impedance spectrum
   yields the distribution of relaxation times, providing a model-free view of
-  the system's time constants [@wan2015influence].
+  the system's time constants [@wan2015influence; @ciucci2015analysis].
 - **Kramers-Kronig validation**: the lin-KK residual method [@schonleber2014method]
   flags non-stationary or non-linear data before fitting.
 - **Batch processing and feature store**: automated pipelines over folders of
@@ -101,6 +122,48 @@ from main import run_eis_pipeline
 result = run_eis_pipeline()        # reads data/raw/, writes data/processed/
 df     = result.feature_table      # pandas DataFrame of fitted parameters
 ```
+
+# Limitations
+
+The current release has several known limitations that users should consider
+before relying on results for publication:
+
+**Synthetic-data training for ML components.**
+The ML-based circuit shortlisting (`CircuitMLSelector`) and the cycling
+performance predictor (`PerformancePredictor`) were pre-trained entirely on
+synthetic impedance spectra and cycling curves generated programmatically.
+No experimental validation set has been assembled yet.
+Users should treat ML-generated suggestions as a starting point for manual
+inspection, not as authoritative classifications.
+The hierarchical classifier achieves approximately 62 % accuracy on held-out
+synthetic spectra; accuracy on real laboratory data is not yet characterised.
+
+**Fitting accuracy not yet benchmarked externally.**
+The non-linear least-squares fitting infrastructure has been validated for
+correct convergence behaviour (the optimiser converges, returns physically
+plausible parameter magnitudes, and residuals decrease monotonically) but has
+not been benchmarked against ZView or EC-Lab on a common reference dataset.
+Such a comparison is planned and will be reported separately.
+
+**Orazem-Tribollet weighting coefficients.**
+The measurement model noise coefficients (α = 0.001216, β = 0.000333)
+are taken from @tribollet2023electrochemical and are calibrated for aqueous
+electrolyte systems at room temperature.
+They should not be applied without re-calibration to non-aqueous electrolytes,
+extreme temperatures, or non-planar electrode geometries.
+
+**DRT regularisation parameter λ.**
+The Tikhonov regularisation parameter is selected heuristically; no automatic
+L-curve or generalised cross-validation procedure is implemented.
+DRT output is therefore suitable for qualitative identification of relaxation
+time peaks but absolute values of the distribution function γ(τ) should not
+be used as quantitative descriptors without expert validation of λ.
+
+**BioLogic `.mpr` parser coverage.**
+Parsing of proprietary BioLogic binary files is limited to firmware versions
+tested internally.
+Files produced by instruments running more recent firmware may parse
+incorrectly or raise an exception.
 
 # Acknowledgements
 

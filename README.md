@@ -387,7 +387,8 @@ Projeto desenvolvido para análise de materiais eletroquímicos em contexto de i
 - [CHANGELOG](CHANGELOG.md) — Histórico de alterações
 - [ONE_PAGER](docs/ONE_PAGER.md) — Resumo de 1 página
 - [PRESENTATION](docs/PRESENTATION.md) — Guia de apresentação
-- [UPGRADE_PLAN](docs/UPGRADE_PLAN_v0.2.0.md) — Plano de 30 dias
+- [ENTREGA_PROFESSOR](docs/ENTREGA_PROFESSOR.md) — Documento de entrega ao orientador
 - [SCIENTIFIC_VALIDATION](docs/SCIENTIFIC_VALIDATION.md) — Auditoria de validação científica por módulo
+- [UPGRADE_PLAN](docs/UPGRADE_PLAN_v0.2.0.md) — Plano de 30 dias
 - [Tutoriais](tutoriais/) — Passo a passo
 
