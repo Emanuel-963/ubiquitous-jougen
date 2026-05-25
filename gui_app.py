@@ -505,23 +505,29 @@ class PipelineApp(ctk.CTk):
             "settings": "⚙️ " + tr("Configurações"),
         }
         self._main_tab_labels_compact = {
-            "plots": tr("Gráficos"),
-            "tables": tr("Tabelas"),
-            "logs": tr("Logs"),
+            "plots": "Graf",
+            "tables": "Tab",
+            "logs": "Log",
             "ai": "IA",
             "kk": "KK",
-            "diag": "Diag",
-            "report": "Relat.",
-            "compare": "Comp.",
+            "diag": "Dg",
+            "report": "Rpt",
+            "compare": "Cmp",
             "orientador": "Guia",
             "lab": "Lab",
-            "settings": "Config",
+            "settings": "Cfg",
         }
         self._main_tab_labels_current = dict(self._main_tab_labels_full)
         self._sidebar_buttons: List[ctk.CTkButton] = []
         self._responsive_after_id: Optional[str] = None
         self._last_sidebar_btn_font_size: Optional[int] = None
+        self._last_tab_font_size: Optional[int] = None
+        self._last_sidebar_width: Optional[int] = None
+        self._last_sidebar_scroll_width: Optional[int] = None
+        self._last_tabs_width: Optional[int] = None
         self._compact_segmented_labels = False
+        self._compact_drt_action_labels = False
+        self._compact_tabs_mode = False
 
         self._appearance_labels_full = [tr("Claro"), tr("Escuro"), tr("Sistema")]
         self._appearance_labels_compact = ["C", "E", "S"]
@@ -944,12 +950,22 @@ class PipelineApp(ctk.CTk):
             self._set_main_tab(current_key)
 
     def _schedule_responsive_layout(self, _event=None):
+        if _event is not None and getattr(_event, "widget", None) is not self:
+            return
         if not hasattr(self, "tabs"):
             return
         if self._responsive_after_id:
             with contextlib.suppress(Exception):
                 self.after_cancel(self._responsive_after_id)
-        self._responsive_after_id = self.after(80, self._apply_responsive_layout)
+        self._responsive_after_id = self.after(120, self._apply_responsive_layout)
+
+    def _compute_compact_mode(
+        self, width: int, current: bool, enter: int, exit: int
+    ) -> bool:
+        """Apply hysteresis to avoid constant mode toggling near breakpoints."""
+        if current:
+            return width < exit
+        return width < enter
 
     def _apply_responsive_layout(self):
         self._responsive_after_id = None
@@ -957,25 +973,74 @@ class PipelineApp(ctk.CTk):
         if width <= 1:
             return
 
-        if width >= 1900:
-            sidebar_width = 360
-        elif width >= 1700:
-            sidebar_width = 330
-        elif width >= 1500:
-            sidebar_width = 300
-        elif width >= 1320:
-            sidebar_width = 280
-        else:
-            sidebar_width = 260
+        sidebar_width = max(300, min(420, int(width * 0.26)))
+        sidebar_scroll_width = max(250, sidebar_width - 34)
 
         if hasattr(self, "_sidebar_outer"):
-            with contextlib.suppress(Exception):
-                self._sidebar_outer.configure(width=sidebar_width)
+            if self._last_sidebar_width != sidebar_width:
+                self._last_sidebar_width = sidebar_width
+                with contextlib.suppress(Exception):
+                    self._sidebar_outer.configure(width=sidebar_width)
+        if hasattr(self, "_sidebar_scroll"):
+            if self._last_sidebar_scroll_width != sidebar_scroll_width:
+                self._last_sidebar_scroll_width = sidebar_scroll_width
+                with contextlib.suppress(Exception):
+                    self._sidebar_scroll.configure(width=sidebar_scroll_width)
 
-        compact_tabs = width < 1760
-        compact_segmented = width < 1520
+        compact_tabs = self._compute_compact_mode(
+            width,
+            self._compact_tabs_mode,
+            enter=1860,
+            exit=1930,
+        )
+        self._compact_tabs_mode = compact_tabs
+        compact_segmented = self._compute_compact_mode(
+            width,
+            self._compact_segmented_labels,
+            enter=1520,
+            exit=1580,
+        )
         self._apply_main_tab_labels(compact=compact_tabs)
         self._apply_segmented_compact_labels(compact=compact_segmented)
+
+        compact_drt_actions = self._compute_compact_mode(
+            width,
+            self._compact_drt_action_labels,
+            enter=1650,
+            exit=1710,
+        )
+        if compact_drt_actions != self._compact_drt_action_labels:
+            self._compact_drt_action_labels = compact_drt_actions
+            with contextlib.suppress(Exception):
+                self.btn_drt_apply_preset.configure(
+                    text=tr("Aplicar") if compact_drt_actions else tr("Aplicar preset")
+                )
+            with contextlib.suppress(Exception):
+                self.btn_drt_reset.configure(
+                    text=tr("Reset") if compact_drt_actions else tr("Reset DRT")
+                )
+
+        tab_font_size = 11 if width >= 1600 else 10
+        available_tabs_width = max(620, width - sidebar_width - 90)
+        if tab_font_size != self._last_tab_font_size:
+            self._last_tab_font_size = tab_font_size
+            with contextlib.suppress(Exception):
+                self.tabs._segmented_button.configure(
+                    font=ctk.CTkFont(size=tab_font_size),
+                    dynamic_resizing=False,
+                    width=available_tabs_width,
+                )
+            self._last_tabs_width = available_tabs_width
+        elif (
+            self._last_tabs_width is None
+            or abs(available_tabs_width - self._last_tabs_width) >= 8
+        ):
+            self._last_tabs_width = available_tabs_width
+            with contextlib.suppress(Exception):
+                self.tabs._segmented_button.configure(
+                    dynamic_resizing=False,
+                    width=available_tabs_width,
+                )
 
         if width >= 1700:
             font_size = 13
@@ -1037,10 +1102,14 @@ class PipelineApp(ctk.CTk):
         self._sidebar_outer = ctk.CTkFrame(self, corner_radius=12, width=290)
         self._sidebar_outer.grid(row=0, column=0, sticky="nsw", padx=16, pady=16)
         self._sidebar_outer.grid_propagate(False)
-        sidebar = ctk.CTkScrollableFrame(
-            self._sidebar_outer, fg_color="transparent", corner_radius=0
+        self._sidebar_scroll = ctk.CTkScrollableFrame(
+            self._sidebar_outer,
+            fg_color="transparent",
+            corner_radius=0,
+            width=256,
         )
-        sidebar.pack(fill="both", expand=True)
+        self._sidebar_scroll.pack(fill="both", expand=True)
+        sidebar = self._sidebar_scroll
         sidebar.grid_columnconfigure(0, weight=1)
 
         ctk.CTkLabel(
@@ -1185,7 +1254,7 @@ class PipelineApp(ctk.CTk):
             sticky="ew",
         )
 
-        ctk.CTkButton(
+        self.btn_drt_apply_preset = ctk.CTkButton(
             drt_param_frame,
             text=tr("Aplicar preset"),
             width=120,
@@ -1193,14 +1262,28 @@ class PipelineApp(ctk.CTk):
                 self.drt_preset_selector.get(),
                 persist=True,
             ),
-        ).grid(row=3, column=1, padx=(4, 8), pady=(0, 8), sticky="ew")
+        )
+        self.btn_drt_apply_preset.grid(
+            row=3,
+            column=1,
+            padx=(4, 8),
+            pady=(0, 8),
+            sticky="ew",
+        )
 
-        ctk.CTkButton(
+        self.btn_drt_reset = ctk.CTkButton(
             drt_param_frame,
             text=tr("Reset DRT"),
             width=120,
             command=self._reset_drt_defaults,
-        ).grid(row=4, column=1, padx=(4, 8), pady=(0, 8), sticky="ew")
+        )
+        self.btn_drt_reset.grid(
+            row=4,
+            column=1,
+            padx=(4, 8),
+            pady=(0, 8),
+            sticky="ew",
+        )
 
         ctk.CTkLabel(
             drt_param_frame,
