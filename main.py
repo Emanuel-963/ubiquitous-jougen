@@ -12,19 +12,24 @@ them together.
 import json
 import logging
 import os
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 
+from src.circuit_fitting import run_shortlist_fit
 from src.config import PipelineConfig
 from src.cpe_fit import fit_cpe_warburg
-from src.circuit_fitting import run_shortlist_fit
 from src.feature_store import FeatureStore, FittingHistory, record_from_shortlist_result
-from src.loader import load_eis_file, EIS_EXTENSIONS
-from src.ml_circuit_selector import CircuitMLSelector
+from src.loader import EIS_EXTENSIONS, load_eis_file
 from src.logger import setup_logging
-from src.metadata import extract_metadata, extract_material_type, extract_synthesis_process
+from src.metadata import (
+    extract_material_type,
+    extract_metadata,
+    extract_synthesis_process,
+)
+from src.ml_circuit_selector import CircuitMLSelector
 from src.models import EISResult, PCAResult
 from src.pca_analysis import run_pca
 from src.physics_metrics import extract_features
@@ -33,17 +38,16 @@ from src.ranking import apply_classification, rank_within_subclass
 from src.stability import extract_sample_id, stability_metrics
 from src.validation import validate_eis_full
 from src.visualization import (
+    correlation_heatmap,
     pca_2d,
+    pca_2d_metric,
     pca_3d,
     pca_biplot_2d,
     pca_scree_plot,
-    pca_2d_metric,
-    scatter_rank_retention,
-    correlation_heatmap,
     production_heatmap,
+    scatter_rank_retention,
     series_by_prefix,
 )
-from src.eis_plots import ragone_gap_analysis
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +55,7 @@ logger = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════════════════════════════════
 # Stage 1 — Load & extract features
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 def load_and_extract(
     cfg: PipelineConfig,
@@ -74,9 +79,26 @@ def load_and_extract(
     store = FeatureStore(cfg.feature_store_path)
     history = FittingHistory(store)
 
-    # ML circuit selector — train on existing history
-    ml_selector = CircuitMLSelector()
-    ml_selector.train(store)
+    # ML circuit selector — load pre-trained model if available, otherwise
+    # train from the feature store and persist the result for future runs.
+    _ML_MODEL_PATH = Path("data/knowledge/ml_classifier.joblib")
+    try:
+        ml_selector = CircuitMLSelector.load_model(_ML_MODEL_PATH)
+        logger.info(
+            "CircuitMLSelector: loaded pre-trained model from '%s'", _ML_MODEL_PATH
+        )
+    except Exception as _load_exc:
+        logger.info(
+            "Pre-trained model not loaded (%s); training from feature store.",
+            _load_exc,
+        )
+        ml_selector = CircuitMLSelector()
+        ml_selector.train(store)
+        if ml_selector.is_trained:
+            try:
+                ml_selector.save_model(_ML_MODEL_PATH)
+            except Exception as _save_exc:
+                logger.warning("Could not save classifier: %s", _save_exc)
 
     records: Dict[str, dict] = {}
     raw_eis: Dict[str, pd.DataFrame] = {}
@@ -105,16 +127,19 @@ def load_and_extract(
             except Exception as exc:
                 logger.warning("CPE fit failed for %s: %s", file, exc)
                 fit = {
-                    "Rs_fit": np.nan, "Rp_fit": np.nan,
-                    "Q": np.nan, "n": np.nan, "Sigma": np.nan,
+                    "Rs_fit": np.nan,
+                    "Rp_fit": np.nan,
+                    "Q": np.nan,
+                    "n": np.nan,
+                    "Sigma": np.nan,
                 }
             feat.update(fit)
             records[file] = feat
 
             # Circuit shortlist + BIC-best selection
-            _fit_circuit_for_file(df, file, cfg, reports_dir,
-                                  circuit_rows, store, history,
-                                  ml_selector)
+            _fit_circuit_for_file(
+                df, file, cfg, reports_dir, circuit_rows, store, history, ml_selector
+            )
 
         except Exception as exc:
             logger.error("Failed to process %s: %s", file, exc)
@@ -141,6 +166,7 @@ def _fit_circuit_for_file(
     try:
         # ML-ranked shortlist (empty if not trained → heuristic fallback)
         from src.circuit_fitting import extract_eis_features_for_ml
+
         ml_ranked: Optional[List[str]] = None
         if ml_selector is not None and ml_selector.is_trained:
             try:
@@ -149,7 +175,8 @@ def _fit_circuit_for_file(
                 if ml_ranked:
                     logger.info(
                         "ML selector for %s: %s (%s)",
-                        file, ml_ranked,
+                        file,
+                        ml_ranked,
                         ml_selector.explain(spec_feats),
                     )
             except Exception as exc:
@@ -168,7 +195,8 @@ def _fit_circuit_for_file(
             rec = record_from_shortlist_result(file, circ_res)
             if rec is not None:
                 summary = history.summary_text(
-                    rec.get("spectral_features", {}), n=10,
+                    rec.get("spectral_features", {}),
+                    n=10,
                 )
                 logger.info("Feature history for %s: %s", file, summary)
                 store.add_record(rec)
@@ -185,53 +213,71 @@ def _fit_circuit_for_file(
         best = circ_res.get("best") or {}
         results_list = circ_res.get("results") or []
         second = results_list[1] if len(results_list) > 1 else {}
-        circuit_rows.append({
-            "Arquivo": file,
-            "Circuito": best.get("template"),
-            "Representacao": best.get("diagram"),
-            "BIC": best.get("bic"),
-            "BIC_penalizado": best.get("bic_penalized"),
-            "AIC": best.get("aic"),
-            "RSS": best.get("rss"),
-            "chi2_over_nu": best.get("chi2_over_nu"),
-            "fit_verdict": best.get("fit_verdict"),
-            "fit_verdict_reasons": best.get("fit_verdict_reasons"),
-            "confidence_interval_95": best.get("confidence_interval_95"),
-            "param_significance": best.get("param_significance"),
-            "Confianca": best.get("confidence"),
-            "Res_autocorr": best.get("res_autocorr"),
-            "Res_estruturado": best.get("res_structured"),
-            "Bound_hits": best.get("bound_hits"),
-            "Params_std": best.get("params_std"),
-            "Params": best.get("params"),
-            "Shortlist": ", ".join(circ_res.get("shortlist", [])),
-            "Sucesso": best.get("success"),
-            "Diag_plot": best.get("diagnostic_plot"),
-            "Circuito2": second.get("template"),
-            "Confianca2": second.get("confidence"),
-            "BIC2": second.get("bic"),
-            "BIC2_penalizado": second.get("bic_penalized"),
-        })
+        circuit_rows.append(
+            {
+                "Arquivo": file,
+                "Circuito": best.get("template"),
+                "Representacao": best.get("diagram"),
+                "BIC": best.get("bic"),
+                "BIC_penalizado": best.get("bic_penalized"),
+                "AIC": best.get("aic"),
+                "RSS": best.get("rss"),
+                "chi2_over_nu": best.get("chi2_over_nu"),
+                "fit_verdict": best.get("fit_verdict"),
+                "fit_verdict_reasons": best.get("fit_verdict_reasons"),
+                "confidence_interval_95": best.get("confidence_interval_95"),
+                "param_significance": best.get("param_significance"),
+                "Confianca": best.get("confidence"),
+                "Res_autocorr": best.get("res_autocorr"),
+                "Res_estruturado": best.get("res_structured"),
+                "Bound_hits": best.get("bound_hits"),
+                "Params_std": best.get("params_std"),
+                "Params": best.get("params"),
+                "Shortlist": ", ".join(circ_res.get("shortlist", [])),
+                "Sucesso": best.get("success"),
+                "Diag_plot": best.get("diagnostic_plot"),
+                "Circuito2": second.get("template"),
+                "Confianca2": second.get("confidence"),
+                "BIC2": second.get("bic"),
+                "BIC2_penalizado": second.get("bic_penalized"),
+            }
+        )
     except Exception as exc:
-        circuit_rows.append({
-            "Arquivo": file,
-            "Circuito": None, "Representacao": None,
-            "BIC": None, "BIC_penalizado": None, "AIC": None,
-            "RSS": None, "chi2_over_nu": None,
-            "fit_verdict": "REJECTED", "fit_verdict_reasons": [str(exc)],
-            "confidence_interval_95": None, "param_significance": None,
-            "Confianca": None, "Res_autocorr": None,
-            "Res_estruturado": None, "Bound_hits": None,
-            "Params_std": None, "Params": str(exc),
-            "Shortlist": "", "Sucesso": False, "Diag_plot": None,
-            "Circuito2": None, "Confianca2": None,
-            "BIC2": None, "BIC2_penalizado": None,
-        })
+        circuit_rows.append(
+            {
+                "Arquivo": file,
+                "Circuito": None,
+                "Representacao": None,
+                "BIC": None,
+                "BIC_penalizado": None,
+                "AIC": None,
+                "RSS": None,
+                "chi2_over_nu": None,
+                "fit_verdict": "REJECTED",
+                "fit_verdict_reasons": [str(exc)],
+                "confidence_interval_95": None,
+                "param_significance": None,
+                "Confianca": None,
+                "Res_autocorr": None,
+                "Res_estruturado": None,
+                "Bound_hits": None,
+                "Params_std": None,
+                "Params": str(exc),
+                "Shortlist": "",
+                "Sucesso": False,
+                "Diag_plot": None,
+                "Circuito2": None,
+                "Confianca2": None,
+                "BIC2": None,
+                "BIC2_penalizado": None,
+            }
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Stage 2 — Build features DataFrame + metadata + classification
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 def build_features_df(records: Dict[str, dict]) -> pd.DataFrame:
     """Convert raw per-file feature dicts into a single DataFrame."""
@@ -260,8 +306,11 @@ def classify_and_rank(df: pd.DataFrame) -> pd.DataFrame:
 # Stage 3 — Stability
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def compute_stability(
-    df: pd.DataFrame, cfg: PipelineConfig, out_dir: str,
+    df: pd.DataFrame,
+    cfg: PipelineConfig,
+    out_dir: str,
 ) -> Dict[str, pd.DataFrame]:
     """Compute and save CV stability for each configured column."""
     stab_dict: Dict[str, pd.DataFrame] = {}
@@ -277,8 +326,11 @@ def compute_stability(
 # Stage 4 — PCA
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def compute_pca_stage(
-    df: pd.DataFrame, cfg: PipelineConfig, out_dir: str,
+    df: pd.DataFrame,
+    cfg: PipelineConfig,
+    out_dir: str,
 ) -> PCAResult:
     """Run PCA if data is sufficient, return PCAResult."""
     valid_cols = [c for c in cfg.pca_columns if c in df.columns]
@@ -296,15 +348,19 @@ def compute_pca_stage(
         paths: List[str] = []
 
         fig_2d = pca_2d(
-            df_pca, df.loc[df_pca.index, "Subclass"],
-            title="Análise PCA 2D - Amostras por Tipo", evr=evr,
+            df_pca,
+            df.loc[df_pca.index, "Subclass"],
+            title="Análise PCA 2D - Amostras por Tipo",
+            evr=evr,
         )
         if fig_2d:
             paths.append(fig_2d)
 
         fig_3d = pca_3d(
-            df_pca, df.loc[df_pca.index, "Subclass"],
-            title="Análise PCA 3D - Amostras por Tipo", evr=evr,
+            df_pca,
+            df.loc[df_pca.index, "Subclass"],
+            title="Análise PCA 3D - Amostras por Tipo",
+            evr=evr,
         )
         if fig_3d:
             paths.append(fig_3d)
@@ -314,8 +370,11 @@ def compute_pca_stage(
             paths.append(fig_scree)
 
         fig_biplot = pca_biplot_2d(
-            df_pca, loadings, df.loc[df_pca.index, "Subclass"],
-            title="Biplot PCA (PC1 x PC2)", evr=evr,
+            df_pca,
+            loadings,
+            df.loc[df_pca.index, "Subclass"],
+            title="Biplot PCA (PC1 x PC2)",
+            evr=evr,
         )
         if fig_biplot:
             paths.append(fig_biplot)
@@ -329,6 +388,7 @@ def compute_pca_stage(
 # ═══════════════════════════════════════════════════════════════════════════
 # Stage 5 — Capacitance / energy / retention table
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 def build_cap_energy(df: pd.DataFrame) -> pd.DataFrame:
     """Build the capacitance-energy-retention table from features_df."""
@@ -368,18 +428,21 @@ def build_cap_energy(df: pd.DataFrame) -> pd.DataFrame:
             cap.loc[grp.index, "Retenção (%)"] = (final / initial) * 100.0
 
     cap = cap.drop(columns=["_base", "_lead"])
-    cap = cap.rename(columns={
-        "C_mean": "C média (F)",
-        "C_max": "C máxima (F)",
-        "C_lowfreq": "C menor f (F)",
-        "Energy_mean": "Energia média (J)",
-    })
+    cap = cap.rename(
+        columns={
+            "C_mean": "C média (F)",
+            "C_max": "C máxima (F)",
+            "C_lowfreq": "C menor f (F)",
+            "Energy_mean": "Energia média (J)",
+        }
+    )
     return cap
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Stage 6 — Analytics plots (correlation, retention scatter, series)
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 def generate_analytics_plots(
     df_ranked: pd.DataFrame,
@@ -392,9 +455,20 @@ def generate_analytics_plots(
     analytics_dir = cfg.analytics_fig_dir
 
     corr_cols = [
-        "Rs_fit", "Rp_fit", "Q", "n", "Sigma",
-        "C_mean", "C_lowfreq", "C_espec (F/g)",
-        "Energy_mean", "Retenção (%)", "Tau", "Dispersion", "Score", "Rank",
+        "Rs_fit",
+        "Rp_fit",
+        "Q",
+        "n",
+        "Sigma",
+        "C_mean",
+        "C_lowfreq",
+        "C_espec (F/g)",
+        "Energy_mean",
+        "Retenção (%)",
+        "Tau",
+        "Dispersion",
+        "Score",
+        "Rank",
     ]
     path = correlation_heatmap(df_ranked, corr_cols, out_dir=analytics_dir)
     if path:
@@ -423,11 +497,17 @@ def generate_analytics_plots(
 
     # ── Production variables heatmap ──────────────────────────────
     prod_metrics = [
-        "Rs_fit", "Rp_fit", "n", "C_espec (F/g)",
-        "Energy_mean", "Retenção (%)", "Score",
+        "Rs_fit",
+        "Rp_fit",
+        "n",
+        "C_espec (F/g)",
+        "Energy_mean",
+        "Retenção (%)",
+        "Score",
     ]
     ph = production_heatmap(
-        df_ranked, prod_metrics,
+        df_ranked,
+        prod_metrics,
         group_col="Material_Type",
         secondary_group="Synthesis",
         out_dir=analytics_dir,
@@ -442,8 +522,10 @@ def generate_analytics_plots(
 # Stage 7 — Circuit summary table
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def build_circuit_tables(
-    circuit_rows: List[dict], out_dir: str,
+    circuit_rows: List[dict],
+    out_dir: str,
 ) -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
     """Build circuit_table and circuit_summary from raw rows."""
     if not circuit_rows:
@@ -453,26 +535,36 @@ def build_circuit_tables(
     circuit_table.to_csv(f"{out_dir}/circuit_fits.csv", index=False)
 
     summary_cols = [
-        "Circuito", "Representacao", "Sucesso", "Confianca",
-        "BIC_penalizado", "RSS", "Res_estruturado", "Bound_hits",
+        "Circuito",
+        "Representacao",
+        "Sucesso",
+        "Confianca",
+        "BIC_penalizado",
+        "RSS",
+        "Res_estruturado",
+        "Bound_hits",
     ]
     intersect = [c for c in summary_cols if c in circuit_table.columns]
 
     circuit_summary = None
     if intersect and "Circuito" in intersect:
         try:
-            agg_cols = {c: "mean" for c in intersect if c not in ("Circuito", "Representacao")}
+            agg_cols = {
+                c: "mean" for c in intersect if c not in ("Circuito", "Representacao")
+            }
             if "Representacao" in intersect:
                 agg_cols["Representacao"] = "first"
             summary = circuit_table[intersect].groupby("Circuito").agg(agg_cols)
-            summary = summary.rename(columns={
-                "Sucesso": "Sucesso_medio",
-                "Confianca": "Confianca_media",
-                "BIC_penalizado": "BIC_penalizado_medio",
-                "RSS": "RSS_medio",
-                "Res_estruturado": "Res_estruturado_pct",
-                "Bound_hits": "Bound_hits_medio",
-            })
+            summary = summary.rename(
+                columns={
+                    "Sucesso": "Sucesso_medio",
+                    "Confianca": "Confianca_media",
+                    "BIC_penalizado": "BIC_penalizado_medio",
+                    "RSS": "RSS_medio",
+                    "Res_estruturado": "Res_estruturado_pct",
+                    "Bound_hits": "Bound_hits_medio",
+                }
+            )
             summary["Contagem"] = circuit_table.groupby("Circuito").size()
             circuit_summary = summary.reset_index()
             circuit_summary.to_csv(f"{out_dir}/circuit_summary.csv", index=False)
@@ -485,6 +577,7 @@ def build_circuit_tables(
 # ═══════════════════════════════════════════════════════════════════════════
 # Orchestrator
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 def run_eis_pipeline(config: Optional[PipelineConfig] = None) -> EISResult:
     """Run the full EIS analysis pipeline.

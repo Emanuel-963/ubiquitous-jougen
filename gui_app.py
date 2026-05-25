@@ -572,6 +572,8 @@ class PipelineApp(ctk.CTk):
         self._after_update_id = self.after(2000, self._check_for_updates_async)
         # Auto-populate Compare tab with EIS files already in data_dir
         self.after(500, self._autoload_eis_on_startup)
+        # Auto-load pre-trained ML models shipped with the repo
+        self.after(800, self._autoload_ml_models)
 
         # MVC layer (Day 13) — will progressively absorb PipelineApp logic
         self._mvc = _MVCWindow(settings_path=self.settings_path)
@@ -4670,6 +4672,50 @@ class PipelineApp(ctk.CTk):
                 args=(data_dir,),
                 daemon=True,
             ).start()
+
+    def _autoload_ml_models(self) -> None:
+        """On startup, silently load any pre-trained ML models from disk.
+
+        Loads ``CircuitMLSelector`` and ``PerformancePredictor`` from the
+        ``data/knowledge/`` artefacts committed to the repository so that
+        users get ML-powered analysis immediately after cloning, without
+        having to click 'Treinar Classificador' first.
+        """
+
+        def _worker():
+            msgs = []
+            try:
+                from pathlib import Path
+
+                from src.ml_circuit_selector import CircuitMLSelector
+
+                ml_path = Path("data/knowledge/ml_classifier.joblib")
+                if ml_path.exists():
+                    sel = CircuitMLSelector.load_model(ml_path)
+                    msgs.append(
+                        f"🤖 Classificador ML carregado ({sel.n_training_samples} amostras, "
+                        f"{len(sel.classes)} classes)."
+                    )
+            except Exception as exc:
+                msgs.append(f"Aviso: classificador ML não carregado ({exc})")
+
+            try:
+                from pathlib import Path
+
+                from src.ai.performance_predictor import PerformancePredictor
+
+                pp_path = Path("data/knowledge/performance_predictor.joblib")
+                if pp_path.exists():
+                    pp = PerformancePredictor.load_model(pp_path)
+                    if pp.is_ml_trained:
+                        msgs.append("🔬 Preditor de performance ML restaurado.")
+            except Exception as exc:
+                msgs.append(f"Aviso: preditor ML não carregado ({exc})")
+
+            for msg in msgs:
+                self.after(0, lambda m=msg: self._append_log(m))
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     # ── Synthetic data for AI training ────────────────────────────────────
 

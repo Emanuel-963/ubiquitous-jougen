@@ -23,6 +23,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
@@ -31,6 +32,9 @@ import pandas as pd
 from src.config import PipelineConfig
 
 logger = logging.getLogger(__name__)
+
+# Default path for persisted PerformancePredictor ML state
+_PERF_MODEL_PATH = Path("data/knowledge/performance_predictor.joblib")
 
 # Minimum records needed to switch from heuristic to ML prediction
 _MIN_RECORDS_FOR_ML = 20
@@ -59,6 +63,7 @@ _CYCLING_TARGET_KEYS: Tuple[str, ...] = (
 # ═══════════════════════════════════════════════════════════════════════
 #  Enums
 # ═══════════════════════════════════════════════════════════════════════
+
 
 class DegradationMechanism(str, Enum):
     """Classification of degradation mechanism."""
@@ -91,6 +96,7 @@ class ImprovementArea(str, Enum):
 # ═══════════════════════════════════════════════════════════════════════
 #  Dataclasses
 # ═══════════════════════════════════════════════════════════════════════
+
 
 @dataclass
 class CyclingPrediction:
@@ -183,6 +189,7 @@ class Improvement:
 #  Helper functions
 # ═══════════════════════════════════════════════════════════════════════
 
+
 def _extract_eis_vector(
     params: Dict[str, float],
     keys: Sequence[str] = _EIS_FEATURE_KEYS,
@@ -266,6 +273,7 @@ def _build_training_data(
 #  Heuristic predictor
 # ═══════════════════════════════════════════════════════════════════════
 
+
 def _heuristic_cycling_prediction(
     params: Dict[str, float],
 ) -> CyclingPrediction:
@@ -289,10 +297,10 @@ def _heuristic_cycling_prediction(
     # ── Sanity thresholds ────────────────────────────────────────
     # Values below these are almost certainly fitting artefacts
     # (parameter stuck at optimizer lower bound).
-    RS_MIN_PHYSICAL = 1e-3   # 1 mΩ — realistic floor for Rs
-    RP_MIN_PHYSICAL = 1e-3   # 1 mΩ — realistic floor for Rp
-    POWER_MAX = 1e6          # 1 W — cap power at reasonable max (µW)
-    ENERGY_MIN = 1e-9        # practical floor for energy (µJ)
+    RS_MIN_PHYSICAL = 1e-3  # 1 mΩ — realistic floor for Rs
+    RP_MIN_PHYSICAL = 1e-3  # 1 mΩ — realistic floor for Rp
+    POWER_MAX = 1e6  # 1 W — cap power at reasonable max (µW)
+    ENERGY_MIN = 1e-9  # practical floor for energy (µJ)
 
     rs_reliable = rs is not None and rs >= RS_MIN_PHYSICAL
     rp_reliable = rp is not None and rp >= RP_MIN_PHYSICAL
@@ -321,14 +329,18 @@ def _heuristic_cycling_prediction(
         pred.energy = round(energy_eis, 4)
         parts.append(f"Energia estimada ≈ {pred.energy:.4f} µJ (do EIS)")
     else:
-        parts.append("Energia: não foi possível estimar (C_mean muito baixo ou ausente)")
+        parts.append(
+            "Energia: não foi possível estimar (C_mean muito baixo ou ausente)"
+        )
 
     # Power estimate: inversely proportional to Rs — only if Rs is reliable
     if rs_reliable:
         # P ∝ V² / (4 × Rs)  for V = 1V → P = 0.25 / Rs (W), convert to µW
         raw_power = 250_000 / rs
         pred.power = round(min(raw_power, POWER_MAX), 2)
-        parts.append(f"Potência estimada ≈ {pred.power:.2f} µW (inversamente proporcional a Rs)")
+        parts.append(
+            f"Potência estimada ≈ {pred.power:.2f} µW (inversamente proporcional a Rs)"
+        )
     else:
         parts.append("Potência: não estimada (Rs não-confiável ou ausente)")
 
@@ -343,7 +355,8 @@ def _heuristic_cycling_prediction(
         if sigma is not None and sigma > 30:
             sigma_penalty = min(10.0, (sigma - 30) * 0.2)
         pred.retention = round(
-            max(30.0, min(99.0, base_ret + n_bonus - rp_penalty - sigma_penalty)), 1,
+            max(30.0, min(99.0, base_ret + n_bonus - rp_penalty - sigma_penalty)),
+            1,
         )
         parts.append(f"Retenção estimada ≈ {pred.retention:.1f}%")
 
@@ -352,7 +365,9 @@ def _heuristic_cycling_prediction(
         pred.confidence = 0.3
     else:
         pred.confidence = 0.15
-    parts.insert(0, "Predição baseada em regras heurísticas (sem histórico ML suficiente).")
+    parts.insert(
+        0, "Predição baseada em regras heurísticas (sem histórico ML suficiente)."
+    )
     if warnings:
         parts.insert(1, " ".join(warnings))
     pred.explanation = " ".join(parts)
@@ -363,6 +378,7 @@ def _heuristic_cycling_prediction(
 # ═══════════════════════════════════════════════════════════════════════
 #  Degradation classifier
 # ═══════════════════════════════════════════════════════════════════════
+
 
 def _classify_degradation(
     before: Dict[str, float],
@@ -380,7 +396,6 @@ def _classify_degradation(
 
     # Key parameter changes
     d_rs = pred.delta_pct.get("Rs_fit", 0.0)
-    d_rp = pred.delta_pct.get("Rp_fit", 0.0)
     d_n = pred.delta_pct.get("n", 0.0)
     d_c = pred.delta_pct.get("C_mean", 0.0)
     d_sigma = pred.delta_pct.get("Sigma", 0.0)
@@ -388,7 +403,8 @@ def _classify_degradation(
     # Severity: weighted combination of absolute percentage changes
     abs_changes = [abs(v) for v in pred.delta_pct.values()]
     pred.severity = round(
-        min(1.0, np.mean(abs_changes) / 100.0) if abs_changes else 0.0, 3,
+        min(1.0, np.mean(abs_changes) / 100.0) if abs_changes else 0.0,
+        3,
     )
 
     # Classification logic
@@ -448,9 +464,13 @@ def _classify_degradation(
         pred.mechanism = mechanisms[0][0]
         pred.secondary_mechanisms = [m for m, _ in mechanisms[1:]]
         if len(mechanisms) >= 2:
-            parts.append("Mecanismo primário identificado com contribuições secundárias.")
+            parts.append(
+                "Mecanismo primário identificado com contribuições secundárias."
+            )
 
-    pred.explanation = " ".join(parts) if parts else "Análise de degradação inconclusiva."
+    pred.explanation = (
+        " ".join(parts) if parts else "Análise de degradação inconclusiva."
+    )
     return pred
 
 
@@ -555,13 +575,15 @@ def _recommend_improvements(
     for rule in _IMPROVEMENT_RULES:
         try:
             if rule["condition"](params):
-                improvements.append(Improvement(
-                    area=rule["area"],
-                    action=rule["action"],
-                    expected_impact=rule["impact"],
-                    priority=rule["priority"],
-                    rationale=rule["rationale"],
-                ))
+                improvements.append(
+                    Improvement(
+                        area=rule["area"],
+                        action=rule["action"],
+                        expected_impact=rule["impact"],
+                        priority=rule["priority"],
+                        rationale=rule["rationale"],
+                    )
+                )
         except (KeyError, TypeError):
             continue
 
@@ -573,6 +595,7 @@ def _recommend_improvements(
 # ═══════════════════════════════════════════════════════════════════════
 #  ML predictor (Ridge + RandomForest)
 # ═══════════════════════════════════════════════════════════════════════
+
 
 class _MLPredictor:
     """Internal ML model wrapper.
@@ -689,7 +712,9 @@ class _MLPredictor:
             logger.debug("Scaler transform failed, falling back to heuristic: %s", exc)
             return _heuristic_cycling_prediction(params)
 
-        pred = CyclingPrediction(method="ml", feature_importances=self._feature_importances)
+        pred = CyclingPrediction(
+            method="ml", feature_importances=self._feature_importances
+        )
         parts: List[str] = [
             f"Predição baseada em modelo ML treinado com {self._n_samples} amostras.",
         ]
@@ -707,7 +732,9 @@ class _MLPredictor:
                     pred.retention = round(max(0, min(100, val)), 1)
                     parts.append(f"Retenção estimada: {pred.retention:.1f}%")
             except Exception as exc:
-                logger.debug("ML prediction failed for target '%s': %s", target_name, exc)
+                logger.debug(
+                    "ML prediction failed for target '%s': %s", target_name, exc
+                )
                 continue
 
         # Confidence based on number of training samples and successful targets
@@ -717,7 +744,9 @@ class _MLPredictor:
 
         # Top-3 important features
         sorted_imp = sorted(
-            self._feature_importances.items(), key=lambda x: x[1], reverse=True,
+            self._feature_importances.items(),
+            key=lambda x: x[1],
+            reverse=True,
         )[:3]
         if sorted_imp:
             top_str = ", ".join(f"{k} ({v:.0%})" for k, v in sorted_imp)
@@ -730,6 +759,7 @@ class _MLPredictor:
 # ═══════════════════════════════════════════════════════════════════════
 #  EIS parameter extractor from result objects
 # ═══════════════════════════════════════════════════════════════════════
+
 
 def _extract_median_params(ranked_df: pd.DataFrame) -> Dict[str, float]:
     """Extract median EIS parameter values from a ranked DataFrame."""
@@ -771,6 +801,7 @@ def _extract_cycling_targets(cycling_result: Any) -> Dict[str, float]:
 #  PerformancePredictor
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class PerformancePredictor:
     """Predicts cycling performance, degradation and improvements.
 
@@ -793,9 +824,31 @@ class PerformancePredictor:
         self._ml = _MLPredictor()
         self._trained = False
 
-        # Auto-train if store has enough data
+        # Try to restore a previously saved model first
+        _loaded = False
+        try:
+            self._load_model_into_self(_PERF_MODEL_PATH)
+            _loaded = True
+            logger.info(
+                "PerformancePredictor: loaded persisted model from '%s'",
+                _PERF_MODEL_PATH,
+            )
+        except Exception:
+            pass
+
+        # Auto-train (or retrain with new data) if store has enough records
         if feature_store is not None:
             self._try_train()
+            # Persist updated model after training with new data
+            if self._ml.is_trained:
+                try:
+                    self.save_model(_PERF_MODEL_PATH)
+                except Exception as _save_exc:
+                    logger.debug(
+                        "Could not save PerformancePredictor model: %s", _save_exc
+                    )
+        elif _loaded:
+            pass  # Using the pre-loaded model, nothing extra to do
 
     @property
     def is_ml_trained(self) -> bool:
@@ -824,7 +877,8 @@ class PerformancePredictor:
             self._ml.train(X, Y)
             if self._ml.is_trained:
                 logger.info(
-                    "PerformancePredictor: ML trained on %d records.", X.shape[0],
+                    "PerformancePredictor: ML trained on %d records.",
+                    X.shape[0],
                 )
                 self._trained = True
 
@@ -836,6 +890,76 @@ class PerformancePredictor:
         X, Y = _build_training_data(records)
         if X is not None and Y is not None:
             self._ml.train(X, Y)
+
+    # ── Model persistence ─────────────────────────────────────────────
+
+    def save_model(self, path: Any = _PERF_MODEL_PATH) -> None:
+        """Persist the trained ML state to disk using joblib.
+
+        Parameters
+        ----------
+        path : str or Path
+            Destination file (default: ``data/knowledge/performance_predictor.joblib``).
+        """
+        if not self._ml.is_trained:
+            return
+        import joblib
+
+        _path = Path(path)
+        _path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "models": self._ml._models,
+            "scaler": getattr(self._ml, "_scaler", None),
+            "feature_names": self._ml._feature_names,
+            "n_samples": self._ml._n_samples,
+            "feature_importances": self._ml._feature_importances,
+        }
+        joblib.dump(payload, _path)
+        logger.info("PerformancePredictor: saved ML model to '%s'", _path)
+
+    def _load_model_into_self(self, path: Any) -> None:
+        """Load a saved ML payload into this instance."""
+        import joblib
+
+        _path = Path(path)
+        if not _path.exists():
+            raise FileNotFoundError(f"No saved predictor at '{_path}'")
+        payload = joblib.load(_path)
+        self._ml._models = payload["models"]
+        self._ml._scaler = payload.get("scaler")
+        self._ml._feature_names = payload.get("feature_names", _EIS_FEATURE_KEYS)
+        self._ml._n_samples = payload.get("n_samples", 0)
+        self._ml._feature_importances = payload.get("feature_importances", {})
+        self._ml._is_trained = bool(self._ml._models)
+        self._trained = self._ml._is_trained
+
+    @classmethod
+    def load_model(
+        cls,
+        path: Any = _PERF_MODEL_PATH,
+        config: Optional[PipelineConfig] = None,
+    ) -> "PerformancePredictor":
+        """Load a previously saved predictor without requiring a feature store.
+
+        Parameters
+        ----------
+        path : str or Path
+            File written by :meth:`save_model`.
+        config : PipelineConfig | None
+            Optional pipeline config.
+
+        Returns
+        -------
+        PerformancePredictor
+            Ready-to-use instance with restored ML models.
+        """
+        instance = cls.__new__(cls)
+        instance._store = None
+        instance._config = config if config is not None else PipelineConfig.default()
+        instance._ml = _MLPredictor()
+        instance._trained = False
+        instance._load_model_into_self(path)
+        return instance
 
     # ── Predict cycling from EIS ──────────────────────────────────────
 
@@ -880,7 +1004,11 @@ class PerformancePredictor:
             explanatory message when input data is missing.
         """
         ranked_df = getattr(eis_result, "ranked_df", None)
-        if ranked_df is None or not isinstance(ranked_df, pd.DataFrame) or ranked_df.empty:
+        if (
+            ranked_df is None
+            or not isinstance(ranked_df, pd.DataFrame)
+            or ranked_df.empty
+        ):
             return CyclingPrediction(
                 explanation="Sem dados EIS disponíveis para predição.",
             )
@@ -987,7 +1115,11 @@ class PerformancePredictor:
             when input data is unavailable.
         """
         ranked_df = getattr(eis_result, "ranked_df", None)
-        if ranked_df is None or not isinstance(ranked_df, pd.DataFrame) or ranked_df.empty:
+        if (
+            ranked_df is None
+            or not isinstance(ranked_df, pd.DataFrame)
+            or ranked_df.empty
+        ):
             return []
         params = _extract_median_params(ranked_df)
         return _recommend_improvements(params)
