@@ -36,24 +36,32 @@ ionflow analyze --all --ai --export-pdf report.pdf
 
 ## ✨ Funcionalidades (v0.4.10)
 
-| Módulo | Descrição |
-|---|---|
-| **Pipeline EIS** | 37 circuitos equivalentes, ML shortlist, Monte Carlo, Kramers-Kronig |
-| **Metrologia Orazem** | σ = α\|Zⱼ\|+β\|Zᵣ\|, χ²/ν, IC 95%, parâmetro-zumbi, Porous-TLM |
-| **Pipeline DRT** | Tikhonov regularisation, detecção de picos, overlay multi-amostra |
-| **Pipeline Ciclagem** | Ragone com zonas de referência, gap analysis vs targets |
-| **🤖 Agente IA** | 50+ regras eletroquímicas + LLM generativo (OpenAI / Ollama) |
-| **📄 PDF Reports** | Relatório automático com capa, secções EIS/Ciclagem/DRT/IA |
-| **CLI** | `ionflow eis / cycling / drt / analyze / preprocess / validate / config` |
-| **GUI** | MVC, 9 abas, atalhos teclado, 3 idiomas (PT/EN/ES) |
-| **Batch** | Processamento paralelo com `ProcessPoolExecutor` |
-| **i18n** | 3 idiomas com troca em tempo real |
-| **Importação nativa** | Parsers Gamry (.dta), BioLogic (.mpr/.mpt), Autolab, Zahner (.isc) |
-| **Exportação científica** | ZView, LaTeX booktabs, OriginPro, MEISP |
-| **Análise comparativa** | Overlay N amostras, Health Score (0–10), PCA automático |
-| **Base de dados** | SQLite local: amostras, EIS, DRT, ciclagem, histórico ML |
-| **Dashboard web** | Streamlit — 7 páginas em `localhost:8501` |
-| **Auto-update** | Verificação e download de novas versões pelo GitHub |
+> **Legenda de maturidade:**  
+> 🟢 **Estável** — testado, comportamento previsível, adequado para produção científica.  
+> 🟡 **Parcialmente validado** — funciona, mas validação quantitativa vs. referência externa ainda incompleta.  
+> 🔴 **Experimental** — funcionalidade existe, pouco ou nenhum teste de precisão; usar com cautela.
+
+| Módulo | Descrição | Status |
+|---|---|:---:|
+| **Pipeline EIS** | 37 circuitos equivalentes, ML shortlist, Monte Carlo, Kramers-Kronig | 🟡 |
+| **Metrologia Orazem** | σ = α\|Zⱼ\|+β\|Zᵣ\|, χ²/ν, IC 95%, parâmetro-zumbi, Porous-TLM | 🟡 |
+| **Pipeline DRT** | Tikhonov regularisation, detecção de picos, overlay multi-amostra | 🟡 |
+| **Pipeline Ciclagem** | Ragone com zonas de referência, gap analysis vs targets | 🟡 |
+| **Kramers-Kronig** | Diagnóstico de linearidade/estabilidade (método Boukamp) | 🟡 |
+| **Incerteza paramétrica** | Monte Carlo + Bootstrap sobre parâmetros do fitting | 🟡 |
+| **Importação nativa** | Parsers Gamry (.dta), BioLogic (.mpr/.mpt), Autolab, Zahner (.isc) | 🟡 |
+| **Exportação científica** | ZView, LaTeX booktabs, OriginPro, MEISP | 🟢 |
+| **GUI** | MVC, 9 abas, atalhos teclado, 3 idiomas (PT/EN/ES) | 🟢 |
+| **CLI** | `ionflow eis / cycling / drt / analyze / preprocess / validate / config` | 🟢 |
+| **📄 PDF Reports** | Relatório automático com capa, secções EIS/Ciclagem/DRT/IA | 🟢 |
+| **Batch** | Processamento paralelo com `ProcessPoolExecutor` | 🟢 |
+| **Análise comparativa** | Overlay N amostras, Health Score (0–10), PCA automático | 🔴 |
+| **🤖 Agente IA** | 50+ regras eletroquímicas + LLM generativo (OpenAI / Ollama) | 🔴 |
+| **Classificador ML** | RandomForest shortlist de circuito (~62 % acc. hierárquico) | 🔴 |
+| **Predição de performance** | ML para energia/potência/retenção (treinado em dados sintéticos) | 🔴 |
+| **Base de dados** | SQLite local: amostras, EIS, DRT, ciclagem, histórico ML | 🟢 |
+| **Dashboard web** | Streamlit — 7 páginas em `localhost:8501` | 🔴 |
+| **Auto-update** | Verificação e download de novas versões pelo GitHub | 🔴 |
 
 ---
 
@@ -332,20 +340,37 @@ mypy src                 # type checking
 
 ---
 
-## ⚠️ Status atual e limitações conhecidas
+## ⚠️ Limitações Conhecidas e Estado de Validação
 
-> **Beta estável** — pipeline principal (EIS / ciclagem / DRT) testado e funcional.
-> Adequado para investigação científica; ainda **não** submetido a revisão por pares.
+> **Beta estável** — pipeline principal (EIS / ciclagem / DRT) testado e funcional.  
+> Adequado para investigação científica; ainda **não** submetido a revisão por pares.  
+> Ver [docs/SCIENTIFIC_VALIDATION.md](docs/SCIENTIFIC_VALIDATION.md) para auditoria detalhada módulo a módulo.
 
-| Área | Estado / Limitação |
-|------|--------------------|
-| **Formatos EIS testados** | Gamry `.dta`, BioLogic `.mpr`/`.mpt`, Autolab `.csv`, Zahner `.isc`, genérico CSV/TXT |
-| **Classificador ML** | 30 % acc. (37 classes flat); ~62 % acc. hierárquico por família. Validar sempre o circuito sugerido. |
-| **Validação KK** | Diagnóstico — não bloqueia o ajuste automaticamente. |
-| **DRT** | Regularização de Tikhonov; adequado para análise qualitativa de picos. |
-| **Plataformas** | Testado em Windows 10/11. Linux/macOS via `install_linux.sh` (experimental). |
-| **GPU** | Não utilizado em nenhuma etapa. |
-| **Coeficientes Orazem α/β** | Calibrados para sistemas aquosos em temperatura ambiente; ajustar para meios não-aquosos ou temperaturas extremas. |
+### Limitações críticas a conhecer antes de publicar resultados
+
+| Área | Limitação |
+|------|-----------|
+| **Validação vs. referência externa** | Nenhum módulo foi ainda benchmarkado contra dados experimentais publicados ou software de referência (ZView, EC-Lab, pyDRTtools). Todos os testes automáticos usam dados sintéticos gerados internamente. |
+| **Fitting paramétrico** | A precisão de recuperação de Rs, Rp, Q, n não está quantificada. Use sempre o χ²/ν e os IC 95 % como guia; verifique o ajuste visualmente. |
+| **Coeficientes Orazem α/β** | Calibrados para sistemas aquosos em temperatura ambiente (Tribollet & Orazem 2026). Não usar diretamente em meios não-aquosos, temperaturas extremas ou células com geometria não-plana sem re-calibração. |
+| **DRT regularização** | λ de Tikhonov fixo ou ajustado heuristicamente. A escolha de λ afeta número e posição dos picos. Adequado para análise qualitativa; não use valores absolutos de γ(τ) como referência quantitativa sem inspeção da L-curve. |
+| **Classificador ML de circuito** | Acurácia real: ~30 % (flat, 37 classes), ~62 % (hierárquico por família). Treinado em espectros sintéticos. **Tratar sempre como sugestão** — confirmar o circuito manualmente. |
+| **Predição de performance (ML ciclagem)** | Treinado exclusivamente em dados sintéticos; sem validação experimental. Valores de energia/potência preditos são **estimativas heurísticas**, não previsões calibradas. |
+| **Agente IA (regras + LLM)** | As 50+ regras eletroquímicas são heurísticas de domínio, não derivadas de modelos termodinâmicos. O LLM generativo (OpenAI/Ollama) pode alucinar — **nunca citar output do LLM diretamente** num paper. |
+| **PCA automático** | Não benchmarkado contra sklearn PCA; loadings/scores não validados. Usar apenas para exploração visual de agrupamentos. |
+| **Parser BioLogic `.mpr`** | Suporte limitado a versões de firmware testadas internamente. Arquivos de firmware mais recentes podem falhar silenciosamente. |
+| **Plataformas** | Testado em Windows 10/11. Linux/macOS via `install_linux.sh` (experimental — sem CI dedicado). |
+| **GPU** | Não utilizado. Todos os cálculos em CPU. |
+
+### O que está bem validado
+
+| Módulo | Evidência |
+|--------|-----------|
+| **Fórmula de energia armazenada** E = ½CV² | Teste unitário com `math.isclose` vs valor analítico |
+| **Kramers-Kronig (comportamento qualitativo)** | 20+ testes: RC ideal → "excelente", dados ruidosos → "suspeito" |
+| **Monte Carlo de incerteza (convergência)** | Testes verificam média próxima do verdadeiro e IC ordenados |
+| **DRT — não-negatividade e monotonia de τ** | Testes explícitos de invariante físico |
+| **Pipeline EIS end-to-end** | Teste de integração: carga → KK → fitting → relatório sem erros |
 
 ---
 
@@ -363,5 +388,6 @@ Projeto desenvolvido para análise de materiais eletroquímicos em contexto de i
 - [ONE_PAGER](docs/ONE_PAGER.md) — Resumo de 1 página
 - [PRESENTATION](docs/PRESENTATION.md) — Guia de apresentação
 - [UPGRADE_PLAN](docs/UPGRADE_PLAN_v0.2.0.md) — Plano de 30 dias
+- [SCIENTIFIC_VALIDATION](docs/SCIENTIFIC_VALIDATION.md) — Auditoria de validação científica por módulo
 - [Tutoriais](tutoriais/) — Passo a passo
 
