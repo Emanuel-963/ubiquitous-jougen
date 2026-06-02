@@ -8,13 +8,22 @@ logger = logging.getLogger(__name__)
 
 # Supported EIS file extensions — used by every pipeline and batch processor
 # to skip non-EIS files (images, spreadsheets, docs…) in mixed-content folders.
-EIS_EXTENSIONS: frozenset = frozenset({
-    ".csv", ".txt", ".dat", ".asc",
-    ".mpt", ".mpr",            # BioLogic
-    ".dta",                    # Gamry
-    ".idf", ".z", ".dfr",     # Solartron / generic
-    ".ism", ".isc",            # Zahner
-})
+EIS_EXTENSIONS: frozenset = frozenset(
+    {
+        ".csv",
+        ".txt",
+        ".dat",
+        ".asc",
+        ".mpt",
+        ".mpr",  # BioLogic
+        ".dta",  # Gamry
+        ".idf",
+        ".z",
+        ".dfr",  # Solartron / generic
+        ".ism",
+        ".isc",  # Zahner
+    }
+)
 
 # OPT-02: in-process cache to avoid re-reading unchanged files.
 # Key = absolute path; value = (mtime_ns, DataFrame copy).
@@ -70,10 +79,14 @@ def load_eis_file(path: str) -> pd.DataFrame:
 
     # ── Delegate to specialised parsers for vendor formats ────────────
     import pathlib as _pl
-    _SPECIALIZED_EXTS = frozenset({".dta", ".mpr", ".mpt", ".ism", ".isc", ".idf", ".dfr"})
+
+    _SPECIALIZED_EXTS = frozenset(
+        {".dta", ".mpr", ".mpt", ".ism", ".isc", ".idf", ".dfr"}
+    )
     if _pl.Path(path).suffix.lower() in _SPECIALIZED_EXTS:
         try:
-            from src.parsers import detect_parser, GenericCSVParser
+            from src.parsers import GenericCSVParser, detect_parser
+
             parser_cls = detect_parser(path)
             if parser_cls is not None and parser_cls is not GenericCSVParser:
                 result = parser_cls().parse(path)
@@ -86,7 +99,8 @@ def load_eis_file(path: str) -> pd.DataFrame:
         except Exception as exc:
             logger.warning(
                 "load_eis_file: specialised parser failed for %s: %s — falling back to CSV",
-                path, exc,
+                path,
+                exc,
             )
 
     # Tentar com diferentes separadores
@@ -124,11 +138,21 @@ def load_eis_file(path: str) -> pd.DataFrame:
     zimag_col = None
 
     for c in df.columns:
-        if freq_col is None and "freq" in c:
+        if freq_col is None and ("freq" in c or c in ("f", "hz")):
             freq_col = c
-        elif zreal_col is None and ("z'" in c and "z''" not in c and "-z" not in c):
+        elif zreal_col is None and (
+            ("z'" in c and "z''" not in c and "-z" not in c)
+            or c in ("zreal", "zre", "z_re", "re(z)", "re_z", "rz", "z.re")
+            or ("re" in c and "z" in c and "im" not in c)
+        ):
             zreal_col = c
-        elif zimag_col is None and ("z''" in c or ("-z" in c and "imag" not in c)):
+        elif zimag_col is None and (
+            "z''" in c
+            or ("-z" in c and "imag" not in c)
+            or c
+            in ("zimag", "zim", "z_im", "im(z)", "im_z", "iz", "z.im", "-im(z)", "-imz")
+            or ("im" in c and "z" in c and "re" not in c)
+        ):
             zimag_col = c
 
     # Fallback por posição se necessário

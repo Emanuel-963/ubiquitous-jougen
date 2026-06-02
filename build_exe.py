@@ -94,6 +94,7 @@ HIDDEN_IMPORTS = [
     "PIL._tkinter_finder",
     "customtkinter",
     "mplcursors",
+    "tabulate",
 ]
 
 

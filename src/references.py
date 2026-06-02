@@ -7,14 +7,28 @@ Streamlit dashboard References page.
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 from typing import NamedTuple
 
-_REFS_FILE = (
-    Path(__file__).resolve().parent.parent
-    / "tutoriais"
-    / "08_referencias_bibliograficas.txt"
-)
+
+def _resolve_refs_file() -> Path:
+    """Return path to the references .txt file, handling PyInstaller bundles."""
+    if getattr(sys, "frozen", False):
+        # Frozen exe: tutoriais/ is next to the .exe, not inside _MEIPASS
+        return (
+            Path(sys.executable).parent
+            / "tutoriais"
+            / "08_referencias_bibliograficas.txt"
+        )
+    return (
+        Path(__file__).resolve().parent.parent
+        / "tutoriais"
+        / "08_referencias_bibliograficas.txt"
+    )
+
+
+_REFS_FILE = _resolve_refs_file()
 
 _DOI_RE = re.compile(r"DOI:\s*([\S]+)", re.IGNORECASE)
 _TAG_RE = re.compile(r"^\s*\[([A-Z0-9\-]+)\]")
