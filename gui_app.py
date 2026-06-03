@@ -50,6 +50,7 @@ class _LazyModule:
     def _load(self):
         if self._module is None:
             import importlib
+
             self._module = importlib.import_module(self._import_path)
         return self._module
 
@@ -64,36 +65,42 @@ Image = _LazyModule("PIL.Image")
 
 def _lazy_figure_canvas():
     from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
     return FigureCanvasTkAgg
 
 
 def _lazy_figure():
     from matplotlib.figure import Figure
+
     return Figure
 
 
 # Compatibility — used throughout as bare names
 class FigureCanvasTkAgg:  # noqa: F811
     """Lazy proxy for matplotlib FigureCanvasTkAgg."""
+
     _real = None
 
     def __new__(cls, *args, **kwargs):
         if cls._real is None:
-            from matplotlib.backends.backend_tkagg import \
-                FigureCanvasTkAgg as _Real
+            from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg as _Real
+
             cls._real = _Real
         return cls._real(*args, **kwargs)
 
 
 class Figure:  # noqa: F811
     """Lazy proxy for matplotlib Figure."""
+
     _real = None
 
     def __new__(cls, *args, **kwargs):
         if cls._real is None:
             from matplotlib.figure import Figure as _Real
+
             cls._real = _Real
         return cls._real(*args, **kwargs)
+
 
 from main import run_eis_pipeline
 from main_cycling import run_ciclagem_pipeline
@@ -1452,20 +1459,28 @@ class PipelineApp(ctk.CTk):
             height=28,
             state="disabled",
         )
-        self.btn_cancel.grid(row=25, column=0, padx=16, pady=(0, 8), sticky="ew")
+        self.btn_cancel.grid(row=40, column=0, padx=16, pady=(0, 8), sticky="ew")
 
         # UX-03: Material Preset selector
         ctk.CTkLabel(sidebar, text="🔬 " + tr("Material Preset"), anchor="w").grid(
-            row=25, column=0, padx=16, pady=(4, 2), sticky="ew"
+            row=41, column=0, padx=16, pady=(4, 2), sticky="ew"
         )
         self._material_preset_var = ctk.StringVar(value="generic")
         self.material_preset_menu = ctk.CTkOptionMenu(
             sidebar,
             variable=self._material_preset_var,
-            values=["generic", "supercapacitor", "li_ion", "corrosion_coating", "fuel_cell"],
+            values=[
+                "generic",
+                "supercapacitor",
+                "li_ion",
+                "corrosion_coating",
+                "fuel_cell",
+            ],
             command=self._on_material_preset_change,
         )
-        self.material_preset_menu.grid(row=25, column=0, padx=16, pady=(0, 8), sticky="ew")
+        self.material_preset_menu.grid(
+            row=42, column=0, padx=16, pady=(0, 8), sticky="ew"
+        )
 
         ctk.CTkButton(
             sidebar,
@@ -5490,7 +5505,13 @@ class PipelineApp(ctk.CTk):
             )
 
     def _cancel_pipeline(self):
-        """Escape — cancel running pipeline."""
+        """Escape/button — request cancellation for long-running tasks."""
+        with contextlib.suppress(Exception):
+            self._cancel_event.set()
+        with contextlib.suppress(Exception):
+            self.btn_cancel.configure(state="disabled")
+        with contextlib.suppress(Exception):
+            self.progress_label.configure(text=tr("Cancelando..."))
         if hasattr(self, "_batch_proc") and self._batch_proc is not None:
             self._batch_proc.cancel()
         self._append_log(tr("Cancelamento solicitado."))
@@ -8076,7 +8097,12 @@ class PipelineApp(ctk.CTk):
     def _maybe_show_wizard(self):
         """UX-01: Show Quick Start wizard on first launch."""
         try:
-            from src.gui.wizard import should_show_wizard, run_wizard_gui, mark_wizard_completed
+            from src.gui.wizard import (
+                mark_wizard_completed,
+                run_wizard_gui,
+                should_show_wizard,
+            )
+
             if should_show_wizard(self.settings_path):
                 result = run_wizard_gui(self)
                 if result.completed:
@@ -8095,6 +8121,7 @@ class PipelineApp(ctk.CTk):
         """UX-03: Apply material preset and update DRT parameters."""
         try:
             from src.config import PipelineConfig
+
             cfg = PipelineConfig.default()
             cfg.apply_material_preset(preset_name)
             # Update DRT UI entries
@@ -8102,16 +8129,11 @@ class PipelineApp(ctk.CTk):
             self.drt_lambda_entry.insert(0, str(cfg.drt_lambda))
             self.drt_n_taus_entry.delete(0, "end")
             self.drt_n_taus_entry.insert(0, str(cfg.drt_n_taus))
-            self._append_log(f"🔬 Preset '{preset_name}' aplicado — λ={cfg.drt_lambda}, n_taus={cfg.drt_n_taus}")
+            self._append_log(
+                f"🔬 Preset '{preset_name}' aplicado — λ={cfg.drt_lambda}, n_taus={cfg.drt_n_taus}"
+            )
         except Exception as exc:
             self._append_log(f"[Preset] Erro: {exc}")
-
-    def _cancel_pipeline(self):
-        """PERF-04: Signal pipeline cancellation."""
-        self._cancel_event.set()
-        self.btn_cancel.configure(state="disabled")
-        self._append_log("⏹ Cancelamento solicitado — aguardando finalização...")
-        self.progress_label.configure(text=tr("Cancelando..."))
 
     def _one_click_report(self):
         """UX-02: One-Click Report — run full pipeline and generate PDF."""
@@ -8140,10 +8162,7 @@ class PipelineApp(ctk.CTk):
                 cfg = PipelineConfig.default()
                 cfg.apply_material_preset(self._material_preset_var.get())
 
-                eis_result = run_eis_pipeline(
-                    data_dir=cfg.data_dir,
-                    output_dir=cfg.output_dir,
-                )
+                eis_result = run_eis_pipeline(config=cfg)
                 if self._cancel_event.is_set():
                     self.log_queue.put("⏹ One-Click Report cancelado.")
                     return
@@ -8159,18 +8178,21 @@ class PipelineApp(ctk.CTk):
                 )
                 gen = ReportGenerator(report_cfg)
                 gen.generate(
-                    results=eis_result,
                     output_path=output_path,
+                    pipeline_results={"eis": eis_result},
                 )
                 self.log_queue.put(f"✅ Relatório gerado: {output_path}")
             except Exception as exc:
                 self.log_queue.put(f"❌ One-Click Report falhou: {exc}")
             finally:
                 self._cancel_event.clear()
+                self.after(0, lambda: self.btn_cancel.configure(state="disabled"))
 
         threading.Thread(target=_worker, daemon=True).start()
 
-    def _generate_auto_summary(self, eis_result=None, cycling_result=None, drt_result=None):
+    def _generate_auto_summary(
+        self, eis_result=None, cycling_result=None, drt_result=None
+    ):
         """AI-01: Generate and display automatic summary after pipeline run."""
         try:
             from src.ai.auto_summary import generate_auto_summary, generate_next_steps
