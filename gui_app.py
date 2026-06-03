@@ -550,6 +550,10 @@ class PipelineApp(ctk.CTk):
             ".ionflow_gui_settings.json",
         )
         self.gui_settings = self._load_gui_settings()
+        self._offline_manager = None
+        self._audit_trail = None
+        self._file_watcher = None
+        self._file_watcher_running = False
         self.drt_ui_prefs = {
             "sample": "",
             "mode": "Espectro",
@@ -638,6 +642,8 @@ class PipelineApp(ctk.CTk):
                 str(self.gui_settings.get("journal_style", "ionflow")),
                 persist=False,
             )
+        with contextlib.suppress(Exception):
+            self._init_enterprise_services()
         self._restore_language()
         self.bind("<Configure>", self._schedule_responsive_layout)
         self.after(100, self._apply_responsive_layout)
@@ -1165,7 +1171,11 @@ class PipelineApp(ctk.CTk):
         with contextlib.suppress(Exception):
             self.gui_settings["language"] = get_language()
 
+        with contextlib.suppress(Exception):
+            self._audit_log("app_close")
         self._save_gui_settings()
+        with contextlib.suppress(Exception):
+            self._stop_file_watcher()
         with contextlib.suppress(Exception):
             self.after_cancel(self._after_queue_id)
         with contextlib.suppress(Exception):
@@ -6455,6 +6465,10 @@ class PipelineApp(ctk.CTk):
         self._append_log(
             f"Exportando {len(raw_eis)} arquivo(s) como '{fmt}' → {out_dir}"
         )
+        self._audit_log(
+            "export_eis_clicked",
+            {"format": fmt, "n_files": len(raw_eis), "out_dir": out_dir},
+        )
 
         def worker():
             try:
@@ -6525,6 +6539,7 @@ class PipelineApp(ctk.CTk):
             pass  # If we can't count, don't block the run
 
         self._last_pipeline = "eis"
+        self._audit_log("run_eis_clicked")
         self._update_status_bar(pipeline_status="running: EIS")
         self._disable_buttons()
         self._set_status("rodando EIS")
@@ -6548,6 +6563,7 @@ class PipelineApp(ctk.CTk):
         threading.Thread(target=worker, daemon=True).start()
 
     def _run_ciclagem_clicked(self):
+        self._audit_log("run_cycling_clicked")
         self._last_pipeline = "cycling"
         self._update_status_bar(pipeline_status="running: Cycling")
         self._disable_buttons()
@@ -6573,6 +6589,7 @@ class PipelineApp(ctk.CTk):
         threading.Thread(target=worker, daemon=True).start()
 
     def _run_both_clicked(self):
+        self._audit_log("run_both_clicked")
         self._last_pipeline = "both"
         self._update_status_bar(pipeline_status="running: EIS+Cycling")
         self._disable_buttons()
@@ -6608,6 +6625,7 @@ class PipelineApp(ctk.CTk):
         threading.Thread(target=worker, daemon=True).start()
 
     def _run_drt_clicked(self):
+        self._audit_log("run_drt_clicked")
         self._last_pipeline = "drt"
         self._update_status_bar(pipeline_status="running: DRT")
         self._disable_buttons()
@@ -7234,6 +7252,76 @@ class PipelineApp(ctk.CTk):
         ).grid(row=row_idx, column=1, sticky="w", padx=(0, 8), pady=(2, 6))
         row_idx += 1
 
+        # ── Operação Enterprise (v0.4.11) ───────────────────────────
+        _section("🏭 " + tr("Operação Enterprise"))
+
+        self._offline_var = ctk.BooleanVar(
+            value=bool(self.gui_settings.get("offline_mode", False))
+        )
+        self._file_watcher_var = ctk.BooleanVar(
+            value=bool(self.gui_settings.get("auto_watch_data_dir", False))
+        )
+
+        self._offline_switch = ctk.CTkSwitch(
+            outer,
+            text=tr("Modo Offline (air-gapped)"),
+            variable=self._offline_var,
+            onvalue=True,
+            offvalue=False,
+            command=self._offline_switch_toggled,
+        )
+        self._offline_switch.grid(
+            row=row_idx,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            padx=(16, 4),
+            pady=2,
+        )
+        ctk.CTkButton(
+            outer,
+            text="🧊 " + tr("Cache Offline"),
+            width=120,
+            command=self._cache_offline_resources_clicked,
+        ).grid(row=row_idx, column=2, padx=(0, 8), pady=2)
+        row_idx += 1
+
+        self._watcher_switch = ctk.CTkSwitch(
+            outer,
+            text=tr("Monitorar pasta de dados automaticamente"),
+            variable=self._file_watcher_var,
+            onvalue=True,
+            offvalue=False,
+            command=self._file_watcher_switch_toggled,
+        )
+        self._watcher_switch.grid(
+            row=row_idx,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            padx=(16, 4),
+            pady=2,
+        )
+        ctk.CTkButton(
+            outer,
+            text="🔁 " + tr("Recarregar dados"),
+            width=120,
+            command=self._autoload_eis_on_startup,
+        ).grid(row=row_idx, column=2, padx=(0, 8), pady=2)
+        row_idx += 1
+
+        ctk.CTkButton(
+            outer,
+            text="📑 " + tr("Exportar Audit CSV"),
+            command=self._export_audit_csv_clicked,
+        ).grid(row=row_idx, column=1, sticky="w", padx=(0, 8), pady=2)
+        ctk.CTkButton(
+            outer,
+            text="🛡 " + tr("Verificar Integridade"),
+            command=self._verify_audit_integrity_clicked,
+        ).grid(row=row_idx, column=2, padx=(0, 8), pady=2)
+        row_idx += 1
+
         # ── Relatório PDF / Branding ───────────────────────────────────
         _section("📄 " + tr("Relatório PDF / Branding"))
         _field(
@@ -7555,6 +7643,14 @@ class PipelineApp(ctk.CTk):
                 persist=False,
             )
 
+        with contextlib.suppress(Exception):
+            self.gui_settings["offline_mode"] = bool(self._offline_var.get())
+            self.gui_settings["auto_watch_data_dir"] = bool(
+                self._file_watcher_var.get()
+            )
+            self._offline_switch_toggled()
+            self._file_watcher_switch_toggled()
+
         self._save_gui_settings()
         self._append_log(tr("Configurações aplicadas."))
 
@@ -7617,6 +7713,10 @@ class PipelineApp(ctk.CTk):
             self._log_level_var.set("normal")
         with contextlib.suppress(Exception):
             self._journal_style_var.set("ionflow")
+        with contextlib.suppress(Exception):
+            self._offline_var.set(False)
+        with contextlib.suppress(Exception):
+            self._file_watcher_var.set(False)
         with contextlib.suppress(Exception):
             values = sorted(list(cfg.benchmark_objective_profiles.keys()))
             self.lab_objective_menu.configure(values=values)
@@ -8205,6 +8305,177 @@ class PipelineApp(ctk.CTk):
                     )
         except Exception as exc:
             self._append_log(f"[Wizard] Não foi possível exibir: {exc}")
+
+    def _init_enterprise_services(self):
+        """Initialize enterprise helpers introduced in v0.4.11."""
+        from src.audit_trail import AuditTrail
+        from src.offline_mode import OfflineManager
+
+        settings_dir = Path(self.settings_path).resolve().parent
+        self._offline_manager = OfflineManager(
+            settings_path=settings_dir / "offline_settings.json",
+            cache_dir=settings_dir / "offline_cache",
+        )
+        self._audit_trail = AuditTrail(db_path=Path("logs") / "audit_trail.db")
+
+        # Sync GUI vars with effective runtime state.
+        with contextlib.suppress(Exception):
+            self._offline_var.set(bool(self._offline_manager.is_offline()))
+        with contextlib.suppress(Exception):
+            self.gui_settings["offline_mode"] = bool(self._offline_manager.is_offline())
+
+        if bool(self.gui_settings.get("auto_watch_data_dir", False)):
+            self._start_file_watcher()
+
+        self._audit_log("app_start", {"version": "0.4.11", "branch": "roadmap-0411"})
+
+    def _audit_log(self, action: str, details: Optional[Dict[str, Any]] = None):
+        """Best-effort audit logging; never interrupts normal GUI flow."""
+        if self._audit_trail is None:
+            return
+        try:
+            import getpass
+
+            user = getpass.getuser() or "gui-user"
+        except Exception:
+            user = "gui-user"
+        with contextlib.suppress(Exception):
+            self._audit_trail.log_action(
+                user=user, action=action, details=details or {}
+            )
+
+    def _offline_switch_toggled(self):
+        """Enable/disable offline mode from Settings UI."""
+        if self._offline_manager is None:
+            self._append_log("Offline manager indisponível.")
+            return
+
+        target = bool(self._offline_var.get())
+        try:
+            if target:
+                self._offline_manager.enable_offline_mode()
+                self._append_log("🌐 Modo offline ativado.")
+                self._audit_log("offline_mode_enabled")
+            else:
+                self._offline_manager.disable_offline_mode()
+                self._append_log("🌐 Modo offline desativado.")
+                self._audit_log("offline_mode_disabled")
+            self.gui_settings["offline_mode"] = target
+            self._save_gui_settings()
+        except Exception as exc:
+            self._append_log(f"Falha ao alternar modo offline: {exc}")
+
+    def _cache_offline_resources_clicked(self):
+        """Copy current resources to offline cache for air-gapped operation."""
+        if self._offline_manager is None:
+            self._append_log("Offline manager indisponível.")
+            return
+
+        source_dir = filedialog.askdirectory(
+            title=tr("Selecionar pasta de recursos para cache offline"),
+            initialdir="data",
+        )
+        if not source_dir:
+            return
+        try:
+            copied = self._offline_manager.cache_resources(source_dir)
+            ok = self._offline_manager.verify_cached_resources()
+            self._append_log(
+                f"🧊 Cache offline atualizado: {len(copied)} arquivo(s). Integridade: {'OK' if ok else 'FALHA'}."
+            )
+            self._audit_log(
+                "offline_cache_updated",
+                {
+                    "source_dir": source_dir,
+                    "copied_files": len(copied),
+                    "integrity_ok": ok,
+                },
+            )
+        except Exception as exc:
+            self._append_log(f"Falha ao criar cache offline: {exc}")
+
+    def _start_file_watcher(self):
+        """Start watcher that auto-loads new EIS files dropped in data_dir."""
+        if self._file_watcher_running:
+            return
+        try:
+            from src.config import PipelineConfig
+            from src.file_watcher import FileWatcher
+
+            data_dir = PipelineConfig.default().data_dir
+
+            def _on_new_file(path: Path):
+                self._audit_log("file_detected", {"path": str(path)})
+                self.after(
+                    0,
+                    lambda p=path: self._append_log(
+                        f"🛰 Novo arquivo detectado: {p.name}"
+                    ),
+                )
+                # Reuse existing loader logic to avoid drift between code paths.
+                self._quick_load_eis_dir(str(path.parent))
+
+            self._file_watcher = FileWatcher(data_dir, _on_new_file, recursive=False)
+            self._file_watcher.start()
+            self._file_watcher_running = True
+            self._append_log(f"🛰 Monitoramento ativo em: {data_dir}")
+            self._audit_log("file_watcher_started", {"data_dir": data_dir})
+        except Exception as exc:
+            self._append_log(f"Falha ao iniciar monitoramento de arquivos: {exc}")
+
+    def _stop_file_watcher(self):
+        """Stop background file watcher when disabled or app exits."""
+        if self._file_watcher is None:
+            self._file_watcher_running = False
+            return
+        with contextlib.suppress(Exception):
+            self._file_watcher.stop()
+        self._file_watcher = None
+        self._file_watcher_running = False
+        self._audit_log("file_watcher_stopped")
+
+    def _file_watcher_switch_toggled(self):
+        """Enable/disable file watcher from settings."""
+        target = bool(self._file_watcher_var.get())
+        if target:
+            self._start_file_watcher()
+        else:
+            self._stop_file_watcher()
+            self._append_log("🛰 Monitoramento automático desativado.")
+        self.gui_settings["auto_watch_data_dir"] = target
+        self._save_gui_settings()
+
+    def _verify_audit_integrity_clicked(self):
+        """Validate hash-chain integrity of the local audit trail."""
+        if self._audit_trail is None:
+            self._append_log("Audit trail indisponível.")
+            return
+        ok = False
+        with contextlib.suppress(Exception):
+            ok = self._audit_trail.verify_integrity()
+        self._append_log(f"🛡 Audit trail integridade: {'OK' if ok else 'FALHA'}")
+        self._audit_log("audit_integrity_check", {"ok": ok})
+
+    def _export_audit_csv_clicked(self):
+        """Export audit trail entries to CSV."""
+        if self._audit_trail is None:
+            self._append_log("Audit trail indisponível.")
+            return
+        out = filedialog.asksaveasfilename(
+            title=tr("Salvar trilha de auditoria"),
+            initialdir="outputs",
+            initialfile="audit_trail.csv",
+            defaultextension=".csv",
+            filetypes=[("CSV", "*.csv")],
+        )
+        if not out:
+            return
+        try:
+            path = self._audit_trail.export_csv(out)
+            self._append_log(f"📑 Audit trail exportada: {path}")
+            self._audit_log("audit_export_csv", {"path": str(path)})
+        except Exception as exc:
+            self._append_log(f"Falha ao exportar audit trail: {exc}")
 
     def _reset_wizard_clicked(self):
         """Allow user to re-run the quick-start wizard on next launch."""
