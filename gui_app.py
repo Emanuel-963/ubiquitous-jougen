@@ -522,6 +522,12 @@ class PipelineApp(ctk.CTk):
         self.minsize(1200, 800)
 
         self.log_queue: queue.Queue = queue.Queue()
+        with contextlib.suppress(Exception):
+            from src.logger import setup_logging
+
+            # Attach GUI log handler once; strings emitted by the handler are
+            # consumed in _process_queue.
+            setup_logging(gui_queue=self.log_queue)
         self.image_refs: List[ctk.CTkImage] = []
         self.eis_df: Optional[pd.DataFrame] = None
         self.cic_df: Optional[pd.DataFrame] = None
@@ -622,6 +628,16 @@ class PipelineApp(ctk.CTk):
         self._build_layout()
         self._setup_shortcuts()
         self._restore_ui_preferences()
+        with contextlib.suppress(Exception):
+            self._on_log_level_change(
+                str(self.gui_settings.get("log_level", "normal")),
+                persist=False,
+            )
+        with contextlib.suppress(Exception):
+            self._on_journal_style_change(
+                str(self.gui_settings.get("journal_style", "ionflow")),
+                persist=False,
+            )
         self._restore_language()
         self.bind("<Configure>", self._schedule_responsive_layout)
         self.after(100, self._apply_responsive_layout)
@@ -6638,6 +6654,9 @@ class PipelineApp(ctk.CTk):
                 break
 
             try:
+                if isinstance(item, str):
+                    self._append_log(item)
+                    continue
                 msg_type = item[0]
                 if msg_type == "log":
                     self._append_log(item[1])
@@ -7157,6 +7176,64 @@ class PipelineApp(ctk.CTk):
         _field("dpi_save", "DPI salvar", str(cfg.dpi_save))
         _field("dpi_diagnostics", "DPI diagnóstico", str(cfg.dpi_diagnostics))
 
+        # ── Produtividade / Publicação (v0.4.11) ─────────────────────
+        _section("🧪 " + tr("Produtividade / Publicação"))
+
+        ctk.CTkLabel(outer, text=tr("Estilo de Figuras (Journal)"), anchor="w").grid(
+            row=row_idx, column=0, sticky="w", padx=(16, 4), pady=2
+        )
+        self._journal_style_var = ctk.StringVar(
+            value=str(self.gui_settings.get("journal_style", "ionflow"))
+        )
+        self._journal_style_menu = ctk.CTkOptionMenu(
+            outer,
+            variable=self._journal_style_var,
+            values=["ionflow", "acs", "rsc", "elsevier", "nature"],
+            command=lambda value: self._on_journal_style_change(value, persist=True),
+        )
+        self._journal_style_menu.grid(
+            row=row_idx, column=1, sticky="ew", padx=(0, 8), pady=2
+        )
+        ctk.CTkButton(
+            outer,
+            text="🎨",
+            width=32,
+            command=lambda: self._on_journal_style_change(
+                self._journal_style_var.get(),
+                persist=True,
+            ),
+        ).grid(row=row_idx, column=2, padx=(0, 8), pady=2)
+        row_idx += 1
+
+        ctk.CTkLabel(outer, text=tr("Nível de Log"), anchor="w").grid(
+            row=row_idx, column=0, sticky="w", padx=(16, 4), pady=2
+        )
+        self._log_level_var = ctk.StringVar(
+            value=str(self.gui_settings.get("log_level", "normal"))
+        )
+        self._log_level_menu = ctk.CTkOptionMenu(
+            outer,
+            variable=self._log_level_var,
+            values=["silent", "normal", "debug"],
+            command=lambda value: self._on_log_level_change(value, persist=True),
+        )
+        self._log_level_menu.grid(
+            row=row_idx, column=1, sticky="ew", padx=(0, 8), pady=2
+        )
+        ctk.CTkButton(
+            outer,
+            text="📦 " + tr("Export Figure Pack"),
+            command=self._export_figure_pack_clicked,
+        ).grid(row=row_idx, column=2, padx=(0, 8), pady=2)
+        row_idx += 1
+
+        ctk.CTkButton(
+            outer,
+            text="🧭 " + tr("Reiniciar Quick Start Wizard"),
+            command=self._reset_wizard_clicked,
+        ).grid(row=row_idx, column=1, sticky="w", padx=(0, 8), pady=(2, 6))
+        row_idx += 1
+
         # ── Relatório PDF / Branding ───────────────────────────────────
         _section("📄 " + tr("Relatório PDF / Branding"))
         _field(
@@ -7467,6 +7544,17 @@ class PipelineApp(ctk.CTk):
             )
             self.gui_settings["report_logo_path"] = logo_val
 
+        with contextlib.suppress(Exception):
+            self.gui_settings["log_level"] = str(self._log_level_var.get())
+            self._on_log_level_change(self.gui_settings["log_level"], persist=False)
+
+        with contextlib.suppress(Exception):
+            self.gui_settings["journal_style"] = str(self._journal_style_var.get())
+            self._on_journal_style_change(
+                self.gui_settings["journal_style"],
+                persist=False,
+            )
+
         self._save_gui_settings()
         self._append_log(tr("Configurações aplicadas."))
 
@@ -7525,6 +7613,10 @@ class PipelineApp(ctk.CTk):
         cfg = PipelineConfig.default()
         self._active_pipeline_config = cfg
         self._populate_settings_from_config(cfg)
+        with contextlib.suppress(Exception):
+            self._log_level_var.set("normal")
+        with contextlib.suppress(Exception):
+            self._journal_style_var.set("ionflow")
         with contextlib.suppress(Exception):
             values = sorted(list(cfg.benchmark_objective_profiles.keys()))
             self.lab_objective_menu.configure(values=values)
@@ -8113,6 +8205,116 @@ class PipelineApp(ctk.CTk):
                     )
         except Exception as exc:
             self._append_log(f"[Wizard] Não foi possível exibir: {exc}")
+
+    def _reset_wizard_clicked(self):
+        """Allow user to re-run the quick-start wizard on next launch."""
+        import json as _json
+
+        data = {}
+        with contextlib.suppress(Exception):
+            if os.path.exists(self.settings_path):
+                with open(self.settings_path, encoding="utf-8") as _f:
+                    data = _json.load(_f)
+        data["wizard_completed"] = False
+        with open(self.settings_path, "w", encoding="utf-8") as _f:
+            _json.dump(data, _f, ensure_ascii=False, indent=2)
+        self._append_log("🧭 Quick Start Wizard será exibido no próximo arranque.")
+
+    def _on_log_level_change(self, preset: str, persist: bool = True):
+        """DEV-04: Apply logging verbosity preset from GUI."""
+        preset = str(preset).strip().lower() or "normal"
+        if preset not in {"silent", "normal", "debug"}:
+            preset = "normal"
+
+        from src.logger import set_log_level
+
+        set_log_level(preset)
+        if persist:
+            self.gui_settings["log_level"] = preset
+            self._save_gui_settings()
+        self._append_log(f"🪵 Log level: {preset}")
+
+    def _on_journal_style_change(self, style_name: str, persist: bool = True):
+        """VIZ-04: Apply journal style globally to matplotlib plots."""
+        style = str(style_name).strip().lower() or "ionflow"
+        from src.journal_styles import apply_journal_style, get_available_styles
+
+        available = set(get_available_styles())
+        if style not in available:
+            style = "ionflow"
+
+        apply_journal_style(style)
+        if persist:
+            self.gui_settings["journal_style"] = style
+            self._save_gui_settings()
+        self._append_log(f"🎨 Estilo de figuras aplicado: {style}")
+
+    def _export_figure_pack_clicked(self):
+        """VIZ-03: Export key figures as PNG/SVG + CSV data bundle."""
+        out_dir = filedialog.askdirectory(
+            title=tr("Selecione pasta de destino para Figure Pack"),
+            initialdir="outputs",
+        )
+        if not out_dir:
+            return
+
+        figures: Dict[str, Tuple[Any, Optional[pd.DataFrame]]] = {}
+
+        def _add(name: str, fig: Optional[Figure], data: Optional[pd.DataFrame]):
+            if fig is not None:
+                figures[name] = (fig, data if isinstance(data, pd.DataFrame) else None)
+
+        _add("rank_vs_retencao", self._build_fig_rank(), self.rank_df)
+        _add("pca_2d", self._build_fig_pca(), self.df_pca)
+        _add("pca_retencao", self._build_fig_pca_metric(), self.df_pca)
+        _add("correlacao", self._build_fig_corr(), self.rank_df)
+
+        if self.raw_eis:
+            sample = sorted(self.raw_eis.keys())[0]
+            data = self.raw_eis.get(sample)
+            _add(f"nyquist_{sample}", self._build_fig_nyquist(sample), data)
+            _add(f"bode_{sample}", self._build_fig_bode(sample), data)
+
+        if self.cic_df is not None and not self.cic_df.empty:
+            _add("retencao_vs_ciclo", self._build_fig_retention_cycle(), self.cic_df)
+
+        if self.drt_results:
+            sample = sorted(self.drt_results.keys())[0]
+            _add(f"drt_{sample}", self._build_fig_drt_spectrum(sample), self.drt_df)
+
+        if not figures:
+            self._append_log("Sem gráficos suficientes para exportar Figure Pack.")
+            return
+
+        style = str(self.gui_settings.get("journal_style", "ionflow"))
+        dpi = 300
+        if getattr(self, "_active_pipeline_config", None) is not None:
+            with contextlib.suppress(Exception):
+                dpi = int(self._active_pipeline_config.dpi_save)
+
+        self._append_log(
+            f"📦 Exportando Figure Pack ({len(figures)} figuras) em {out_dir}..."
+        )
+
+        def _worker():
+            try:
+                from src.figure_pack import export_figure_pack
+
+                exported = export_figure_pack(
+                    figures,
+                    out_dir,
+                    dpi=dpi,
+                    style=style,
+                    formats=["png", "svg"],
+                )
+                n_files = sum(len(v) for v in exported.values())
+                self.log_queue.put(
+                    f"✅ Figure Pack exportado: {len(exported)} figuras, {n_files} arquivos."
+                )
+            except Exception as exc:
+                self.log_queue.put(f"❌ Falha no Figure Pack: {exc}")
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     def _on_material_preset_change(self, preset_name: str):
         """UX-03: Apply material preset and update DRT parameters."""
