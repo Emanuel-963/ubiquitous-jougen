@@ -10,9 +10,66 @@ import threading
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
+from tkinter import filedialog, ttk
 from typing import Any, Dict, List, Optional, Tuple
 
 import customtkinter as ctk
+import pandas as pd
+
+from main import run_eis_pipeline
+from main_cycling import run_ciclagem_pipeline
+from main_drt import run_drt_pipeline
+from src.batch_processor import BatchProcessor, BatchResult
+from src.circuit_composer import CircuitComposer
+from src.comparison import (
+    available_timeline_params,
+    compute_health_score,
+    health_score_label,
+    plot_bode_overlay,
+    plot_nyquist_overlay,
+    plot_parameter_timeline,
+)
+from src.cycling_plotter import plot_energy_power_vs_cycle
+from src.drt_visualization import plot_drt_heatmap, plot_drt_overlay, plot_drt_spectrum
+from src.eis_plots import (
+    plot_bode,
+    plot_boxplot_metrics,
+    plot_energy_cycle,
+    plot_impedance_heatmap,
+    plot_nyquist,
+    plot_radar,
+    plot_ragone,
+    plot_retention_cycle,
+)
+from src.fitting_diagnostics import FittingDiagnostics, assess_quality
+from src.fitting_report import FittingReport, FittingReportGenerator
+from src.gui import MainWindow as _MVCWindow
+from src.gui.shortcuts import (
+    DEFAULT_BINDINGS,
+    AccessibilitySettings,
+    ShortcutAction,
+    ShortcutManager,
+    StatusBarState,
+)
+from src.gui.tabs import build_fig_corr as _build_fig_corr_mod
+from src.gui.tabs import build_fig_drt_eis as _build_fig_drt_eis_mod
+from src.gui.tabs import build_fig_pca as _build_fig_pca_mod
+from src.gui.tabs import build_fig_pca_metric as _build_fig_pca_metric_mod
+from src.gui.tabs import build_fig_rank as _build_fig_rank_mod  # noqa: F401
+from src.gui.tabs import build_fig_series as _build_fig_series_mod
+from src.gui.tabs import table_column_configs as _table_column_configs
+from src.gui.tabs.ai_panel import AIPanelConfig, AIPanelResult, run_ai_analysis
+
+# ── Day 14 tab-module and widget imports ─────────────────────────────
+from src.gui.widgets import ChartExporter as _ChartExporter  # noqa: F401
+from src.gui.widgets import FilterableTableManager as _FilterableTableManager
+from src.gui.widgets import LogRedirector as _LogRedirector
+from src.gui.widgets import StyledOptionMenuHelper as _StyledOptionMenuHelper
+from src.i18n import get_language, set_language, tr
+from src.kramers_kronig import KKResult, KramersKronigValidator
+from src.license_manager import FREE_FILE_LIMIT, LicenseLimitError, LicenseManager
+from src.report_generator import ReportConfig, ReportGenerator
+from src.uncertainty import UncertaintyAnalyzer
 
 # ── Fix customtkinter theme loading in PyInstaller bundles ───────────
 if getattr(sys, "frozen", False):
@@ -33,13 +90,9 @@ if getattr(sys, "frozen", False):
         ctk.windows.widgets.theme.theme_manager.__file__ = _fake
         ctk.ThemeManager.load_theme("blue")
 
-from tkinter import filedialog, ttk
 
 # PERF-01: Lazy imports for heavy modules — deferred to reduce startup time.
 # We import pandas eagerly (always needed) but defer matplotlib/PIL.
-import pandas as pd
-
-
 class _LazyModule:
     """Descriptor that imports a module on first access."""
 
@@ -100,62 +153,6 @@ class Figure:  # noqa: F811
 
             cls._real = _Real
         return cls._real(*args, **kwargs)
-
-
-from main import run_eis_pipeline
-from main_cycling import run_ciclagem_pipeline
-from main_drt import run_drt_pipeline
-from src.batch_processor import BatchProcessor, BatchResult
-from src.circuit_composer import CircuitComposer
-from src.comparison import (
-    available_timeline_params,
-    compute_health_score,
-    health_score_label,
-    plot_bode_overlay,
-    plot_nyquist_overlay,
-    plot_parameter_timeline,
-)
-from src.cycling_plotter import plot_energy_power_vs_cycle
-from src.drt_visualization import plot_drt_heatmap, plot_drt_overlay, plot_drt_spectrum
-from src.eis_plots import (
-    plot_bode,
-    plot_boxplot_metrics,
-    plot_energy_cycle,
-    plot_impedance_heatmap,
-    plot_nyquist,
-    plot_radar,
-    plot_ragone,
-    plot_retention_cycle,
-)
-from src.fitting_diagnostics import FittingDiagnostics, assess_quality
-from src.fitting_report import FittingReport, FittingReportGenerator
-from src.gui import MainWindow as _MVCWindow
-from src.gui.shortcuts import (
-    DEFAULT_BINDINGS,
-    AccessibilitySettings,
-    ShortcutAction,
-    ShortcutManager,
-    StatusBarState,
-)
-from src.gui.tabs import build_fig_corr as _build_fig_corr_mod
-from src.gui.tabs import build_fig_drt_eis as _build_fig_drt_eis_mod
-from src.gui.tabs import build_fig_pca as _build_fig_pca_mod
-from src.gui.tabs import build_fig_pca_metric as _build_fig_pca_metric_mod
-from src.gui.tabs import build_fig_rank as _build_fig_rank_mod  # noqa: F401
-from src.gui.tabs import build_fig_series as _build_fig_series_mod
-from src.gui.tabs import table_column_configs as _table_column_configs
-from src.gui.tabs.ai_panel import AIPanelConfig, AIPanelResult, run_ai_analysis
-
-# ── Day 14 tab-module and widget imports ─────────────────────────────
-from src.gui.widgets import ChartExporter as _ChartExporter  # noqa: F401
-from src.gui.widgets import FilterableTableManager as _FilterableTableManager
-from src.gui.widgets import LogRedirector as _LogRedirector
-from src.gui.widgets import StyledOptionMenuHelper as _StyledOptionMenuHelper
-from src.i18n import get_language, set_language, tr
-from src.kramers_kronig import KKResult, KramersKronigValidator
-from src.license_manager import FREE_FILE_LIMIT, LicenseLimitError, LicenseManager
-from src.report_generator import ReportConfig, ReportGenerator
-from src.uncertainty import UncertaintyAnalyzer
 
 
 @dataclass
