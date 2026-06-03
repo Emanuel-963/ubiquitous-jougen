@@ -193,3 +193,33 @@ def get_logger(name: str) -> logging.Logger:
     if not _configured:
         setup_logging()
     return logging.getLogger(name)
+
+
+# ── DEV-04: Configurable log levels from GUI ────────────────────────────
+
+LOG_LEVEL_PRESETS = {
+    "silent": {"console": logging.WARNING, "gui": logging.WARNING, "file": logging.INFO},
+    "normal": {"console": logging.INFO, "gui": logging.INFO, "file": logging.DEBUG},
+    "debug": {"console": logging.DEBUG, "gui": logging.DEBUG, "file": logging.DEBUG},
+}
+"""Predefined log level profiles selectable from the GUI."""
+
+
+def set_log_level(preset: str) -> None:
+    """Change the active log verbosity profile.
+
+    Parameters
+    ----------
+    preset : str
+        One of 'silent', 'normal', 'debug'.
+    """
+    levels = LOG_LEVEL_PRESETS.get(preset, LOG_LEVEL_PRESETS["normal"])
+    root = logging.getLogger(_ROOT_LOGGER_NAME)
+    for h in root.handlers:
+        if isinstance(h, GUIQueueHandler):
+            h.setLevel(levels["gui"])
+        elif isinstance(h, logging.handlers.RotatingFileHandler):
+            h.setLevel(levels["file"])
+        elif isinstance(h, logging.StreamHandler):
+            h.setLevel(levels["console"])
+    logging.getLogger(__name__).info("Log level set to: %s", preset)

@@ -3,7 +3,7 @@
 **Plataforma profissional de análise eletroquímica** — EIS, ciclagem galvanostática, DRT — com agente IA, relatórios PDF, CLI e GUI interativa.
 
 [![CI](https://github.com/Emanuel-963/ubiquitous-jougen/actions/workflows/ci.yml/badge.svg)](https://github.com/Emanuel-963/ubiquitous-jougen/actions/workflows/ci.yml)
-![Version](https://img.shields.io/badge/version-0.4.10-blue)
+![Version](https://img.shields.io/badge/version-0.4.11-blue)
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License MIT](https://img.shields.io/badge/license-MIT-green)
 ![Tests](https://img.shields.io/badge/tests-2263%2B%20passing-brightgreen)
@@ -34,7 +34,7 @@ ionflow analyze --all --ai --export-pdf report.pdf
 
 ---
 
-## ✨ Funcionalidades (v0.4.10)
+## ✨ Funcionalidades (v0.4.11)
 
 > **Legenda de maturidade:**  
 > 🟢 **Estável** — testado, comportamento previsível, adequado para produção científica.  

@@ -35,11 +35,65 @@ if getattr(sys, "frozen", False):
 
 from tkinter import filedialog, ttk
 
-import matplotlib.pyplot as plt
+# PERF-01: Lazy imports for heavy modules — deferred to reduce startup time.
+# We import pandas eagerly (always needed) but defer matplotlib/PIL.
 import pandas as pd
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.figure import Figure
-from PIL import Image
+
+
+class _LazyModule:
+    """Descriptor that imports a module on first access."""
+
+    def __init__(self, import_path: str):
+        self._import_path = import_path
+        self._module = None
+
+    def _load(self):
+        if self._module is None:
+            import importlib
+            self._module = importlib.import_module(self._import_path)
+        return self._module
+
+    def __getattr__(self, name: str):
+        return getattr(self._load(), name)
+
+
+# These act as drop-in replacements for the modules
+plt = _LazyModule("matplotlib.pyplot")
+Image = _LazyModule("PIL.Image")
+
+
+def _lazy_figure_canvas():
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+    return FigureCanvasTkAgg
+
+
+def _lazy_figure():
+    from matplotlib.figure import Figure
+    return Figure
+
+
+# Compatibility — used throughout as bare names
+class FigureCanvasTkAgg:  # noqa: F811
+    """Lazy proxy for matplotlib FigureCanvasTkAgg."""
+    _real = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._real is None:
+            from matplotlib.backends.backend_tkagg import \
+                FigureCanvasTkAgg as _Real
+            cls._real = _Real
+        return cls._real(*args, **kwargs)
+
+
+class Figure:  # noqa: F811
+    """Lazy proxy for matplotlib Figure."""
+    _real = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._real is None:
+            from matplotlib.figure import Figure as _Real
+            cls._real = _Real
+        return cls._real(*args, **kwargs)
 
 from main import run_eis_pipeline
 from main_cycling import run_ciclagem_pipeline
@@ -574,6 +628,8 @@ class PipelineApp(ctk.CTk):
         self.after(500, self._autoload_eis_on_startup)
         # Auto-load pre-trained ML models shipped with the repo
         self.after(800, self._autoload_ml_models)
+        # UX-01: Quick Start wizard on first launch
+        self.after(1000, self._maybe_show_wizard)
 
         # MVC layer (Day 13) — will progressively absorb PipelineApp logic
         self._mvc = _MVCWindow(settings_path=self.settings_path)
@@ -1302,6 +1358,17 @@ class PipelineApp(ctk.CTk):
         self.btn_report.grid(row=10, column=0, padx=16, pady=(0, 8), sticky="ew")
         self._sidebar_buttons.append(self.btn_report)
 
+        # UX-02: One-Click Report
+        self.btn_oneclick = ctk.CTkButton(
+            sidebar,
+            text="🚀 " + tr("One-Click Report"),
+            command=self._one_click_report,
+            fg_color="#6d28d9",
+            hover_color="#5b21b6",
+        )
+        self.btn_oneclick.grid(row=10, column=0, padx=16, pady=(0, 4), sticky="ew")
+        self._sidebar_buttons.append(self.btn_oneclick)
+
         self.btn_export = ctk.CTkButton(
             sidebar,
             text="📤 " + tr("Exportar EIS como..."),
@@ -1371,8 +1438,34 @@ class PipelineApp(ctk.CTk):
         self.progress_label.grid(row=24, column=0, padx=16, pady=(0, 4), sticky="ew")
 
         self.progress_bar = ctk.CTkProgressBar(sidebar, mode="indeterminate")
-        self.progress_bar.grid(row=25, column=0, padx=16, pady=(0, 12), sticky="ew")
+        self.progress_bar.grid(row=25, column=0, padx=16, pady=(0, 4), sticky="ew")
         self.progress_bar.set(0)
+
+        # PERF-04: Cancel button
+        self._cancel_event = threading.Event()
+        self.btn_cancel = ctk.CTkButton(
+            sidebar,
+            text="⏹ " + tr("Cancelar"),
+            command=self._cancel_pipeline,
+            fg_color="#dc2626",
+            hover_color="#b91c1c",
+            height=28,
+            state="disabled",
+        )
+        self.btn_cancel.grid(row=25, column=0, padx=16, pady=(0, 8), sticky="ew")
+
+        # UX-03: Material Preset selector
+        ctk.CTkLabel(sidebar, text="🔬 " + tr("Material Preset"), anchor="w").grid(
+            row=25, column=0, padx=16, pady=(4, 2), sticky="ew"
+        )
+        self._material_preset_var = ctk.StringVar(value="generic")
+        self.material_preset_menu = ctk.CTkOptionMenu(
+            sidebar,
+            variable=self._material_preset_var,
+            values=["generic", "supercapacitor", "li_ion", "corrosion_coating", "fuel_cell"],
+            command=self._on_material_preset_change,
+        )
+        self.material_preset_menu.grid(row=25, column=0, padx=16, pady=(0, 8), sticky="ew")
 
         ctk.CTkButton(
             sidebar,
@@ -6632,6 +6725,8 @@ class PipelineApp(ctk.CTk):
         # Atualiza janela interativa se estiver aberta
         if self.interactive_win is not None and self.interactive_win.winfo_exists():
             self._open_interactive_window()
+        # AI-01: Auto executive summary
+        self._generate_auto_summary(eis_result=result)
 
     def _handle_cic_done(self, result: Optional[dict]):
         if result is None:
@@ -7973,6 +8068,133 @@ class PipelineApp(ctk.CTk):
         ctk.CTkButton(win, text="Fechar", command=win.destroy, width=120).pack(
             pady=(4, 12)
         )
+
+    # ═══════════════════════════════════════════════════════════════════
+    # v0.4.11 — New Methods
+    # ═══════════════════════════════════════════════════════════════════
+
+    def _maybe_show_wizard(self):
+        """UX-01: Show Quick Start wizard on first launch."""
+        try:
+            from src.gui.wizard import should_show_wizard, run_wizard_gui, mark_wizard_completed
+            if should_show_wizard(self.settings_path):
+                result = run_wizard_gui(self)
+                if result.completed:
+                    set_language(result.language)
+                    mark_wizard_completed(self.settings_path)
+                    self._material_preset_var.set(result.material_preset)
+                    self._on_material_preset_change(result.material_preset)
+                    self._append_log(
+                        f"✅ Wizard concluído: idioma={result.language}, "
+                        f"dados={result.data_dir}, preset={result.material_preset}"
+                    )
+        except Exception as exc:
+            self._append_log(f"[Wizard] Não foi possível exibir: {exc}")
+
+    def _on_material_preset_change(self, preset_name: str):
+        """UX-03: Apply material preset and update DRT parameters."""
+        try:
+            from src.config import PipelineConfig
+            cfg = PipelineConfig.default()
+            cfg.apply_material_preset(preset_name)
+            # Update DRT UI entries
+            self.drt_lambda_entry.delete(0, "end")
+            self.drt_lambda_entry.insert(0, str(cfg.drt_lambda))
+            self.drt_n_taus_entry.delete(0, "end")
+            self.drt_n_taus_entry.insert(0, str(cfg.drt_n_taus))
+            self._append_log(f"🔬 Preset '{preset_name}' aplicado — λ={cfg.drt_lambda}, n_taus={cfg.drt_n_taus}")
+        except Exception as exc:
+            self._append_log(f"[Preset] Erro: {exc}")
+
+    def _cancel_pipeline(self):
+        """PERF-04: Signal pipeline cancellation."""
+        self._cancel_event.set()
+        self.btn_cancel.configure(state="disabled")
+        self._append_log("⏹ Cancelamento solicitado — aguardando finalização...")
+        self.progress_label.configure(text=tr("Cancelando..."))
+
+    def _one_click_report(self):
+        """UX-02: One-Click Report — run full pipeline and generate PDF."""
+        from tkinter import filedialog as _fd
+
+        output_path = _fd.asksaveasfilename(
+            title="Salvar relatório completo",
+            defaultextension=".pdf",
+            filetypes=[("PDF", "*.pdf")],
+            initialfile="ionflow_report.pdf",
+        )
+        if not output_path:
+            return
+
+        self._append_log("🚀 One-Click Report — executando pipeline completo...")
+        self.btn_cancel.configure(state="normal")
+        self._cancel_event.clear()
+
+        def _worker():
+            try:
+                # Run EIS pipeline
+                from main import run_eis_pipeline
+                from src.config import PipelineConfig
+                from src.report_generator import ReportConfig, ReportGenerator
+
+                cfg = PipelineConfig.default()
+                cfg.apply_material_preset(self._material_preset_var.get())
+
+                eis_result = run_eis_pipeline(
+                    data_dir=cfg.data_dir,
+                    output_dir=cfg.output_dir,
+                )
+                if self._cancel_event.is_set():
+                    self.log_queue.put("⏹ One-Click Report cancelado.")
+                    return
+
+                # Generate report
+                report_cfg = ReportConfig(
+                    title="IonFlow Pipeline — Análise Automática",
+                    include_eis=True,
+                    include_cycling=False,
+                    include_drt=False,
+                    include_correlations=True,
+                    include_ai=True,
+                )
+                gen = ReportGenerator(report_cfg)
+                gen.generate(
+                    results=eis_result,
+                    output_path=output_path,
+                )
+                self.log_queue.put(f"✅ Relatório gerado: {output_path}")
+            except Exception as exc:
+                self.log_queue.put(f"❌ One-Click Report falhou: {exc}")
+            finally:
+                self._cancel_event.clear()
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _generate_auto_summary(self, eis_result=None, cycling_result=None, drt_result=None):
+        """AI-01: Generate and display automatic summary after pipeline run."""
+        try:
+            from src.ai.auto_summary import generate_auto_summary, generate_next_steps
+
+            summary = generate_auto_summary(
+                eis_result=eis_result,
+                cycling_result=cycling_result,
+                drt_result=drt_result,
+            )
+            self._append_log(summary)
+
+            # AI-02: Next-step suggestions
+            steps = generate_next_steps(
+                eis_result=eis_result,
+                cycling_result=cycling_result,
+                drt_result=drt_result,
+                material_preset=self._material_preset_var.get(),
+            )
+            if steps:
+                self._append_log("\n💡 Sugestões:")
+                for step in steps:
+                    self._append_log(f"  {step}")
+        except Exception as exc:
+            self._append_log(f"[Auto-summary] {exc}")
 
 
 def main():

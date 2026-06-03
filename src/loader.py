@@ -1,10 +1,121 @@
+"""EIS file loader with auto-detection of encoding and delimiter.
+
+Handles CSV/TXT files from various potentiostats with automatic
+separator sniffing, encoding detection (UTF-8, Latin-1, CP1252),
+and column name normalisation.
+"""
+
+import csv
 import logging
 import os
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 
 logger = logging.getLogger(__name__)
+
+
+# ── VAL-03: Encoding & separator auto-detection ─────────────────────────
+
+_ENCODINGS_TO_TRY: List[str] = ["utf-8", "utf-8-sig", "latin-1", "cp1252", "iso-8859-1"]
+"""Ordered list of encodings to attempt when reading EIS text files."""
+
+
+# ── VAL-02: Researcher-friendly error class ─────────────────────────────
+
+class EISLoadError(ValueError):
+    """User-friendly error raised when an EIS file cannot be loaded.
+
+    Attributes
+    ----------
+    path : str or None
+        Path to the file that failed to load.
+    detected_encoding : str or None
+        Encoding that was detected for the file.
+    detected_separator : str or None
+        Separator that was detected (or attempted).
+    columns_found : int or None
+        Number of columns found in the file.
+    suggestion : str
+        A human-readable suggestion for how to fix the issue.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        path: Optional[str] = None,
+        detected_encoding: Optional[str] = None,
+        detected_separator: Optional[str] = None,
+        columns_found: Optional[int] = None,
+    ):
+        super().__init__(message)
+        self.path = path
+        self.detected_encoding = detected_encoding
+        self.detected_separator = detected_separator
+        self.columns_found = columns_found
+
+
+def _detect_encoding(path: str) -> str:
+    """Detect the most likely text encoding for *path*.
+
+    Tries common scientific-data encodings in order and returns the
+    first one that can decode the file without errors.
+
+    Parameters
+    ----------
+    path : str
+        Path to the text file to inspect.
+
+    Returns
+    -------
+    str
+        Encoding name (e.g. ``'utf-8'``, ``'latin-1'``).
+    """
+    for enc in _ENCODINGS_TO_TRY:
+        try:
+            with open(path, encoding=enc, errors="strict") as fh:
+                fh.read(8192)  # read first 8 KB to validate
+            return enc
+        except (UnicodeDecodeError, ValueError):
+            continue
+    # Ultimate fallback — will replace bad chars
+    return "latin-1"
+
+
+def _sniff_delimiter(path: str, encoding: str) -> Optional[str]:
+    """Use csv.Sniffer to detect the column separator.
+
+    Falls back to None (which tells pandas to use its own detection).
+
+    Parameters
+    ----------
+    path : str
+        Path to the text file.
+    encoding : str
+        Encoding to use when opening the file.
+
+    Returns
+    -------
+    str or None
+        Detected delimiter character, or None if sniffing fails.
+    """
+    try:
+        with open(path, encoding=encoding, errors="replace") as fh:
+            # Skip comment lines (common in EIS files)
+            lines = []
+            for line in fh:
+                if not line.startswith("#") and line.strip():
+                    lines.append(line)
+                if len(lines) >= 10:
+                    break
+            if not lines:
+                return None
+            sample = "\n".join(lines)
+            dialect = csv.Sniffer().sniff(sample, delimiters=";,\t |")
+            return dialect.delimiter
+    except (csv.Error, OSError):
+        return None
 
 # Supported EIS file extensions — used by every pipeline and batch processor
 # to skip non-EIS files (images, spreadsheets, docs…) in mixed-content folders.
@@ -89,8 +200,18 @@ def load_eis_file(path: str) -> pd.DataFrame:
                 path, exc,
             )
 
-    # Tentar com diferentes separadores
-    separators = [";", "\t", ",", None]
+    # ── VAL-03: Auto-detect encoding and separator ─────────────────────
+    encoding = _detect_encoding(path)
+    sniffed_sep = _sniff_delimiter(path, encoding)
+
+    # Build prioritised separator list: sniffed delimiter first, then fallbacks
+    separators: List[Optional[str]] = []
+    if sniffed_sep:
+        separators.append(sniffed_sep)
+    for fallback in [";", "\t", ",", None]:
+        if fallback not in separators:
+            separators.append(fallback)
+
     df: Optional[pd.DataFrame] = None
 
     for sep in separators:
@@ -102,6 +223,7 @@ def load_eis_file(path: str) -> pd.DataFrame:
                 comment="#",
                 dtype=str,  # Ler tudo como string primeiro
                 skipinitialspace=True,
+                encoding=encoding,
             )
             if df.shape[1] >= 3:
                 break
@@ -109,32 +231,57 @@ def load_eis_file(path: str) -> pd.DataFrame:
             logger.debug("Falha ao ler %s com sep=%s: %s", path, sep, e)
             continue
 
+    # ── VAL-02: Researcher-friendly error messages ───────────────────
     if df is None or df.shape[1] < 3:
         cols = None if df is None else df.shape[1]
-        raise ValueError(
-            f"Arquivo {path} não pode ser parseado; numero de colunas: {cols}"
+        fname = os.path.basename(path)
+        raise EISLoadError(
+            f"O arquivo '{fname}' não pôde ser lido corretamente.\n"
+            f"  • Colunas encontradas: {cols} (mínimo necessário: 3)\n"
+            f"  • Encoding detectado: {encoding}\n"
+            f"  • Separador testado: {sniffed_sep or 'auto'}\n\n"
+            f"Dica: verifique se o arquivo contém pelo menos 3 colunas "
+            f"(frequência, Z' e Z'') separadas por ; ou , ou TAB.",
+            path=path,
+            detected_encoding=encoding,
+            detected_separator=sniffed_sep,
+            columns_found=cols,
         )
 
     # Normalização dos headers
     df.columns = [str(c).lower().strip() for c in df.columns]
 
-    # Encontrar colunas por padrão
+    # ── VAL-02: Smart column matching with helpful messages ──────────
+    # Known column name aliases from common potentiostat software
+    _FREQ_ALIASES = {"freq", "frequency", "f", "freq.", "frequency (hz)", "freq (hz)", "f (hz)", "freq/hz"}
+    _ZREAL_ALIASES = {"z'", "zreal", "z_re", "z_real", "z' (ohm)", "z'/ohm", "zre", "re(z)", "re_z"}
+    _ZIMAG_ALIASES = {"z''", "zimag", "z_im", "z_imag", "-z''", "-z'' (ohm)", "z''/ohm", "zim", "im(z)", "im_z", "-z\"", "-z'' (ohm)"}
+
     freq_col = None
     zreal_col = None
     zimag_col = None
 
     for c in df.columns:
-        if freq_col is None and "freq" in c:
+        if freq_col is None and (c in _FREQ_ALIASES or "freq" in c):
             freq_col = c
-        elif zreal_col is None and ("z'" in c and "z''" not in c and "-z" not in c):
+        elif zreal_col is None and (c in _ZREAL_ALIASES or ("z'" in c and "z''" not in c and "-z" not in c)):
             zreal_col = c
-        elif zimag_col is None and ("z''" in c or ("-z" in c and "imag" not in c)):
+        elif zimag_col is None and (c in _ZIMAG_ALIASES or "z''" in c or ("-z" in c and "imag" not in c)):
             zimag_col = c
 
     # Fallback por posição se necessário
     if freq_col is None or zreal_col is None or zimag_col is None:
         if df.shape[1] < 3:
-            raise ValueError(f"Arquivo {path} não possui colunas suficientes")
+            fname = os.path.basename(path)
+            raise EISLoadError(
+                f"O arquivo '{fname}' não possui colunas suficientes.\n"
+                f"  • Colunas encontradas: {list(df.columns)}\n"
+                f"  • Esperado: frequency, zreal (Z'), zimag (Z'')\n\n"
+                f"Dica: verifique se as colunas estão nomeadas corretamente "
+                f"ou se o separador está correto.",
+                path=path,
+                columns_found=df.shape[1],
+            )
 
         # Se temos mais de 3 colunas, tenta usar as 3 primeiras não-nulas
         valid_cols = [c for c in df.columns if df[c].notna().sum() > 0]
@@ -146,6 +293,10 @@ def load_eis_file(path: str) -> pd.DataFrame:
             freq_col = df.columns[0]
             zreal_col = df.columns[1]
             zimag_col = df.columns[2]
+        logger.info(
+            "Colunas não reconhecidas em '%s' — usando posicionais: %s, %s, %s",
+            os.path.basename(path), freq_col, zreal_col, zimag_col,
+        )
 
     # Selecionar apenas as colunas necessárias
     df = df[[freq_col, zreal_col, zimag_col]].copy()
@@ -165,7 +316,14 @@ def load_eis_file(path: str) -> pd.DataFrame:
 
     # Garantir que temos dados válidos
     if len(df) == 0:
-        raise ValueError(f"Arquivo {path} resultou em 0 linhas de dados válidos")
+        fname = os.path.basename(path)
+        raise EISLoadError(
+            f"O arquivo '{fname}' foi lido, mas resultou em 0 linhas válidas.\n"
+            f"  • Isso pode ocorrer se todos os valores são texto ou NaN.\n\n"
+            f"Dica: verifique se o arquivo usa '.' ou ',' como separador "
+            f"decimal e se não há linhas de cabeçalho extras.",
+            path=path,
+        )
 
     # OPT-02: store in cache before returning
     _cache_put(path, df)
