@@ -10,36 +10,11 @@ import threading
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
+from tkinter import filedialog, ttk
 from typing import Any, Dict, List, Optional, Tuple
 
 import customtkinter as ctk
-
-# ── Fix customtkinter theme loading in PyInstaller bundles ───────────
-if getattr(sys, "frozen", False):
-    import pathlib as _pl
-
-    _ctk_assets = _pl.Path(sys._MEIPASS) / "customtkinter" / "assets"
-    if _ctk_assets.is_dir():
-        # ThemeManager.load_theme uses __file__ to locate assets/themes/.
-        # Point it to the bundled copy so the path math works out.
-        _fake = str(
-            _pl.Path(sys._MEIPASS)
-            / "customtkinter"
-            / "windows"
-            / "widgets"
-            / "theme"
-            / "theme_manager.py"
-        )
-        ctk.windows.widgets.theme.theme_manager.__file__ = _fake
-        ctk.ThemeManager.load_theme("blue")
-
-from tkinter import filedialog, ttk
-
-import matplotlib.pyplot as plt
 import pandas as pd
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.figure import Figure
-from PIL import Image
 
 from main import run_eis_pipeline
 from main_cycling import run_ciclagem_pipeline
@@ -95,6 +70,89 @@ from src.kramers_kronig import KKResult, KramersKronigValidator
 from src.license_manager import FREE_FILE_LIMIT, LicenseLimitError, LicenseManager
 from src.report_generator import ReportConfig, ReportGenerator
 from src.uncertainty import UncertaintyAnalyzer
+
+# ── Fix customtkinter theme loading in PyInstaller bundles ───────────
+if getattr(sys, "frozen", False):
+    import pathlib as _pl
+
+    _ctk_assets = _pl.Path(sys._MEIPASS) / "customtkinter" / "assets"
+    if _ctk_assets.is_dir():
+        # ThemeManager.load_theme uses __file__ to locate assets/themes/.
+        # Point it to the bundled copy so the path math works out.
+        _fake = str(
+            _pl.Path(sys._MEIPASS)
+            / "customtkinter"
+            / "windows"
+            / "widgets"
+            / "theme"
+            / "theme_manager.py"
+        )
+        ctk.windows.widgets.theme.theme_manager.__file__ = _fake
+        ctk.ThemeManager.load_theme("blue")
+
+
+# PERF-01: Lazy imports for heavy modules — deferred to reduce startup time.
+# We import pandas eagerly (always needed) but defer matplotlib/PIL.
+class _LazyModule:
+    """Descriptor that imports a module on first access."""
+
+    def __init__(self, import_path: str):
+        self._import_path = import_path
+        self._module = None
+
+    def _load(self):
+        if self._module is None:
+            import importlib
+
+            self._module = importlib.import_module(self._import_path)
+        return self._module
+
+    def __getattr__(self, name: str):
+        return getattr(self._load(), name)
+
+
+# These act as drop-in replacements for the modules
+plt = _LazyModule("matplotlib.pyplot")
+Image = _LazyModule("PIL.Image")
+
+
+def _lazy_figure_canvas():
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+    return FigureCanvasTkAgg
+
+
+def _lazy_figure():
+    from matplotlib.figure import Figure
+
+    return Figure
+
+
+# Compatibility — used throughout as bare names
+class FigureCanvasTkAgg:  # noqa: F811
+    """Lazy proxy for matplotlib FigureCanvasTkAgg."""
+
+    _real = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._real is None:
+            from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg as _Real
+
+            cls._real = _Real
+        return cls._real(*args, **kwargs)
+
+
+class Figure:  # noqa: F811
+    """Lazy proxy for matplotlib Figure."""
+
+    _real = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._real is None:
+            from matplotlib.figure import Figure as _Real
+
+            cls._real = _Real
+        return cls._real(*args, **kwargs)
 
 
 @dataclass
@@ -464,6 +522,12 @@ class PipelineApp(ctk.CTk):
         self.minsize(1200, 800)
 
         self.log_queue: queue.Queue = queue.Queue()
+        with contextlib.suppress(Exception):
+            from src.logger import setup_logging
+
+            # Attach GUI log handler once; strings emitted by the handler are
+            # consumed in _process_queue.
+            setup_logging(gui_queue=self.log_queue)
         self.image_refs: List[ctk.CTkImage] = []
         self.eis_df: Optional[pd.DataFrame] = None
         self.cic_df: Optional[pd.DataFrame] = None
@@ -486,6 +550,10 @@ class PipelineApp(ctk.CTk):
             ".ionflow_gui_settings.json",
         )
         self.gui_settings = self._load_gui_settings()
+        self._offline_manager = None
+        self._audit_trail = None
+        self._file_watcher = None
+        self._file_watcher_running = False
         self.drt_ui_prefs = {
             "sample": "",
             "mode": "Espectro",
@@ -564,6 +632,18 @@ class PipelineApp(ctk.CTk):
         self._build_layout()
         self._setup_shortcuts()
         self._restore_ui_preferences()
+        with contextlib.suppress(Exception):
+            self._on_log_level_change(
+                str(self.gui_settings.get("log_level", "normal")),
+                persist=False,
+            )
+        with contextlib.suppress(Exception):
+            self._on_journal_style_change(
+                str(self.gui_settings.get("journal_style", "ionflow")),
+                persist=False,
+            )
+        with contextlib.suppress(Exception):
+            self._init_enterprise_services()
         self._restore_language()
         self.bind("<Configure>", self._schedule_responsive_layout)
         self.after(100, self._apply_responsive_layout)
@@ -574,6 +654,8 @@ class PipelineApp(ctk.CTk):
         self.after(500, self._autoload_eis_on_startup)
         # Auto-load pre-trained ML models shipped with the repo
         self.after(800, self._autoload_ml_models)
+        # UX-01: Quick Start wizard on first launch
+        self.after(1000, self._maybe_show_wizard)
 
         # MVC layer (Day 13) — will progressively absorb PipelineApp logic
         self._mvc = _MVCWindow(settings_path=self.settings_path)
@@ -1089,7 +1171,11 @@ class PipelineApp(ctk.CTk):
         with contextlib.suppress(Exception):
             self.gui_settings["language"] = get_language()
 
+        with contextlib.suppress(Exception):
+            self._audit_log("app_close")
         self._save_gui_settings()
+        with contextlib.suppress(Exception):
+            self._stop_file_watcher()
         with contextlib.suppress(Exception):
             self.after_cancel(self._after_queue_id)
         with contextlib.suppress(Exception):
@@ -1302,6 +1388,17 @@ class PipelineApp(ctk.CTk):
         self.btn_report.grid(row=10, column=0, padx=16, pady=(0, 8), sticky="ew")
         self._sidebar_buttons.append(self.btn_report)
 
+        # UX-02: One-Click Report
+        self.btn_oneclick = ctk.CTkButton(
+            sidebar,
+            text="🚀 " + tr("One-Click Report"),
+            command=self._one_click_report,
+            fg_color="#6d28d9",
+            hover_color="#5b21b6",
+        )
+        self.btn_oneclick.grid(row=10, column=0, padx=16, pady=(0, 4), sticky="ew")
+        self._sidebar_buttons.append(self.btn_oneclick)
+
         self.btn_export = ctk.CTkButton(
             sidebar,
             text="📤 " + tr("Exportar EIS como..."),
@@ -1371,8 +1468,42 @@ class PipelineApp(ctk.CTk):
         self.progress_label.grid(row=24, column=0, padx=16, pady=(0, 4), sticky="ew")
 
         self.progress_bar = ctk.CTkProgressBar(sidebar, mode="indeterminate")
-        self.progress_bar.grid(row=25, column=0, padx=16, pady=(0, 12), sticky="ew")
+        self.progress_bar.grid(row=25, column=0, padx=16, pady=(0, 4), sticky="ew")
         self.progress_bar.set(0)
+
+        # PERF-04: Cancel button
+        self._cancel_event = threading.Event()
+        self.btn_cancel = ctk.CTkButton(
+            sidebar,
+            text="⏹ " + tr("Cancelar"),
+            command=self._cancel_pipeline,
+            fg_color="#dc2626",
+            hover_color="#b91c1c",
+            height=28,
+            state="disabled",
+        )
+        self.btn_cancel.grid(row=40, column=0, padx=16, pady=(0, 8), sticky="ew")
+
+        # UX-03: Material Preset selector
+        ctk.CTkLabel(sidebar, text="🔬 " + tr("Material Preset"), anchor="w").grid(
+            row=41, column=0, padx=16, pady=(4, 2), sticky="ew"
+        )
+        self._material_preset_var = ctk.StringVar(value="generic")
+        self.material_preset_menu = ctk.CTkOptionMenu(
+            sidebar,
+            variable=self._material_preset_var,
+            values=[
+                "generic",
+                "supercapacitor",
+                "li_ion",
+                "corrosion_coating",
+                "fuel_cell",
+            ],
+            command=self._on_material_preset_change,
+        )
+        self.material_preset_menu.grid(
+            row=42, column=0, padx=16, pady=(0, 8), sticky="ew"
+        )
 
         ctk.CTkButton(
             sidebar,
@@ -5397,7 +5528,13 @@ class PipelineApp(ctk.CTk):
             )
 
     def _cancel_pipeline(self):
-        """Escape — cancel running pipeline."""
+        """Escape/button — request cancellation for long-running tasks."""
+        with contextlib.suppress(Exception):
+            self._cancel_event.set()
+        with contextlib.suppress(Exception):
+            self.btn_cancel.configure(state="disabled")
+        with contextlib.suppress(Exception):
+            self.progress_label.configure(text=tr("Cancelando..."))
         if hasattr(self, "_batch_proc") and self._batch_proc is not None:
             self._batch_proc.cancel()
         self._append_log(tr("Cancelamento solicitado."))
@@ -6328,6 +6465,10 @@ class PipelineApp(ctk.CTk):
         self._append_log(
             f"Exportando {len(raw_eis)} arquivo(s) como '{fmt}' → {out_dir}"
         )
+        self._audit_log(
+            "export_eis_clicked",
+            {"format": fmt, "n_files": len(raw_eis), "out_dir": out_dir},
+        )
 
         def worker():
             try:
@@ -6398,6 +6539,7 @@ class PipelineApp(ctk.CTk):
             pass  # If we can't count, don't block the run
 
         self._last_pipeline = "eis"
+        self._audit_log("run_eis_clicked")
         self._update_status_bar(pipeline_status="running: EIS")
         self._disable_buttons()
         self._set_status("rodando EIS")
@@ -6421,6 +6563,7 @@ class PipelineApp(ctk.CTk):
         threading.Thread(target=worker, daemon=True).start()
 
     def _run_ciclagem_clicked(self):
+        self._audit_log("run_cycling_clicked")
         self._last_pipeline = "cycling"
         self._update_status_bar(pipeline_status="running: Cycling")
         self._disable_buttons()
@@ -6446,6 +6589,7 @@ class PipelineApp(ctk.CTk):
         threading.Thread(target=worker, daemon=True).start()
 
     def _run_both_clicked(self):
+        self._audit_log("run_both_clicked")
         self._last_pipeline = "both"
         self._update_status_bar(pipeline_status="running: EIS+Cycling")
         self._disable_buttons()
@@ -6481,6 +6625,7 @@ class PipelineApp(ctk.CTk):
         threading.Thread(target=worker, daemon=True).start()
 
     def _run_drt_clicked(self):
+        self._audit_log("run_drt_clicked")
         self._last_pipeline = "drt"
         self._update_status_bar(pipeline_status="running: DRT")
         self._disable_buttons()
@@ -6527,6 +6672,9 @@ class PipelineApp(ctk.CTk):
                 break
 
             try:
+                if isinstance(item, str):
+                    self._append_log(item)
+                    continue
                 msg_type = item[0]
                 if msg_type == "log":
                     self._append_log(item[1])
@@ -6632,6 +6780,8 @@ class PipelineApp(ctk.CTk):
         # Atualiza janela interativa se estiver aberta
         if self.interactive_win is not None and self.interactive_win.winfo_exists():
             self._open_interactive_window()
+        # AI-01: Auto executive summary
+        self._generate_auto_summary(eis_result=result)
 
     def _handle_cic_done(self, result: Optional[dict]):
         if result is None:
@@ -7044,6 +7194,146 @@ class PipelineApp(ctk.CTk):
         _field("dpi_save", "DPI salvar", str(cfg.dpi_save))
         _field("dpi_diagnostics", "DPI diagnóstico", str(cfg.dpi_diagnostics))
 
+        # ── Produtividade / Publicação (v0.4.11) ─────────────────────
+        _section("🧪 " + tr("Produtividade / Publicação"))
+
+        ctk.CTkLabel(outer, text=tr("Estilo de Figuras (Journal)"), anchor="w").grid(
+            row=row_idx, column=0, sticky="w", padx=(16, 4), pady=2
+        )
+        self._journal_style_var = ctk.StringVar(
+            value=str(self.gui_settings.get("journal_style", "ionflow"))
+        )
+        self._journal_style_menu = ctk.CTkOptionMenu(
+            outer,
+            variable=self._journal_style_var,
+            values=["ionflow", "acs", "rsc", "elsevier", "nature"],
+            command=lambda value: self._on_journal_style_change(value, persist=True),
+        )
+        self._journal_style_menu.grid(
+            row=row_idx, column=1, sticky="ew", padx=(0, 8), pady=2
+        )
+        ctk.CTkButton(
+            outer,
+            text="🎨",
+            width=32,
+            command=lambda: self._on_journal_style_change(
+                self._journal_style_var.get(),
+                persist=True,
+            ),
+        ).grid(row=row_idx, column=2, padx=(0, 8), pady=2)
+        row_idx += 1
+
+        ctk.CTkLabel(outer, text=tr("Nível de Log"), anchor="w").grid(
+            row=row_idx, column=0, sticky="w", padx=(16, 4), pady=2
+        )
+        self._log_level_var = ctk.StringVar(
+            value=str(self.gui_settings.get("log_level", "normal"))
+        )
+        self._log_level_menu = ctk.CTkOptionMenu(
+            outer,
+            variable=self._log_level_var,
+            values=["silent", "normal", "debug"],
+            command=lambda value: self._on_log_level_change(value, persist=True),
+        )
+        self._log_level_menu.grid(
+            row=row_idx, column=1, sticky="ew", padx=(0, 8), pady=2
+        )
+        ctk.CTkButton(
+            outer,
+            text="📦 " + tr("Export Figure Pack"),
+            command=self._export_figure_pack_clicked,
+        ).grid(row=row_idx, column=2, padx=(0, 8), pady=2)
+        row_idx += 1
+
+        ctk.CTkButton(
+            outer,
+            text="🧭 " + tr("Reiniciar Quick Start Wizard"),
+            command=self._reset_wizard_clicked,
+        ).grid(row=row_idx, column=1, sticky="w", padx=(0, 8), pady=(2, 6))
+        row_idx += 1
+
+        # ── Operação Enterprise (v0.4.11) ───────────────────────────
+        _section("🏭 " + tr("Operação Enterprise"))
+
+        self._offline_var = ctk.BooleanVar(
+            value=bool(self.gui_settings.get("offline_mode", False))
+        )
+        self._file_watcher_var = ctk.BooleanVar(
+            value=bool(self.gui_settings.get("auto_watch_data_dir", False))
+        )
+
+        self._offline_switch = ctk.CTkSwitch(
+            outer,
+            text=tr("Modo Offline (air-gapped)"),
+            variable=self._offline_var,
+            onvalue=True,
+            offvalue=False,
+            command=self._offline_switch_toggled,
+        )
+        self._offline_switch.grid(
+            row=row_idx,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            padx=(16, 4),
+            pady=2,
+        )
+        ctk.CTkButton(
+            outer,
+            text="🧊 " + tr("Cache Offline"),
+            width=120,
+            command=self._cache_offline_resources_clicked,
+        ).grid(row=row_idx, column=2, padx=(0, 8), pady=2)
+        row_idx += 1
+
+        self._watcher_switch = ctk.CTkSwitch(
+            outer,
+            text=tr("Monitorar pasta de dados automaticamente"),
+            variable=self._file_watcher_var,
+            onvalue=True,
+            offvalue=False,
+            command=self._file_watcher_switch_toggled,
+        )
+        self._watcher_switch.grid(
+            row=row_idx,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            padx=(16, 4),
+            pady=2,
+        )
+        ctk.CTkButton(
+            outer,
+            text="🔁 " + tr("Recarregar dados"),
+            width=120,
+            command=self._autoload_eis_on_startup,
+        ).grid(row=row_idx, column=2, padx=(0, 8), pady=2)
+        row_idx += 1
+
+        ctk.CTkButton(
+            outer,
+            text="📑 " + tr("Exportar Audit CSV"),
+            command=self._export_audit_csv_clicked,
+        ).grid(row=row_idx, column=1, sticky="w", padx=(0, 8), pady=2)
+        ctk.CTkButton(
+            outer,
+            text="🛡 " + tr("Verificar Integridade"),
+            command=self._verify_audit_integrity_clicked,
+        ).grid(row=row_idx, column=2, padx=(0, 8), pady=2)
+        row_idx += 1
+
+        ctk.CTkButton(
+            outer,
+            text="🧬 " + tr("Exportar FAIR JSON-LD"),
+            command=self._export_fair_jsonld_clicked,
+        ).grid(row=row_idx, column=1, sticky="w", padx=(0, 8), pady=2)
+        ctk.CTkButton(
+            outer,
+            text="🔗 " + tr("Exportar para ELN"),
+            command=self._export_to_eln_clicked,
+        ).grid(row=row_idx, column=2, padx=(0, 8), pady=2)
+        row_idx += 1
+
         # ── Relatório PDF / Branding ───────────────────────────────────
         _section("📄 " + tr("Relatório PDF / Branding"))
         _field(
@@ -7354,6 +7644,25 @@ class PipelineApp(ctk.CTk):
             )
             self.gui_settings["report_logo_path"] = logo_val
 
+        with contextlib.suppress(Exception):
+            self.gui_settings["log_level"] = str(self._log_level_var.get())
+            self._on_log_level_change(self.gui_settings["log_level"], persist=False)
+
+        with contextlib.suppress(Exception):
+            self.gui_settings["journal_style"] = str(self._journal_style_var.get())
+            self._on_journal_style_change(
+                self.gui_settings["journal_style"],
+                persist=False,
+            )
+
+        with contextlib.suppress(Exception):
+            self.gui_settings["offline_mode"] = bool(self._offline_var.get())
+            self.gui_settings["auto_watch_data_dir"] = bool(
+                self._file_watcher_var.get()
+            )
+            self._offline_switch_toggled()
+            self._file_watcher_switch_toggled()
+
         self._save_gui_settings()
         self._append_log(tr("Configurações aplicadas."))
 
@@ -7412,6 +7721,14 @@ class PipelineApp(ctk.CTk):
         cfg = PipelineConfig.default()
         self._active_pipeline_config = cfg
         self._populate_settings_from_config(cfg)
+        with contextlib.suppress(Exception):
+            self._log_level_var.set("normal")
+        with contextlib.suppress(Exception):
+            self._journal_style_var.set("ionflow")
+        with contextlib.suppress(Exception):
+            self._offline_var.set(False)
+        with contextlib.suppress(Exception):
+            self._file_watcher_var.set(False)
         with contextlib.suppress(Exception):
             values = sorted(list(cfg.benchmark_objective_profiles.keys()))
             self.lab_objective_menu.configure(values=values)
@@ -7973,6 +8290,594 @@ class PipelineApp(ctk.CTk):
         ctk.CTkButton(win, text="Fechar", command=win.destroy, width=120).pack(
             pady=(4, 12)
         )
+
+    # ═══════════════════════════════════════════════════════════════════
+    # v0.4.11 — New Methods
+    # ═══════════════════════════════════════════════════════════════════
+
+    def _maybe_show_wizard(self):
+        """UX-01: Show Quick Start wizard on first launch."""
+        try:
+            from src.gui.wizard import (
+                mark_wizard_completed,
+                run_wizard_gui,
+                should_show_wizard,
+            )
+
+            if should_show_wizard(self.settings_path):
+                result = run_wizard_gui(self)
+                if result.completed:
+                    set_language(result.language)
+                    mark_wizard_completed(self.settings_path)
+                    self._material_preset_var.set(result.material_preset)
+                    self._on_material_preset_change(result.material_preset)
+                    self._append_log(
+                        f"✅ Wizard concluído: idioma={result.language}, "
+                        f"dados={result.data_dir}, preset={result.material_preset}"
+                    )
+        except Exception as exc:
+            self._append_log(f"[Wizard] Não foi possível exibir: {exc}")
+
+    def _init_enterprise_services(self):
+        """Initialize enterprise helpers introduced in v0.4.11."""
+        from src.audit_trail import AuditTrail
+        from src.offline_mode import OfflineManager
+
+        settings_dir = Path(self.settings_path).resolve().parent
+        self._offline_manager = OfflineManager(
+            settings_path=settings_dir / "offline_settings.json",
+            cache_dir=settings_dir / "offline_cache",
+        )
+        self._audit_trail = AuditTrail(db_path=Path("logs") / "audit_trail.db")
+
+        # Sync GUI vars with effective runtime state.
+        with contextlib.suppress(Exception):
+            self._offline_var.set(bool(self._offline_manager.is_offline()))
+        with contextlib.suppress(Exception):
+            self.gui_settings["offline_mode"] = bool(self._offline_manager.is_offline())
+
+        if bool(self.gui_settings.get("auto_watch_data_dir", False)):
+            self._start_file_watcher()
+
+        self._audit_log("app_start", {"version": "0.4.11", "branch": "roadmap-0411"})
+
+    def _audit_log(self, action: str, details: Optional[Dict[str, Any]] = None):
+        """Best-effort audit logging; never interrupts normal GUI flow."""
+        if self._audit_trail is None:
+            return
+        try:
+            import getpass
+
+            user = getpass.getuser() or "gui-user"
+        except Exception:
+            user = "gui-user"
+        with contextlib.suppress(Exception):
+            self._audit_trail.log_action(
+                user=user, action=action, details=details or {}
+            )
+
+    def _offline_switch_toggled(self):
+        """Enable/disable offline mode from Settings UI."""
+        if self._offline_manager is None:
+            self._append_log("Offline manager indisponível.")
+            return
+
+        target = bool(self._offline_var.get())
+        try:
+            if target:
+                self._offline_manager.enable_offline_mode()
+                self._append_log("🌐 Modo offline ativado.")
+                self._audit_log("offline_mode_enabled")
+            else:
+                self._offline_manager.disable_offline_mode()
+                self._append_log("🌐 Modo offline desativado.")
+                self._audit_log("offline_mode_disabled")
+            self.gui_settings["offline_mode"] = target
+            self._save_gui_settings()
+        except Exception as exc:
+            self._append_log(f"Falha ao alternar modo offline: {exc}")
+
+    def _cache_offline_resources_clicked(self):
+        """Copy current resources to offline cache for air-gapped operation."""
+        if self._offline_manager is None:
+            self._append_log("Offline manager indisponível.")
+            return
+
+        source_dir = filedialog.askdirectory(
+            title=tr("Selecionar pasta de recursos para cache offline"),
+            initialdir="data",
+        )
+        if not source_dir:
+            return
+        try:
+            copied = self._offline_manager.cache_resources(source_dir)
+            ok = self._offline_manager.verify_cached_resources()
+            self._append_log(
+                f"🧊 Cache offline atualizado: {len(copied)} arquivo(s). Integridade: {'OK' if ok else 'FALHA'}."
+            )
+            self._audit_log(
+                "offline_cache_updated",
+                {
+                    "source_dir": source_dir,
+                    "copied_files": len(copied),
+                    "integrity_ok": ok,
+                },
+            )
+        except Exception as exc:
+            self._append_log(f"Falha ao criar cache offline: {exc}")
+
+    def _start_file_watcher(self):
+        """Start watcher that auto-loads new EIS files dropped in data_dir."""
+        if self._file_watcher_running:
+            return
+        try:
+            from src.config import PipelineConfig
+            from src.file_watcher import FileWatcher
+
+            data_dir = PipelineConfig.default().data_dir
+
+            def _on_new_file(path: Path):
+                self._audit_log("file_detected", {"path": str(path)})
+                self.after(
+                    0,
+                    lambda p=path: self._append_log(
+                        f"🛰 Novo arquivo detectado: {p.name}"
+                    ),
+                )
+                # Reuse existing loader logic to avoid drift between code paths.
+                self._quick_load_eis_dir(str(path.parent))
+
+            self._file_watcher = FileWatcher(data_dir, _on_new_file, recursive=False)
+            self._file_watcher.start()
+            self._file_watcher_running = True
+            self._append_log(f"🛰 Monitoramento ativo em: {data_dir}")
+            self._audit_log("file_watcher_started", {"data_dir": data_dir})
+        except Exception as exc:
+            self._append_log(f"Falha ao iniciar monitoramento de arquivos: {exc}")
+
+    def _stop_file_watcher(self):
+        """Stop background file watcher when disabled or app exits."""
+        if self._file_watcher is None:
+            self._file_watcher_running = False
+            return
+        with contextlib.suppress(Exception):
+            self._file_watcher.stop()
+        self._file_watcher = None
+        self._file_watcher_running = False
+        self._audit_log("file_watcher_stopped")
+
+    def _file_watcher_switch_toggled(self):
+        """Enable/disable file watcher from settings."""
+        target = bool(self._file_watcher_var.get())
+        if target:
+            self._start_file_watcher()
+        else:
+            self._stop_file_watcher()
+            self._append_log("🛰 Monitoramento automático desativado.")
+        self.gui_settings["auto_watch_data_dir"] = target
+        self._save_gui_settings()
+
+    def _verify_audit_integrity_clicked(self):
+        """Validate hash-chain integrity of the local audit trail."""
+        if self._audit_trail is None:
+            self._append_log("Audit trail indisponível.")
+            return
+        ok = False
+        with contextlib.suppress(Exception):
+            ok = self._audit_trail.verify_integrity()
+        self._append_log(f"🛡 Audit trail integridade: {'OK' if ok else 'FALHA'}")
+        self._audit_log("audit_integrity_check", {"ok": ok})
+
+    def _export_audit_csv_clicked(self):
+        """Export audit trail entries to CSV."""
+        if self._audit_trail is None:
+            self._append_log("Audit trail indisponível.")
+            return
+        out = filedialog.asksaveasfilename(
+            title=tr("Salvar trilha de auditoria"),
+            initialdir="outputs",
+            initialfile="audit_trail.csv",
+            defaultextension=".csv",
+            filetypes=[("CSV", "*.csv")],
+        )
+        if not out:
+            return
+        try:
+            path = self._audit_trail.export_csv(out)
+            self._append_log(f"📑 Audit trail exportada: {path}")
+            self._audit_log("audit_export_csv", {"path": str(path)})
+        except Exception as exc:
+            self._append_log(f"Falha ao exportar audit trail: {exc}")
+
+    def _build_export_payload(self) -> Dict[str, Any]:
+        """Build a compact, serializable payload from latest analysis outputs."""
+        payload: Dict[str, Any] = {
+            "dataset_name": "IonFlow Analysis Export",
+            "source_file": str(self.gui_settings.get("last_dir_import", "")),
+            "author": str(self.gui_settings.get("report_author", "Desconhecido")),
+            "institution": str(self.gui_settings.get("report_institution", "")),
+            "results": {},
+        }
+
+        eis = getattr(self, "last_eis_result", None)
+        if isinstance(eis, dict):
+            raw_eis = eis.get("raw_eis") or {}
+            circuit_table = eis.get("circuit_table")
+            best_circuit = ""
+            with contextlib.suppress(Exception):
+                if circuit_table is not None and not circuit_table.empty:
+                    best_circuit = str(
+                        circuit_table["Circuito"].value_counts().index[0]
+                    )
+            payload["results"]["eis"] = {
+                "n_samples": int(len(raw_eis)),
+                "best_circuit": best_circuit,
+                "has_ranked": bool(eis.get("df_ranked") is not None),
+            }
+
+        cycling = getattr(self, "last_cycling_result", None)
+        if isinstance(cycling, dict):
+            merged = cycling.get("merged_table")
+            n_rows = 0
+            with contextlib.suppress(Exception):
+                n_rows = int(len(merged)) if merged is not None else 0
+            payload["results"]["cycling"] = {
+                "n_rows": n_rows,
+                "n_files": int(len(cycling.get("results") or {})),
+            }
+
+        drt = getattr(self, "last_drt_result", None)
+        if isinstance(drt, dict):
+            payload["results"]["drt"] = {
+                "n_files": int(len(drt.get("per_file_results") or {})),
+                "n_errors": int(len(drt.get("errors") or {})),
+            }
+
+        return payload
+
+    def _export_fair_jsonld_clicked(self):
+        """Export FAIR metadata (JSON-LD) from latest available analysis state."""
+        payload = self._build_export_payload()
+        if not payload.get("results"):
+            self._append_log("Sem resultados para gerar metadados FAIR.")
+            return
+
+        out = filedialog.asksaveasfilename(
+            title=tr("Salvar metadados FAIR"),
+            initialdir="outputs",
+            initialfile="ionflow_fair_metadata.jsonld",
+            defaultextension=".jsonld",
+            filetypes=[("JSON-LD", "*.jsonld"), ("JSON", "*.json")],
+        )
+        if not out:
+            return
+
+        try:
+            from src.fair_metadata import generate_jsonld, save_jsonld, validate_jsonld
+
+            method = "EIS"
+            if "drt" in payload["results"]:
+                method = "DRT"
+            elif "cycling" in payload["results"] and "eis" not in payload["results"]:
+                method = "cycling"
+
+            sample_info = {
+                "dataset_name": payload.get("dataset_name"),
+                "author": payload.get("author"),
+                "description": "Metadados FAIR exportados a partir da GUI IonFlow.",
+                "method": method,
+                "source": payload.get("source_file"),
+            }
+            metadata = generate_jsonld(payload, sample_info=sample_info)
+            validation = validate_jsonld(metadata)
+            saved = save_jsonld(metadata, out)
+            self._append_log(f"🧬 FAIR JSON-LD exportado: {saved}")
+            self._append_log(f"🧬 Validação FAIR: {validation.get('message', 'OK')}")
+            self._audit_log(
+                "export_fair_jsonld",
+                {"path": str(saved), "valid": bool(validation.get("valid", False))},
+            )
+        except Exception as exc:
+            self._append_log(f"Falha ao exportar FAIR JSON-LD: {exc}")
+
+    def _export_to_eln_clicked(self):
+        """Export current summary payload to a selected ELN provider."""
+        from tkinter import simpledialog
+
+        payload = self._build_export_payload()
+        if not payload.get("results"):
+            self._append_log("Sem resultados para exportar para ELN.")
+            return
+
+        provider = simpledialog.askstring(
+            tr("Exportar para ELN"),
+            "Provider (rspace / labarchives / benchling):",
+            parent=self,
+        )
+        if not provider:
+            return
+        provider = provider.strip().lower()
+        if provider not in {"rspace", "labarchives", "benchling"}:
+            self._append_log(
+                "Provider ELN inválido. Use: rspace, labarchives ou benchling."
+            )
+            return
+
+        api_key = simpledialog.askstring(
+            tr("Exportar para ELN"),
+            "API key/token:",
+            parent=self,
+            show="*",
+        )
+        if not api_key:
+            return
+
+        target = ""
+        prompt = ""
+        if provider == "rspace":
+            prompt = "Server URL (ex.: https://rspace.example.com)"
+        elif provider == "labarchives":
+            prompt = "Notebook ID"
+        elif provider == "benchling":
+            prompt = "Folder ID"
+
+        target = simpledialog.askstring(tr("Exportar para ELN"), prompt, parent=self)
+        if not target:
+            return
+
+        self._append_log(f"🔗 Exportando resumo para ELN ({provider})...")
+
+        def _worker():
+            try:
+                from src.eln_export import (
+                    export_to_benchling,
+                    export_to_labarchives,
+                    export_to_rspace,
+                )
+
+                if provider == "rspace":
+                    result = export_to_rspace(
+                        payload, api_key=api_key, server_url=target
+                    )
+                elif provider == "labarchives":
+                    result = export_to_labarchives(
+                        payload,
+                        api_key=api_key,
+                        notebook_id=target,
+                    )
+                else:
+                    result = export_to_benchling(
+                        payload, api_key=api_key, folder_id=target
+                    )
+
+                msg = result.get("message", "Exportação ELN concluída.")
+                if result.get("success"):
+                    self.log_queue.put(f"✅ {msg}")
+                else:
+                    self.log_queue.put(f"⚠ {msg}")
+                self._audit_log(
+                    "export_eln",
+                    {
+                        "provider": provider,
+                        "success": bool(result.get("success", False)),
+                        "status_code": result.get("status_code"),
+                    },
+                )
+            except Exception as exc:
+                self.log_queue.put(f"❌ Falha ao exportar para ELN: {exc}")
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _reset_wizard_clicked(self):
+        """Allow user to re-run the quick-start wizard on next launch."""
+        import json as _json
+
+        data = {}
+        with contextlib.suppress(Exception):
+            if os.path.exists(self.settings_path):
+                with open(self.settings_path, encoding="utf-8") as _f:
+                    data = _json.load(_f)
+        data["wizard_completed"] = False
+        with open(self.settings_path, "w", encoding="utf-8") as _f:
+            _json.dump(data, _f, ensure_ascii=False, indent=2)
+        self._append_log("🧭 Quick Start Wizard será exibido no próximo arranque.")
+
+    def _on_log_level_change(self, preset: str, persist: bool = True):
+        """DEV-04: Apply logging verbosity preset from GUI."""
+        preset = str(preset).strip().lower() or "normal"
+        if preset not in {"silent", "normal", "debug"}:
+            preset = "normal"
+
+        from src.logger import set_log_level
+
+        set_log_level(preset)
+        if persist:
+            self.gui_settings["log_level"] = preset
+            self._save_gui_settings()
+        self._append_log(f"🪵 Log level: {preset}")
+
+    def _on_journal_style_change(self, style_name: str, persist: bool = True):
+        """VIZ-04: Apply journal style globally to matplotlib plots."""
+        style = str(style_name).strip().lower() or "ionflow"
+        from src.journal_styles import apply_journal_style, get_available_styles
+
+        available = set(get_available_styles())
+        if style not in available:
+            style = "ionflow"
+
+        apply_journal_style(style)
+        if persist:
+            self.gui_settings["journal_style"] = style
+            self._save_gui_settings()
+        self._append_log(f"🎨 Estilo de figuras aplicado: {style}")
+
+    def _export_figure_pack_clicked(self):
+        """VIZ-03: Export key figures as PNG/SVG + CSV data bundle."""
+        out_dir = filedialog.askdirectory(
+            title=tr("Selecione pasta de destino para Figure Pack"),
+            initialdir="outputs",
+        )
+        if not out_dir:
+            return
+
+        figures: Dict[str, Tuple[Any, Optional[pd.DataFrame]]] = {}
+
+        def _add(name: str, fig: Optional[Figure], data: Optional[pd.DataFrame]):
+            if fig is not None:
+                figures[name] = (fig, data if isinstance(data, pd.DataFrame) else None)
+
+        _add("rank_vs_retencao", self._build_fig_rank(), self.rank_df)
+        _add("pca_2d", self._build_fig_pca(), self.df_pca)
+        _add("pca_retencao", self._build_fig_pca_metric(), self.df_pca)
+        _add("correlacao", self._build_fig_corr(), self.rank_df)
+
+        if self.raw_eis:
+            sample = sorted(self.raw_eis.keys())[0]
+            data = self.raw_eis.get(sample)
+            _add(f"nyquist_{sample}", self._build_fig_nyquist(sample), data)
+            _add(f"bode_{sample}", self._build_fig_bode(sample), data)
+
+        if self.cic_df is not None and not self.cic_df.empty:
+            _add("retencao_vs_ciclo", self._build_fig_retention_cycle(), self.cic_df)
+
+        if self.drt_results:
+            sample = sorted(self.drt_results.keys())[0]
+            _add(f"drt_{sample}", self._build_fig_drt_spectrum(sample), self.drt_df)
+
+        if not figures:
+            self._append_log("Sem gráficos suficientes para exportar Figure Pack.")
+            return
+
+        style = str(self.gui_settings.get("journal_style", "ionflow"))
+        dpi = 300
+        if getattr(self, "_active_pipeline_config", None) is not None:
+            with contextlib.suppress(Exception):
+                dpi = int(self._active_pipeline_config.dpi_save)
+
+        self._append_log(
+            f"📦 Exportando Figure Pack ({len(figures)} figuras) em {out_dir}..."
+        )
+
+        def _worker():
+            try:
+                from src.figure_pack import export_figure_pack
+
+                exported = export_figure_pack(
+                    figures,
+                    out_dir,
+                    dpi=dpi,
+                    style=style,
+                    formats=["png", "svg"],
+                )
+                n_files = sum(len(v) for v in exported.values())
+                self.log_queue.put(
+                    f"✅ Figure Pack exportado: {len(exported)} figuras, {n_files} arquivos."
+                )
+            except Exception as exc:
+                self.log_queue.put(f"❌ Falha no Figure Pack: {exc}")
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _on_material_preset_change(self, preset_name: str):
+        """UX-03: Apply material preset and update DRT parameters."""
+        try:
+            from src.config import PipelineConfig
+
+            cfg = PipelineConfig.default()
+            cfg.apply_material_preset(preset_name)
+            # Update DRT UI entries
+            self.drt_lambda_entry.delete(0, "end")
+            self.drt_lambda_entry.insert(0, str(cfg.drt_lambda))
+            self.drt_n_taus_entry.delete(0, "end")
+            self.drt_n_taus_entry.insert(0, str(cfg.drt_n_taus))
+            self._append_log(
+                f"🔬 Preset '{preset_name}' aplicado — λ={cfg.drt_lambda}, n_taus={cfg.drt_n_taus}"
+            )
+        except Exception as exc:
+            self._append_log(f"[Preset] Erro: {exc}")
+
+    def _one_click_report(self):
+        """UX-02: One-Click Report — run full pipeline and generate PDF."""
+        from tkinter import filedialog as _fd
+
+        output_path = _fd.asksaveasfilename(
+            title="Salvar relatório completo",
+            defaultextension=".pdf",
+            filetypes=[("PDF", "*.pdf")],
+            initialfile="ionflow_report.pdf",
+        )
+        if not output_path:
+            return
+
+        self._append_log("🚀 One-Click Report — executando pipeline completo...")
+        self.btn_cancel.configure(state="normal")
+        self._cancel_event.clear()
+
+        def _worker():
+            try:
+                # Run EIS pipeline
+                from main import run_eis_pipeline
+                from src.config import PipelineConfig
+                from src.report_generator import ReportConfig, ReportGenerator
+
+                cfg = PipelineConfig.default()
+                cfg.apply_material_preset(self._material_preset_var.get())
+
+                eis_result = run_eis_pipeline(config=cfg)
+                if self._cancel_event.is_set():
+                    self.log_queue.put("⏹ One-Click Report cancelado.")
+                    return
+
+                # Generate report
+                report_cfg = ReportConfig(
+                    title="IonFlow Pipeline — Análise Automática",
+                    include_eis=True,
+                    include_cycling=False,
+                    include_drt=False,
+                    include_correlations=True,
+                    include_ai=True,
+                )
+                gen = ReportGenerator(report_cfg)
+                gen.generate(
+                    output_path=output_path,
+                    pipeline_results={"eis": eis_result},
+                )
+                self.log_queue.put(f"✅ Relatório gerado: {output_path}")
+            except Exception as exc:
+                self.log_queue.put(f"❌ One-Click Report falhou: {exc}")
+            finally:
+                self._cancel_event.clear()
+                self.after(0, lambda: self.btn_cancel.configure(state="disabled"))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _generate_auto_summary(
+        self, eis_result=None, cycling_result=None, drt_result=None
+    ):
+        """AI-01: Generate and display automatic summary after pipeline run."""
+        try:
+            from src.ai.auto_summary import generate_auto_summary, generate_next_steps
+
+            summary = generate_auto_summary(
+                eis_result=eis_result,
+                cycling_result=cycling_result,
+                drt_result=drt_result,
+            )
+            self._append_log(summary)
+
+            # AI-02: Next-step suggestions
+            steps = generate_next_steps(
+                eis_result=eis_result,
+                cycling_result=cycling_result,
+                drt_result=drt_result,
+                material_preset=self._material_preset_var.get(),
+            )
+            if steps:
+                self._append_log("\n💡 Sugestões:")
+                for step in steps:
+                    self._append_log(f"  {step}")
+        except Exception as exc:
+            self._append_log(f"[Auto-summary] {exc}")
 
 
 def main():

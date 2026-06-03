@@ -1,6 +1,6 @@
 """IonFlow Pipeline — EIS analytics package."""
 
-__version__ = "0.4.10"
+__version__ = "0.4.11"
 
 from src.ai import (  # noqa: F401
     AnalysisReport,
@@ -122,3 +122,18 @@ from src.validation import (  # noqa: F401
     validate_frequency_range,
     validate_impedance_quality,
 )
+
+# v0.4.11 new modules
+from src.ai.auto_summary import (  # noqa: F401
+    generate_auto_summary,
+    generate_next_steps,
+)
+from src.figure_pack import export_figure_pack  # noqa: F401
+from src.journal_styles import (  # noqa: F401
+    JOURNAL_STYLES,
+    STYLE_LABELS,
+    apply_journal_style,
+    get_available_styles,
+    journal_style_context,
+)
+from src.loader import EISLoadError  # noqa: F401

@@ -2,6 +2,80 @@
 
 All notable changes to the IonFlow Pipeline are documented here.
 
+## [0.4.11] — 2026-06-03  _(Researcher Comfort & Performance)_
+
+### Added
+
+- **PERF-01 — Lazy imports** (`gui_app.py`): matplotlib, PIL e outros módulos
+  pesados são carregados sob demanda (lazy proxy classes), reduzindo o tempo de
+  abertura da GUI de ~5 s para < 2 s.
+
+- **VAL-03 — Auto-detecção de encoding e separador** (`src/loader.py`):
+  `_detect_encoding()` testa UTF-8, UTF-8-BOM, Latin-1, CP1252 e ISO-8859-1
+  automaticamente. `_sniff_delimiter()` usa `csv.Sniffer` para detectar `;`,
+  `,`, TAB, `|` ou espaço sem intervenção do pesquisador.
+
+- **VAL-02 — Mensagens de erro amigáveis** (`src/loader.py`): nova classe
+  `EISLoadError(ValueError)` com atributos `path`, `detected_encoding`,
+  `detected_separator`, `columns_found` e mensagens explicativas em português
+  com dicas de correção.
+
+- **UX-01 — Quick Start Wizard** (`src/gui/wizard.py`): diálogo de 3 passos
+  na primeira abertura: (1) idioma, (2) pasta de dados, (3) pipeline e preset
+  de material. Só aparece uma vez; pode ser reiniciado nas Configurações.
+
+- **UX-02 — One-Click Report** (`gui_app.py`): botão "🚀 One-Click Report"
+  que executa o pipeline EIS completo e gera PDF com um único clique.
+  Usa defaults do preset ativo e só pede caminho de saída.
+
+- **UX-03 — Material Presets** (`src/config.py`): 5 presets pré-configurados
+  (Supercapacitor, Li-ion, Corrosion/Coating, Fuel Cell, Generic) que ajustam
+  automaticamente λ DRT, n_taus, circuitos preferidos e thresholds de qualidade.
+  Método `PipelineConfig.apply_material_preset(name)`.
+
+- **PERF-04 — Botão Cancelar** (`gui_app.py`): botão "⏹ Cancelar" na sidebar
+  que sinaliza `threading.Event` para interromper o pipeline em execução sem
+  fechar o programa.
+
+- **AI-01 — Resumo executivo automático** (`src/ai/auto_summary.py`):
+  `generate_auto_summary()` gera 3–5 linhas resumindo os resultados imediatamente
+  após a execução do pipeline, sem necessidade de clicar "Análise IA".
+
+- **AI-02 — Sugestões automáticas de próximo passo** (`src/ai/auto_summary.py`):
+  `generate_next_steps()` fornece sugestões contextuais baseadas nos resultados
+  (Rs alto → polir eletrodo; n baixo → considerar TLM; χ² alto → trocar circuito).
+
+- **VIZ-04 — Templates de figuras para journals** (`src/journal_styles.py`):
+  presets de estilo matplotlib para ACS, RSC, Elsevier, Nature e IonFlow.
+  `apply_journal_style("acs")` ou context manager `journal_style_context("nature")`.
+
+- **VIZ-03 — Export Figure Pack** (`src/figure_pack.py`):
+  `export_figure_pack()` exporta todas as figuras em PNG (300 dpi) + SVG +
+  CSV com dados do plot, num único diretório organizado.
+
+- **DEV-04 — Logging configurável** (`src/logger.py`): `set_log_level(preset)`
+  com 3 perfis ("silent", "normal", "debug"). `LOG_LEVEL_PRESETS` dict para
+  integração com a GUI.
+
+- **38 novos testes** (`tests/test_v0411_features.py`): cobertura completa
+  para encoding detection, delimiter sniffing, EISLoadError, material presets,
+  journal styles, figure pack, auto-summary, next-steps, log config e wizard.
+
+### Changed
+
+- **`src/loader.py`**: refatorado para usar auto-detecção de encoding/separator
+  antes de tentar separadores fixos. Coluna matching expandido com aliases de
+  potenciostatos comuns (BioLogic, Gamry, Zahner, Autolab).
+
+- **`src/config.py`**: adicionados campos `material_preset`, `log_level` e
+  `MATERIAL_PRESETS` (dict com 5 presets). Novo método `apply_material_preset()`.
+
+- **`src/logger.py`**: adicionados `LOG_LEVEL_PRESETS` e `set_log_level()`.
+
+- **`gui_app.py`**: sidebar expandida com One-Click Report, Cancel, Material
+  Preset selector. Auto-summary integrado no completion handler de EIS.
+  Wizard trigger no `__init__`.
+
 ## [0.4.10] — 2026-05-20  _(Auto-update silencioso + Instalação melhorada)_
 
 ### Changed

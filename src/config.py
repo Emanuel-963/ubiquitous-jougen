@@ -263,6 +263,92 @@ class PipelineConfig:
     settings_filename: str = "ionflow_settings.json"
     """Filename for GUI settings persistence."""
 
+    material_preset: str = "generic"
+    """Active material preset ('supercapacitor', 'li_ion', 'corrosion_coating', 'fuel_cell', 'generic')."""
+
+    log_level: str = "normal"
+    """GUI log verbosity: 'silent', 'normal', or 'debug'."""
+
+    # ==================================================================
+    # Material Presets (UX-03)
+    # ==================================================================
+
+    MATERIAL_PRESETS: Dict[str, Dict[str, Any]] = field(default_factory=lambda: {
+        "supercapacitor": {
+            "label": "Supercapacitor",
+            "description": "Eletrodo poroso de carbono, eletrólito aquoso ou orgânico",
+            "drt_lambda": 1e-3,
+            "drt_n_taus": 60,
+            "preferred_circuits": ["Randles_CPE", "Randles_CPE_Warburg", "ZARC_ZARC", "TLM"],
+            "quality_thresholds": {"chi2_good": 0.01, "chi2_acceptable": 0.05},
+            "expected_rs_range": (0.1, 10.0),
+            "expected_rp_range": (0.5, 100.0),
+            "expected_n_range": (0.7, 1.0),
+        },
+        "li_ion": {
+            "label": "Li-ion Battery",
+            "description": "Célula Li-ion (catodo NMC/LFP, anodo grafite)",
+            "drt_lambda": 5e-4,
+            "drt_n_taus": 80,
+            "preferred_circuits": ["Randles_CPE", "ZARC_ZARC", "ZARC_ZARC_Warburg"],
+            "quality_thresholds": {"chi2_good": 0.005, "chi2_acceptable": 0.02},
+            "expected_rs_range": (0.01, 5.0),
+            "expected_rp_range": (1.0, 500.0),
+            "expected_n_range": (0.6, 0.95),
+        },
+        "corrosion_coating": {
+            "label": "Corrosion / Coating",
+            "description": "Revestimentos protetivos, corrosão de metais",
+            "drt_lambda": 1e-2,
+            "drt_n_taus": 50,
+            "preferred_circuits": ["Randles_CPE", "Coating_CPE", "ZARC_ZARC"],
+            "quality_thresholds": {"chi2_good": 0.02, "chi2_acceptable": 0.1},
+            "expected_rs_range": (1.0, 100.0),
+            "expected_rp_range": (1e3, 1e8),
+            "expected_n_range": (0.5, 0.95),
+        },
+        "fuel_cell": {
+            "label": "Fuel Cell",
+            "description": "PEMFC, SOFC — eletrodo de difusão gasosa",
+            "drt_lambda": 1e-3,
+            "drt_n_taus": 70,
+            "preferred_circuits": ["Randles_CPE_Warburg", "ZARC_ZARC_Warburg", "TLM"],
+            "quality_thresholds": {"chi2_good": 0.01, "chi2_acceptable": 0.05},
+            "expected_rs_range": (0.01, 2.0),
+            "expected_rp_range": (0.1, 50.0),
+            "expected_n_range": (0.6, 0.95),
+        },
+        "generic": {
+            "label": "Generic",
+            "description": "Configuração genérica — sem pressupostos sobre o sistema",
+            "drt_lambda": 1e-3,
+            "drt_n_taus": 50,
+            "preferred_circuits": [],
+            "quality_thresholds": {"chi2_good": 0.01, "chi2_acceptable": 0.05},
+            "expected_rs_range": (0.0, 1e6),
+            "expected_rp_range": (0.0, 1e9),
+            "expected_n_range": (0.0, 1.0),
+        },
+    })
+    """Material-specific presets for analysis parameters and quality thresholds."""
+
+    def apply_material_preset(self, preset_name: str) -> None:
+        """Apply a material preset, overriding DRT and quality settings.
+
+        Parameters
+        ----------
+        preset_name : str
+            One of the keys in ``MATERIAL_PRESETS``.
+        """
+        if preset_name not in self.MATERIAL_PRESETS:
+            logger.warning("Unknown preset '%s' — keeping current settings", preset_name)
+            return
+        preset = self.MATERIAL_PRESETS[preset_name]
+        self.material_preset = preset_name
+        self.drt_lambda = preset["drt_lambda"]
+        self.drt_n_taus = preset["drt_n_taus"]
+        logger.info("Applied material preset: %s", preset.get("label", preset_name))
+
     # ==================================================================
     # Factory & I/O
     # ==================================================================
