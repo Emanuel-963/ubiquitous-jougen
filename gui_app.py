@@ -7322,6 +7322,18 @@ class PipelineApp(ctk.CTk):
         ).grid(row=row_idx, column=2, padx=(0, 8), pady=2)
         row_idx += 1
 
+        ctk.CTkButton(
+            outer,
+            text="🧬 " + tr("Exportar FAIR JSON-LD"),
+            command=self._export_fair_jsonld_clicked,
+        ).grid(row=row_idx, column=1, sticky="w", padx=(0, 8), pady=2)
+        ctk.CTkButton(
+            outer,
+            text="🔗 " + tr("Exportar para ELN"),
+            command=self._export_to_eln_clicked,
+        ).grid(row=row_idx, column=2, padx=(0, 8), pady=2)
+        row_idx += 1
+
         # ── Relatório PDF / Branding ───────────────────────────────────
         _section("📄 " + tr("Relatório PDF / Branding"))
         _field(
@@ -8476,6 +8488,185 @@ class PipelineApp(ctk.CTk):
             self._audit_log("audit_export_csv", {"path": str(path)})
         except Exception as exc:
             self._append_log(f"Falha ao exportar audit trail: {exc}")
+
+    def _build_export_payload(self) -> Dict[str, Any]:
+        """Build a compact, serializable payload from latest analysis outputs."""
+        payload: Dict[str, Any] = {
+            "dataset_name": "IonFlow Analysis Export",
+            "source_file": str(self.gui_settings.get("last_dir_import", "")),
+            "author": str(self.gui_settings.get("report_author", "Desconhecido")),
+            "institution": str(self.gui_settings.get("report_institution", "")),
+            "results": {},
+        }
+
+        eis = getattr(self, "last_eis_result", None)
+        if isinstance(eis, dict):
+            raw_eis = eis.get("raw_eis") or {}
+            circuit_table = eis.get("circuit_table")
+            best_circuit = ""
+            with contextlib.suppress(Exception):
+                if circuit_table is not None and not circuit_table.empty:
+                    best_circuit = str(
+                        circuit_table["Circuito"].value_counts().index[0]
+                    )
+            payload["results"]["eis"] = {
+                "n_samples": int(len(raw_eis)),
+                "best_circuit": best_circuit,
+                "has_ranked": bool(eis.get("df_ranked") is not None),
+            }
+
+        cycling = getattr(self, "last_cycling_result", None)
+        if isinstance(cycling, dict):
+            merged = cycling.get("merged_table")
+            n_rows = 0
+            with contextlib.suppress(Exception):
+                n_rows = int(len(merged)) if merged is not None else 0
+            payload["results"]["cycling"] = {
+                "n_rows": n_rows,
+                "n_files": int(len(cycling.get("results") or {})),
+            }
+
+        drt = getattr(self, "last_drt_result", None)
+        if isinstance(drt, dict):
+            payload["results"]["drt"] = {
+                "n_files": int(len(drt.get("per_file_results") or {})),
+                "n_errors": int(len(drt.get("errors") or {})),
+            }
+
+        return payload
+
+    def _export_fair_jsonld_clicked(self):
+        """Export FAIR metadata (JSON-LD) from latest available analysis state."""
+        payload = self._build_export_payload()
+        if not payload.get("results"):
+            self._append_log("Sem resultados para gerar metadados FAIR.")
+            return
+
+        out = filedialog.asksaveasfilename(
+            title=tr("Salvar metadados FAIR"),
+            initialdir="outputs",
+            initialfile="ionflow_fair_metadata.jsonld",
+            defaultextension=".jsonld",
+            filetypes=[("JSON-LD", "*.jsonld"), ("JSON", "*.json")],
+        )
+        if not out:
+            return
+
+        try:
+            from src.fair_metadata import generate_jsonld, save_jsonld, validate_jsonld
+
+            method = "EIS"
+            if "drt" in payload["results"]:
+                method = "DRT"
+            elif "cycling" in payload["results"] and "eis" not in payload["results"]:
+                method = "cycling"
+
+            sample_info = {
+                "dataset_name": payload.get("dataset_name"),
+                "author": payload.get("author"),
+                "description": "Metadados FAIR exportados a partir da GUI IonFlow.",
+                "method": method,
+                "source": payload.get("source_file"),
+            }
+            metadata = generate_jsonld(payload, sample_info=sample_info)
+            validation = validate_jsonld(metadata)
+            saved = save_jsonld(metadata, out)
+            self._append_log(f"🧬 FAIR JSON-LD exportado: {saved}")
+            self._append_log(f"🧬 Validação FAIR: {validation.get('message', 'OK')}")
+            self._audit_log(
+                "export_fair_jsonld",
+                {"path": str(saved), "valid": bool(validation.get("valid", False))},
+            )
+        except Exception as exc:
+            self._append_log(f"Falha ao exportar FAIR JSON-LD: {exc}")
+
+    def _export_to_eln_clicked(self):
+        """Export current summary payload to a selected ELN provider."""
+        from tkinter import simpledialog
+
+        payload = self._build_export_payload()
+        if not payload.get("results"):
+            self._append_log("Sem resultados para exportar para ELN.")
+            return
+
+        provider = simpledialog.askstring(
+            tr("Exportar para ELN"),
+            "Provider (rspace / labarchives / benchling):",
+            parent=self,
+        )
+        if not provider:
+            return
+        provider = provider.strip().lower()
+        if provider not in {"rspace", "labarchives", "benchling"}:
+            self._append_log(
+                "Provider ELN inválido. Use: rspace, labarchives ou benchling."
+            )
+            return
+
+        api_key = simpledialog.askstring(
+            tr("Exportar para ELN"),
+            "API key/token:",
+            parent=self,
+            show="*",
+        )
+        if not api_key:
+            return
+
+        target = ""
+        prompt = ""
+        if provider == "rspace":
+            prompt = "Server URL (ex.: https://rspace.example.com)"
+        elif provider == "labarchives":
+            prompt = "Notebook ID"
+        elif provider == "benchling":
+            prompt = "Folder ID"
+
+        target = simpledialog.askstring(tr("Exportar para ELN"), prompt, parent=self)
+        if not target:
+            return
+
+        self._append_log(f"🔗 Exportando resumo para ELN ({provider})...")
+
+        def _worker():
+            try:
+                from src.eln_export import (
+                    export_to_benchling,
+                    export_to_labarchives,
+                    export_to_rspace,
+                )
+
+                if provider == "rspace":
+                    result = export_to_rspace(
+                        payload, api_key=api_key, server_url=target
+                    )
+                elif provider == "labarchives":
+                    result = export_to_labarchives(
+                        payload,
+                        api_key=api_key,
+                        notebook_id=target,
+                    )
+                else:
+                    result = export_to_benchling(
+                        payload, api_key=api_key, folder_id=target
+                    )
+
+                msg = result.get("message", "Exportação ELN concluída.")
+                if result.get("success"):
+                    self.log_queue.put(f"✅ {msg}")
+                else:
+                    self.log_queue.put(f"⚠ {msg}")
+                self._audit_log(
+                    "export_eln",
+                    {
+                        "provider": provider,
+                        "success": bool(result.get("success", False)),
+                        "status_code": result.get("status_code"),
+                    },
+                )
+            except Exception as exc:
+                self.log_queue.put(f"❌ Falha ao exportar para ELN: {exc}")
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     def _reset_wizard_clicked(self):
         """Allow user to re-run the quick-start wizard on next launch."""
