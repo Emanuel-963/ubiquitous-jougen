@@ -824,17 +824,22 @@ class PerformancePredictor:
         self._ml = _MLPredictor()
         self._trained = False
 
-        # Try to restore a previously saved model first
+        # Restore persisted ML only in a historical-store context. A standalone
+        # predictor must remain heuristic and independent of workspace artifacts.
         _loaded = False
-        try:
-            self._load_model_into_self(_PERF_MODEL_PATH)
-            _loaded = True
-            logger.info(
-                "PerformancePredictor: loaded persisted model from '%s'",
-                _PERF_MODEL_PATH,
-            )
-        except Exception:
-            pass
+        _store_records = (
+            getattr(feature_store, "records", []) if feature_store is not None else []
+        )
+        if _store_records:
+            try:
+                self._load_model_into_self(_PERF_MODEL_PATH)
+                _loaded = True
+                logger.info(
+                    "PerformancePredictor: loaded persisted model from '%s'",
+                    _PERF_MODEL_PATH,
+                )
+            except Exception:
+                pass
 
         # Auto-train (or retrain with new data) if store has enough records
         if feature_store is not None:
