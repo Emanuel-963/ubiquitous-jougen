@@ -399,7 +399,12 @@ def _make_warburg_finite() -> CircuitTemplate:
         s = np.sqrt(1j * omega * Td)
         # Avoid division by zero at very low freq
         s_safe = np.where(np.abs(s) < 1e-30, 1e-30, s)
-        Zw_finite = Rd * np.tanh(s_safe) / s_safe
+        abs_s = np.abs(s_safe)
+        large = abs_s > 20.0
+        tanh_over_s = np.empty_like(s_safe, dtype=complex)
+        tanh_over_s[large] = 1.0 / s_safe[large]
+        tanh_over_s[~large] = np.tanh(s_safe[~large]) / s_safe[~large]
+        Zw_finite = Rd * tanh_over_s
         Zpar = 1.0 / (1.0 / Rp + 1.0 / Zcpe)
         return Rs + Zpar + Zw_finite
 

@@ -105,23 +105,34 @@ def load_eis_file(path: str) -> pd.DataFrame:
 
     # Tentar com diferentes separadores
     separators = [";", "\t", ",", None]
+    encodings = ["utf-8", "utf-8-sig", "cp1252", "latin1"]
     df: Optional[pd.DataFrame] = None
 
     for sep in separators:
-        try:
-            df = pd.read_csv(
-                path,
-                sep=sep,
-                engine="python",
-                comment="#",
-                dtype=str,  # Ler tudo como string primeiro
-                skipinitialspace=True,
-            )
-            if df.shape[1] >= 3:
-                break
-        except Exception as e:
-            logger.debug("Falha ao ler %s com sep=%s: %s", path, sep, e)
-            continue
+        for enc in encodings:
+            try:
+                df = pd.read_csv(
+                    path,
+                    sep=sep,
+                    engine="python",
+                    comment="#",
+                    dtype=str,  # Ler tudo como string primeiro
+                    skipinitialspace=True,
+                    encoding=enc,
+                )
+                if df.shape[1] >= 3:
+                    break
+            except Exception as e:
+                logger.debug(
+                    "Falha ao ler %s com sep=%s encoding=%s: %s",
+                    path,
+                    sep,
+                    enc,
+                    e,
+                )
+                continue
+        if df is not None and df.shape[1] >= 3:
+            break
 
     if df is None or df.shape[1] < 3:
         cols = None if df is None else df.shape[1]

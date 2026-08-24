@@ -2,6 +2,20 @@
 
 All notable changes to the IonFlow Pipeline are documented here.
 
+## [0.5.0] — 2026-08-24  _(Fluxo guiado e processamento observável)_
+
+### Added
+
+- Wizard de projeto guiado com presets para diagnóstico EIS, desempenho de ciclagem,
+  caracterização completa, validação DRT, triagem rápida e relatório publicável.
+- Barra de progresso determinística na GUI, com percentual e etapa atual do pipeline.
+
+### Fixed
+
+- Navegação do wizard entre seleção, revisão e conclusão.
+- Figuras de ciclagem fechadas corretamente após exibição ou salvamento, evitando o
+  aviso de mais de 20 figuras abertas durante execuções repetidas.
+
 ## [0.4.10] — 2026-05-20  _(Auto-update silencioso + Instalação melhorada)_
 
 ### Changed

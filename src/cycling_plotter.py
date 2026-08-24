@@ -23,25 +23,24 @@ def plot_time_potential_with_integral(
     """
     os.makedirs(out_dir, exist_ok=True)
 
-    plt.figure(figsize=(10, 6))
-    plt.plot(df["tempo"], df["potencial"], label="Potential")
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(df["tempo"], df["potencial"], label="Potential")
 
     # Calculate integral (area under curve, approximate energy proxy)
     integral = np.trapezoid(df["potencial"], df["tempo"])
-    plt.title(f"{filename}: Time vs Potential\nIntegral: {integral:.2f}")
-    plt.xlabel("Time")
-    plt.ylabel("Potential")
-    plt.legend()
-    plt.grid(True)
+    ax.set_title(f"{filename}: Time vs Potential\nIntegral: {integral:.2f}")
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Potential")
+    ax.legend(loc="upper right")
+    ax.grid(True)
 
     stem = Path(filename).stem
     filepath = os.path.join(out_dir, f"{stem}_integral.png")
-    plt.savefig(filepath, dpi=300, bbox_inches="tight")
+    fig.savefig(filepath, dpi=300, bbox_inches="tight")
 
     if show:
         plt.show()
-    else:
-        plt.close()
+    plt.close(fig)
 
     return filepath
 
@@ -50,8 +49,8 @@ def plot_time_potential_with_integral(
 # Energia × Potência vs Ciclo  (dual Y-axis)
 # ---------------------------------------------------------------------------
 
-_COLOR_POWER = "#1b4f72"       # azul escuro (eixo esquerdo)
-_COLOR_ENERGY = "#e74c3c"      # vermelho vivo (eixo direito)
+_COLOR_POWER = "#1b4f72"  # azul escuro (eixo esquerdo)
+_COLOR_ENERGY = "#e74c3c"  # vermelho vivo (eixo direito)
 _FILL_ALPHA = 0.18
 
 
@@ -89,13 +88,17 @@ def plot_energy_power_vs_cycle(
             col_ciclo = candidate
             break
     col_power = (
-        "Potência (W/kg)" if "Potência (W/kg)" in cycle_df.columns
-        else "potencia_w_kg" if "potencia_w_kg" in cycle_df.columns
+        "Potência (W/kg)"
+        if "Potência (W/kg)" in cycle_df.columns
+        else "potencia_w_kg"
+        if "potencia_w_kg" in cycle_df.columns
         else None
     )
     col_energy = (
-        "Energia (Wh/kg)" if "Energia (Wh/kg)" in cycle_df.columns
-        else "energia_wh_kg" if "energia_wh_kg" in cycle_df.columns
+        "Energia (Wh/kg)"
+        if "Energia (Wh/kg)" in cycle_df.columns
+        else "energia_wh_kg"
+        if "energia_wh_kg" in cycle_df.columns
         else None
     )
 
@@ -123,26 +126,42 @@ def plot_energy_power_vs_cycle(
 
     # ---- Potência (eixo esquerdo) -------------------------------------------
     ln1 = ax.plot(
-        cycles, power,
-        color=_COLOR_POWER, linewidth=1.6, marker="o",
-        markersize=2.4, markerfacecolor=_COLOR_POWER,
-        label="Potência (W/kg)", zorder=3,
+        cycles,
+        power,
+        color=_COLOR_POWER,
+        linewidth=1.6,
+        marker="o",
+        markersize=2.4,
+        markerfacecolor=_COLOR_POWER,
+        label="Potência (W/kg)",
+        zorder=3,
     )
     ax.fill_between(
-        cycles, power, alpha=_FILL_ALPHA,
-        color=_COLOR_POWER, zorder=2,
+        cycles,
+        power,
+        alpha=_FILL_ALPHA,
+        color=_COLOR_POWER,
+        zorder=2,
     )
 
     # ---- Energia (eixo direito) ---------------------------------------------
     ln2 = ax2.plot(
-        cycles, energy,
-        color=_COLOR_ENERGY, linewidth=1.6, marker="s",
-        markersize=2.4, markerfacecolor=_COLOR_ENERGY,
-        label="Energia (Wh/kg)", zorder=3,
+        cycles,
+        energy,
+        color=_COLOR_ENERGY,
+        linewidth=1.6,
+        marker="s",
+        markersize=2.4,
+        markerfacecolor=_COLOR_ENERGY,
+        label="Energia (Wh/kg)",
+        zorder=3,
     )
     ax2.fill_between(
-        cycles, energy, alpha=_FILL_ALPHA,
-        color=_COLOR_ENERGY, zorder=2,
+        cycles,
+        energy,
+        alpha=_FILL_ALPHA,
+        color=_COLOR_ENERGY,
+        zorder=2,
     )
 
     # ---- labels e estilo ----------------------------------------------------
@@ -161,9 +180,12 @@ def plot_energy_power_vs_cycle(
     lines = ln1 + ln2
     labels_leg = [ln.get_label() for ln in lines]
     ax.legend(
-        lines, labels_leg,
-        loc="upper center", ncol=2,
-        fontsize=9, framealpha=0.85,
+        lines,
+        labels_leg,
+        loc="upper center",
+        ncol=2,
+        fontsize=9,
+        framealpha=0.85,
         edgecolor="#cccccc",
     )
 
@@ -173,17 +195,24 @@ def plot_energy_power_vs_cycle(
         e_ret = energy[-1] / energy[0] * 100 if energy[0] != 0 else 0
         ax.annotate(
             f"Ret. Pot.: {p_ret:.1f}%  |  Ret. En.: {e_ret:.1f}%",
-            xy=(0.98, 0.02), xycoords="axes fraction",
-            ha="right", va="bottom", fontsize=8.5,
+            xy=(0.98, 0.02),
+            xycoords="axes fraction",
+            ha="right",
+            va="bottom",
+            fontsize=8.5,
             bbox=dict(
                 boxstyle="round,pad=0.35",
-                facecolor="#f8f9fa", edgecolor="#adb5bd", alpha=0.92,
+                facecolor="#f8f9fa",
+                edgecolor="#adb5bd",
+                alpha=0.92,
             ),
         )
 
     ax.set_title(
         f"{filename}\nEnergia × Potência vs Ciclo",
-        fontsize=12, fontweight="bold", pad=10,
+        fontsize=12,
+        fontweight="bold",
+        pad=10,
     )
 
     if fig is not None:
@@ -199,7 +228,6 @@ def plot_energy_power_vs_cycle(
             fig.savefig(filepath, dpi=160, bbox_inches="tight")
         if show:
             plt.show()
-        else:
-            plt.close(fig)
+        plt.close(fig)
 
     return filepath

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import contextlib
 import json
+import logging
 import os
 import queue
 import re
@@ -33,7 +34,8 @@ if getattr(sys, "frozen", False):
         ctk.windows.widgets.theme.theme_manager.__file__ = _fake
         ctk.ThemeManager.load_theme("blue")
 
-from tkinter import filedialog, ttk
+import tkinter as tk
+from tkinter import filedialog, messagebox, ttk
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -93,6 +95,7 @@ from src.gui.widgets import StyledOptionMenuHelper as _StyledOptionMenuHelper
 from src.i18n import get_language, set_language, tr
 from src.kramers_kronig import KKResult, KramersKronigValidator
 from src.license_manager import FREE_FILE_LIMIT, LicenseLimitError, LicenseManager
+from src.logger import setup_logging
 from src.report_generator import ReportConfig, ReportGenerator
 from src.uncertainty import UncertaintyAnalyzer
 
@@ -464,6 +467,8 @@ class PipelineApp(ctk.CTk):
         self.minsize(1200, 800)
 
         self.log_queue: queue.Queue = queue.Queue()
+        setup_logging(gui_queue=self.log_queue)
+        logging.getLogger(__name__).info("GUI logging bridge initialized.")
         self.image_refs: List[ctk.CTkImage] = []
         self.eis_df: Optional[pd.DataFrame] = None
         self.cic_df: Optional[pd.DataFrame] = None
@@ -492,6 +497,7 @@ class PipelineApp(ctk.CTk):
             "overlay_text": "",
         }
         self._main_tab_labels_full = {
+            "home": "🏠 Workspace",
             "plots": tr("Gráficos"),
             "tables": tr("Tabelas"),
             "logs": tr("Logs"),
@@ -505,6 +511,7 @@ class PipelineApp(ctk.CTk):
             "settings": "⚙️ " + tr("Configurações"),
         }
         self._main_tab_labels_compact = {
+            "home": "Home",
             "plots": "Graf",
             "tables": "Tab",
             "logs": "Log",
@@ -525,6 +532,15 @@ class PipelineApp(ctk.CTk):
         self._last_sidebar_width: Optional[int] = None
         self._last_sidebar_scroll_width: Optional[int] = None
         self._last_tabs_width: Optional[int] = None
+        self._sidebar_visible = True
+        self._inspector_visible = True
+        self._user_mode = "advanced"
+        self._workspace_layout = "Studio"
+        self._ribbon_context = "workspace"
+        self._command_palette_win = None
+        self._command_palette_registry: List[Dict[str, Any]] = []
+        self._recent_commands: List[str] = []
+        self._basic_mode_hidden_widgets: List[Any] = []
         self._compact_segmented_labels = False
         self._compact_drt_action_labels = False
         self._compact_tabs_mode = False
@@ -565,6 +581,8 @@ class PipelineApp(ctk.CTk):
         self._setup_shortcuts()
         self._restore_ui_preferences()
         self._restore_language()
+        self.bind_all("<Control-k>", lambda _e: self._open_command_palette())
+        self.bind_all("<Control-K>", lambda _e: self._open_command_palette())
         self.bind("<Configure>", self._schedule_responsive_layout)
         self.after(100, self._apply_responsive_layout)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -919,6 +937,19 @@ class PipelineApp(ctk.CTk):
         with contextlib.suppress(Exception):
             self.tabs.set(self._main_tab_label(key))
 
+        ctx_map = {
+            "home": "Workspace",
+            "tables": "Dados",
+            "plots": "Análises",
+            "ai": "IA",
+            "settings": "Config",
+        }
+        ctx_name = ctx_map.get(key)
+        if ctx_name:
+            with contextlib.suppress(Exception):
+                self.workspace_switch.set(ctx_name)
+            self._set_ribbon_context(ctx_name)
+
     def _apply_main_tab_labels(self, compact: bool):
         target_map = (
             self._main_tab_labels_compact if compact else self._main_tab_labels_full
@@ -1097,12 +1128,1204 @@ class PipelineApp(ctk.CTk):
         self.destroy()
         self.quit()
 
+    def _build_menu_bar(self):
+        menubar = tk.Menu(self)
+
+        file_menu = tk.Menu(menubar, tearoff=0)
+        file_menu.add_command(
+            label="Importar EIS...",
+            command=lambda: self._import_files(
+                target_dir="data/raw",
+                label="Selecione arquivos EIS",
+                eis_mode=True,
+            ),
+        )
+        file_menu.add_command(
+            label="Importar Ciclagem...",
+            command=lambda: self._import_files(
+                target_dir="data/processed",
+                label="Selecione arquivos de Ciclagem",
+            ),
+        )
+        file_menu.add_separator()
+        file_menu.add_command(label="Exportar XLSX", command=self._export_all_xlsx)
+        file_menu.add_command(
+            label="Gerar Relatório",
+            command=self._generate_report_clicked,
+        )
+        file_menu.add_separator()
+        file_menu.add_command(label="Sair", command=self._on_close)
+        menubar.add_cascade(label="Arquivo", menu=file_menu)
+
+        run_menu = tk.Menu(menubar, tearoff=0)
+        run_menu.add_command(label="Rodar EIS", command=self._run_eis_clicked)
+        run_menu.add_command(label="Rodar Ciclagem", command=self._run_ciclagem_clicked)
+        run_menu.add_command(label="Rodar Ambos", command=self._run_both_clicked)
+        run_menu.add_command(label="Rodar DRT", command=self._run_drt_clicked)
+        run_menu.add_separator()
+        run_menu.add_command(
+            label="Reexecutar Último", command=self._rerun_last_pipeline
+        )
+        run_menu.add_command(label="Cancelar", command=self._cancel_pipeline)
+        menubar.add_cascade(label="Executar", menu=run_menu)
+
+        view_menu = tk.Menu(menubar, tearoff=0)
+        view_menu.add_command(
+            label="Workspace", command=lambda: self._set_main_tab("home")
+        )
+        view_menu.add_command(
+            label="Gráficos", command=lambda: self._set_main_tab("plots")
+        )
+        view_menu.add_command(
+            label="Tabelas", command=lambda: self._set_main_tab("tables")
+        )
+        view_menu.add_command(label="Logs", command=lambda: self._set_main_tab("logs"))
+        view_menu.add_separator()
+        view_menu.add_command(
+            label="Layout Studio",
+            command=lambda: self._apply_workspace_layout("Studio"),
+        )
+        view_menu.add_command(
+            label="Layout Focus", command=lambda: self._apply_workspace_layout("Focus")
+        )
+        view_menu.add_command(
+            label="Layout Review",
+            command=lambda: self._apply_workspace_layout("Review"),
+        )
+        view_menu.add_separator()
+        view_menu.add_command(
+            label="Modo Básico", command=lambda: self._set_user_mode("basic")
+        )
+        view_menu.add_command(
+            label="Modo Avançado", command=lambda: self._set_user_mode("advanced")
+        )
+        view_menu.add_separator()
+        view_menu.add_command(
+            label="Mostrar/Ocultar Painel Lateral",
+            command=self._toggle_sidebar_visibility,
+        )
+        view_menu.add_command(
+            label="Mostrar/Ocultar Inspector",
+            command=self._toggle_inspector_visibility,
+        )
+        menubar.add_cascade(label="Visualizar", menu=view_menu)
+
+        tools_menu = tk.Menu(menubar, tearoff=0)
+        tools_menu.add_command(
+            label="Comparar Amostras", command=self._open_compare_tab
+        )
+        tools_menu.add_command(
+            label="Batch Processing", command=self._run_batch_clicked
+        )
+        tools_menu.add_command(
+            label="Auto-Compor Circuitos", command=self._run_compose_clicked
+        )
+        tools_menu.add_separator()
+        tools_menu.add_command(
+            label="Diagnóstico Fitting", command=self._run_fitting_diagnostics_clicked
+        )
+        tools_menu.add_command(
+            label="Validação KK", command=self._run_kk_validation_clicked
+        )
+        tools_menu.add_command(
+            label="Configurações", command=lambda: self._set_main_tab("settings")
+        )
+        menubar.add_cascade(label="Ferramentas", menu=tools_menu)
+
+        help_menu = tk.Menu(menubar, tearoff=0)
+        help_menu.add_command(label="Referências", command=self._show_references_window)
+        help_menu.add_command(label="Sobre", command=self._show_about_window)
+        menubar.add_cascade(label="Ajuda", menu=help_menu)
+
+        self.config(menu=menubar)
+
+    def _build_top_toolbar(self):
+        self.top_toolbar = ctk.CTkFrame(self, corner_radius=12, height=120)
+        self.top_toolbar.grid(
+            row=0, column=0, columnspan=3, sticky="ew", padx=16, pady=(12, 6)
+        )
+        self.top_toolbar.grid_columnconfigure(1, weight=1)
+        self.top_toolbar.grid_rowconfigure(1, weight=0)
+
+        title_box = ctk.CTkFrame(self.top_toolbar, fg_color="transparent")
+        title_box.grid(row=0, column=0, padx=(12, 8), pady=10, sticky="w")
+        ctk.CTkLabel(
+            title_box,
+            text="IonFlow Workspace",
+            font=ctk.CTkFont(size=20, weight="bold"),
+        ).pack(anchor="w")
+        ctk.CTkLabel(
+            title_box,
+            text="Fluxo didático: importar → processar → analisar → relatar",
+            text_color="gray",
+            font=ctk.CTkFont(size=11),
+        ).pack(anchor="w")
+
+        actions_host = ctk.CTkFrame(self.top_toolbar, fg_color="transparent")
+        actions_host.grid(row=0, column=1, padx=8, pady=8, sticky="ew")
+        actions_host.grid_columnconfigure(0, weight=1)
+
+        try:
+            toolbar_bg = self.top_toolbar._apply_appearance_mode(
+                self.top_toolbar.cget("fg_color")
+            )
+        except Exception:
+            toolbar_bg = "#1b263b"
+
+        self._toolbar_actions_canvas = tk.Canvas(
+            actions_host,
+            height=42,
+            bd=0,
+            highlightthickness=0,
+            relief="flat",
+            bg=toolbar_bg,
+        )
+        self._toolbar_actions_canvas.grid(row=0, column=0, sticky="ew")
+
+        self._toolbar_actions_scroll = ctk.CTkScrollbar(
+            actions_host,
+            orientation="horizontal",
+            command=self._toolbar_actions_canvas.xview,
+        )
+        self._toolbar_actions_scroll.grid(row=1, column=0, sticky="ew", pady=(2, 0))
+        self._toolbar_actions_canvas.configure(
+            xscrollcommand=self._toolbar_actions_scroll.set
+        )
+
+        self._toolbar_actions_inner = ctk.CTkFrame(
+            self._toolbar_actions_canvas,
+            fg_color="transparent",
+        )
+        self._toolbar_actions_window = self._toolbar_actions_canvas.create_window(
+            (0, 0),
+            window=self._toolbar_actions_inner,
+            anchor="nw",
+        )
+
+        def _update_actions_scrollregion(_event=None):
+            self._toolbar_actions_canvas.configure(
+                scrollregion=self._toolbar_actions_canvas.bbox("all")
+            )
+            _update_toolbar_scroll_visibility()
+
+        def _fit_actions_height(_event=None):
+            height = self._toolbar_actions_canvas.winfo_height()
+            self._toolbar_actions_canvas.itemconfigure(
+                self._toolbar_actions_window,
+                height=max(height, 40),
+            )
+            _update_toolbar_scroll_visibility()
+
+        def _update_toolbar_scroll_visibility(_event=None):
+            bbox = self._toolbar_actions_canvas.bbox("all")
+            content_w = 0 if bbox is None else max(0, bbox[2] - bbox[0])
+            viewport_w = max(1, self._toolbar_actions_canvas.winfo_width())
+            needs_scroll = content_w > (viewport_w + 2)
+            if needs_scroll:
+                self._toolbar_actions_scroll.grid()
+            else:
+                self._toolbar_actions_scroll.grid_remove()
+                self._toolbar_actions_canvas.xview_moveto(0.0)
+
+        def _on_toolbar_mousewheel(event):
+            # Horizontal wheel behavior on Windows/macOS; Shift+wheel also works.
+            delta = getattr(event, "delta", 0)
+            if delta:
+                step = -1 if delta > 0 else 1
+                self._toolbar_actions_canvas.xview_scroll(step, "units")
+            return "break"
+
+        def _on_toolbar_mousewheel_linux_left(_event):
+            self._toolbar_actions_canvas.xview_scroll(-1, "units")
+            return "break"
+
+        def _on_toolbar_mousewheel_linux_right(_event):
+            self._toolbar_actions_canvas.xview_scroll(1, "units")
+            return "break"
+
+        self._toolbar_actions_inner.bind("<Configure>", _update_actions_scrollregion)
+        self._toolbar_actions_canvas.bind("<Configure>", _fit_actions_height)
+        self._toolbar_actions_canvas.bind("<MouseWheel>", _on_toolbar_mousewheel)
+        self._toolbar_actions_canvas.bind("<Shift-MouseWheel>", _on_toolbar_mousewheel)
+        self._toolbar_actions_inner.bind("<MouseWheel>", _on_toolbar_mousewheel)
+        self._toolbar_actions_inner.bind("<Shift-MouseWheel>", _on_toolbar_mousewheel)
+
+        # Linux/X11 may emit horizontal wheel events via Button-6/7.
+        # On Windows these button numbers are invalid and raise TclError.
+        with contextlib.suppress(tk.TclError):
+            self._toolbar_actions_canvas.bind(
+                "<Button-6>", _on_toolbar_mousewheel_linux_left
+            )
+            self._toolbar_actions_canvas.bind(
+                "<Button-7>", _on_toolbar_mousewheel_linux_right
+            )
+            self._toolbar_actions_inner.bind(
+                "<Button-6>", _on_toolbar_mousewheel_linux_left
+            )
+            self._toolbar_actions_inner.bind(
+                "<Button-7>", _on_toolbar_mousewheel_linux_right
+            )
+
+        ctk.CTkButton(
+            self._toolbar_actions_inner,
+            text="📥 Importar EIS",
+            width=130,
+            command=lambda: self._import_files(
+                target_dir="data/raw",
+                label="Selecione arquivos EIS",
+                eis_mode=True,
+            ),
+        ).pack(side="left", padx=4)
+        ctk.CTkButton(
+            self._toolbar_actions_inner,
+            text="⚡ Rodar Ambos",
+            width=120,
+            command=self._run_both_clicked,
+        ).pack(side="left", padx=4)
+        ctk.CTkButton(
+            self._toolbar_actions_inner,
+            text="📄 Relatório",
+            width=120,
+            command=self._generate_report_clicked,
+        ).pack(side="left", padx=4)
+        ctk.CTkButton(
+            self._toolbar_actions_inner,
+            text="🧠 IA",
+            width=90,
+            command=lambda: self._set_main_tab("ai"),
+        ).pack(side="left", padx=4)
+        self.after(10, _update_toolbar_scroll_visibility)
+
+        workspace_switch = ctk.CTkSegmentedButton(
+            self.top_toolbar,
+            values=["Workspace", "Dados", "Análises", "IA", "Config"],
+            command=self._on_workspace_switch,
+        )
+        workspace_switch.grid(row=0, column=2, padx=(8, 12), pady=10, sticky="e")
+        workspace_switch.set("Workspace")
+        self.workspace_switch = workspace_switch
+
+        self.mode_switch = ctk.CTkSegmentedButton(
+            self.top_toolbar,
+            values=["Básico", "Avançado"],
+            command=lambda v: self._set_user_mode(
+                "basic" if v == "Básico" else "advanced"
+            ),
+            width=170,
+        )
+        self.mode_switch.grid(row=0, column=3, padx=(0, 8), pady=10, sticky="e")
+        self.mode_switch.set("Avançado")
+
+        self.layout_switch = ctk.CTkOptionMenu(
+            self.top_toolbar,
+            values=["Studio", "Focus", "Review"],
+            command=self._apply_workspace_layout,
+            width=110,
+        )
+        self.layout_switch.grid(row=0, column=4, padx=(0, 10), pady=10, sticky="e")
+        self.layout_switch.set("Studio")
+
+        self._build_ribbon_bar()
+        self._set_ribbon_context("workspace")
+
+    def _build_ribbon_bar(self):
+        self.ribbon_frame = ctk.CTkFrame(
+            self.top_toolbar, fg_color=("#e2e8f0", "#1e293b")
+        )
+        self.ribbon_frame.grid(
+            row=1, column=0, columnspan=5, sticky="ew", padx=10, pady=(2, 8)
+        )
+        self.ribbon_frame.grid_columnconfigure(0, weight=1)
+
+        top = ctk.CTkFrame(self.ribbon_frame, fg_color="transparent")
+        top.pack(fill="x", padx=8, pady=(6, 2))
+        self.ribbon_title = ctk.CTkLabel(
+            top,
+            text="Ribbon · Workspace",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            anchor="w",
+        )
+        self.ribbon_title.pack(side="left", padx=(2, 8))
+        ctk.CTkLabel(
+            top,
+            text="Ctrl+K: Command Palette",
+            text_color="gray",
+            font=ctk.CTkFont(size=11),
+            anchor="e",
+        ).pack(side="right", padx=(8, 2))
+
+        self.ribbon_actions = ctk.CTkFrame(self.ribbon_frame, fg_color="transparent")
+        self.ribbon_actions.pack(fill="x", padx=8, pady=(0, 8))
+
+    def _set_ribbon_context(self, context_key: str):
+        ctx = str(context_key or "workspace").lower()
+        self._ribbon_context = ctx
+        data_state = (
+            f"EIS {len(getattr(self, 'raw_eis', {}) or {})} · "
+            f"Ciclagem {len(getattr(self, 'cic_results', {}) or {})} · "
+            f"Último: {getattr(self, '_last_pipeline', None) or 'nenhum'}"
+        )
+        self.ribbon_title.configure(
+            text=f"Ribbon · {ctx.capitalize()}  |  {data_state}"
+        )
+
+        actions: List[Tuple[str, Any]]
+        if ctx == "dados":
+            actions = [
+                (
+                    "Importar EIS",
+                    lambda: self._import_files(
+                        target_dir="data/raw",
+                        label="Selecione arquivos EIS",
+                        eis_mode=True,
+                    ),
+                ),
+                (
+                    "Importar Ciclagem",
+                    lambda: self._import_files(
+                        target_dir="data/processed",
+                        label="Selecione arquivos de Ciclagem",
+                    ),
+                ),
+                ("Exportar XLSX", self._export_all_xlsx),
+                ("Abrir Tabelas", lambda: self._set_main_tab("tables")),
+                ("Abrir Logs", lambda: self._set_main_tab("logs")),
+            ]
+        elif ctx == "analises":
+            actions = [
+                ("Rodar EIS", self._run_eis_clicked),
+                ("Rodar Ciclagem", self._run_ciclagem_clicked),
+                ("Rodar DRT", self._run_drt_clicked),
+                ("Rodar Ambos", self._run_both_clicked),
+                ("Gráficos Interativos", self._open_interactive_window),
+            ]
+        elif ctx == "ia":
+            actions = [
+                ("Executar IA", self._run_ai_analysis_clicked),
+                ("Modo Orientador", self._run_orientador_clicked),
+                ("Lab Benchmark", self._run_lab_benchmark_clicked),
+                ("Lab Memória", self._run_lab_memory_clicked),
+                ("Abrir Aba IA", lambda: self._set_main_tab("ai")),
+            ]
+        elif ctx == "config":
+            actions = [
+                ("Salvar Config", self._save_config_clicked),
+                ("Abrir Config", lambda: self._set_main_tab("settings")),
+                ("Verificar Updates", self._check_for_updates_async),
+                ("Alternar Sidebar", self._toggle_sidebar_visibility),
+                ("Alternar Inspector", self._toggle_inspector_visibility),
+            ]
+        else:
+            actions = [
+                (
+                    "Importar EIS",
+                    lambda: self._import_files(
+                        target_dir="data/raw",
+                        label="Selecione arquivos EIS",
+                        eis_mode=True,
+                    ),
+                ),
+                ("Rodar Ambos", self._run_both_clicked),
+                ("Comparar", self._open_compare_tab),
+                ("Relatório", self._generate_report_clicked),
+                ("Referências", self._show_references_window),
+            ]
+
+        for w in self.ribbon_actions.winfo_children():
+            with contextlib.suppress(Exception):
+                w.destroy()
+
+        for label, callback in actions:
+            ctk.CTkButton(
+                self.ribbon_actions,
+                text=label,
+                width=140,
+                command=callback,
+            ).pack(side="left", padx=4, pady=2)
+
+    def _build_command_palette_registry(self) -> List[Dict[str, Any]]:
+        return [
+            {
+                "label": "Importar EIS",
+                "category": "Dados",
+                "keywords": "import eis raw",
+                "action": lambda: self._import_files(
+                    target_dir="data/raw", label="Selecione arquivos EIS", eis_mode=True
+                ),
+            },
+            {
+                "label": "Importar Ciclagem",
+                "category": "Dados",
+                "keywords": "import cycling processed",
+                "action": lambda: self._import_files(
+                    target_dir="data/processed", label="Selecione arquivos de Ciclagem"
+                ),
+            },
+            {
+                "label": "Rodar EIS",
+                "category": "Pipelines",
+                "keywords": "run pipeline eis",
+                "action": self._run_eis_clicked,
+            },
+            {
+                "label": "Rodar Ciclagem",
+                "category": "Pipelines",
+                "keywords": "run pipeline cycling",
+                "action": self._run_ciclagem_clicked,
+            },
+            {
+                "label": "Rodar DRT",
+                "category": "Pipelines",
+                "keywords": "run pipeline drt",
+                "action": self._run_drt_clicked,
+            },
+            {
+                "label": "Rodar Ambos",
+                "category": "Pipelines",
+                "keywords": "run pipeline all",
+                "action": self._run_both_clicked,
+            },
+            {
+                "label": "Abrir Gráficos",
+                "category": "Navegação",
+                "keywords": "plots charts",
+                "action": lambda: self._set_main_tab("plots"),
+            },
+            {
+                "label": "Abrir Tabelas",
+                "category": "Navegação",
+                "keywords": "tables data",
+                "action": lambda: self._set_main_tab("tables"),
+            },
+            {
+                "label": "Abrir Logs",
+                "category": "Navegação",
+                "keywords": "log console",
+                "action": lambda: self._set_main_tab("logs"),
+            },
+            {
+                "label": "Abrir Configurações",
+                "category": "Navegação",
+                "keywords": "settings config",
+                "action": lambda: self._set_main_tab("settings"),
+            },
+            {
+                "label": "Comparar Amostras",
+                "category": "Análises",
+                "keywords": "compare samples",
+                "action": self._open_compare_tab,
+            },
+            {
+                "label": "Executar IA",
+                "category": "IA",
+                "keywords": "ai analysis",
+                "action": self._run_ai_analysis_clicked,
+            },
+            {
+                "label": "Validação KK",
+                "category": "Análises",
+                "keywords": "kramers kronig",
+                "action": self._run_kk_validation_clicked,
+            },
+            {
+                "label": "Diagnóstico Fitting",
+                "category": "Análises",
+                "keywords": "fitting diagnostics",
+                "action": self._run_fitting_diagnostics_clicked,
+            },
+            {
+                "label": "Gerar Relatório",
+                "category": "Saída",
+                "keywords": "report pdf",
+                "action": self._generate_report_clicked,
+            },
+            {
+                "label": "Exportar XLSX",
+                "category": "Saída",
+                "keywords": "export excel",
+                "action": self._export_all_xlsx,
+            },
+            {
+                "label": "Batch Processing",
+                "category": "Ferramentas",
+                "keywords": "batch",
+                "action": self._run_batch_clicked,
+            },
+            {
+                "label": "Auto-Compor Circuitos",
+                "category": "Ferramentas",
+                "keywords": "compose circuit",
+                "action": self._run_compose_clicked,
+            },
+            {
+                "label": "Referências Bibliográficas",
+                "category": "Ajuda",
+                "keywords": "references bibliography",
+                "action": self._show_references_window,
+            },
+            {
+                "label": "Sobre",
+                "category": "Ajuda",
+                "keywords": "about",
+                "action": self._show_about_window,
+            },
+        ]
+
+    def _open_command_palette(self):
+        if (
+            self._command_palette_win is not None
+            and self._command_palette_win.winfo_exists()
+        ):
+            self._command_palette_win.lift()
+            self._command_palette_win.focus_force()
+            return
+
+        self._command_palette_registry = self._build_command_palette_registry()
+
+        win = ctk.CTkToplevel(self)
+        win.title("Command Palette")
+        win.geometry("760x460")
+        win.grab_set()
+        self._command_palette_win = win
+
+        ctk.CTkLabel(
+            win,
+            text="Command Palette",
+            font=ctk.CTkFont(size=18, weight="bold"),
+        ).pack(anchor="w", padx=14, pady=(12, 4))
+
+        query_var = tk.StringVar()
+        entry = ctk.CTkEntry(
+            win,
+            textvariable=query_var,
+            placeholder_text="Digite para buscar comando (ex: rodar, kk, relatório, importar...)",
+        )
+        entry.pack(fill="x", padx=14, pady=(0, 8))
+
+        listbox = tk.Listbox(
+            win, activestyle="dotbox", font=("Segoe UI", 11), height=16
+        )
+        listbox.pack(fill="both", expand=True, padx=14, pady=(0, 8))
+
+        hint = ctk.CTkLabel(
+            win,
+            text="Enter: executar | Esc: fechar | Ctrl+K: reabrir",
+            text_color="gray",
+            font=ctk.CTkFont(size=11),
+        )
+        hint.pack(anchor="w", padx=14, pady=(0, 10))
+
+        matches: List[Dict[str, Any]] = []
+
+        def refresh_list(*_args):
+            nonlocal matches
+            q = query_var.get().strip().lower()
+            candidates = self._command_palette_registry
+            if q:
+                candidates = [
+                    item
+                    for item in candidates
+                    if q in item["label"].lower() or q in item["keywords"]
+                ]
+            recent_rank = {
+                label: index for index, label in enumerate(self._recent_commands)
+            }
+            matches = sorted(
+                candidates,
+                key=lambda item: (
+                    0 if item["label"] in recent_rank else 1,
+                    recent_rank.get(item["label"], 999),
+                    item.get("category", ""),
+                    item["label"],
+                ),
+            )
+
+            listbox.delete(0, "end")
+            current_category = None
+            for item in matches:
+                category = item.get("category", "Comandos")
+                if category != current_category:
+                    listbox.insert("end", f"-- {category} --")
+                    listbox.itemconfigure(
+                        "end", foreground="#64748b", selectbackground="#64748b"
+                    )
+                    current_category = category
+                listbox.insert("end", f"  {item['label']}")
+            if matches:
+                listbox.selection_set(1 if listbox.size() > 1 else 0)
+
+        def execute_selected(_event=None):
+            sel = listbox.curselection()
+            if not sel:
+                return
+            selected_label = listbox.get(sel[0]).strip()
+            item = next(
+                (entry for entry in matches if entry["label"] == selected_label), None
+            )
+            if item is None:
+                return
+            action = item.get("action")
+            self._recent_commands = [item["label"]] + [
+                label for label in self._recent_commands if label != item["label"]
+            ]
+            self._recent_commands = self._recent_commands[:6]
+            with contextlib.suppress(Exception):
+                win.destroy()
+            if callable(action):
+                action()
+
+        query_var.trace_add("write", refresh_list)
+        listbox.bind("<Double-Button-1>", execute_selected)
+        listbox.bind("<Return>", execute_selected)
+        win.bind("<Return>", execute_selected)
+        win.bind("<Escape>", lambda _e: win.destroy())
+        entry.bind(
+            "<Down>",
+            lambda _e: (listbox.focus_set(), listbox.event_generate("<Down>"), "break")[
+                -1
+            ],
+        )
+        listbox.bind("<Up>", lambda _e: (listbox.focus_set(), "break")[-1])
+
+        refresh_list()
+        entry.focus_set()
+
+    def _on_workspace_switch(self, value: str):
+        mapping = {
+            "Workspace": "home",
+            "Dados": "tables",
+            "Análises": "plots",
+            "IA": "ai",
+            "Config": "settings",
+        }
+        self._set_ribbon_context(value)
+        self._set_main_tab(mapping.get(value, "home"))
+
+    def _toggle_sidebar_visibility(self):
+        if self._sidebar_visible:
+            self._sidebar_outer.grid_remove()
+            self._sidebar_visible = False
+            self._append_log("Painel lateral ocultado (modo foco).")
+        else:
+            self._sidebar_outer.grid()
+            self._sidebar_visible = True
+            self._append_log("Painel lateral exibido.")
+
+    def _toggle_inspector_visibility(self):
+        if not hasattr(self, "_inspector_outer"):
+            return
+        if self._inspector_visible:
+            self._inspector_outer.grid_remove()
+            self._inspector_visible = False
+            self._append_log("Inspector ocultado.")
+        else:
+            self._inspector_outer.grid()
+            self._inspector_visible = True
+            self._append_log("Inspector exibido.")
+
+    def _apply_workspace_layout(self, layout: str):
+        self._workspace_layout = str(layout)
+        if self._workspace_layout == "Focus":
+            if self._sidebar_visible:
+                self._toggle_sidebar_visibility()
+            if self._inspector_visible:
+                self._toggle_inspector_visibility()
+            self._set_main_tab("plots")
+        elif self._workspace_layout == "Review":
+            if self._sidebar_visible:
+                self._toggle_sidebar_visibility()
+            if not self._inspector_visible:
+                self._toggle_inspector_visibility()
+            self._set_main_tab("tables")
+        else:
+            if not self._sidebar_visible:
+                self._toggle_sidebar_visibility()
+            if not self._inspector_visible:
+                self._toggle_inspector_visibility()
+            self._set_main_tab("home")
+
+        with contextlib.suppress(Exception):
+            self.layout_switch.set(self._workspace_layout)
+        self._refresh_inspector_summary()
+        self._append_log(f"Layout aplicado: {self._workspace_layout}")
+
+    def _set_user_mode(self, mode: str):
+        self._user_mode = (
+            "basic" if str(mode).lower().startswith("basic") else "advanced"
+        )
+        self._apply_user_mode()
+
+    def _apply_user_mode(self):
+        if not self._basic_mode_hidden_widgets:
+            return
+
+        hide = self._user_mode == "basic"
+        for w in self._basic_mode_hidden_widgets:
+            try:
+                if hide:
+                    w.grid_remove()
+                else:
+                    w.grid()
+            except Exception:
+                continue
+
+        if hide:
+            self._set_main_tab("home")
+            self._append_log(
+                "Modo Básico ativado: recursos avançados foram simplificados."
+            )
+        else:
+            self._append_log("Modo Avançado ativado.")
+
+        with contextlib.suppress(Exception):
+            self.mode_switch.set("Básico" if hide else "Avançado")
+        self._refresh_inspector_summary()
+
+    def _build_home_tab(self):
+        home_frame = ctk.CTkScrollableFrame(self.tab_home)
+        home_frame.pack(fill="both", expand=True, padx=12, pady=12)
+
+        hero = ctk.CTkFrame(home_frame)
+        hero.pack(fill="x", padx=6, pady=(4, 10))
+        ctk.CTkLabel(
+            hero,
+            text="Bem-vindo ao Workspace IonFlow",
+            font=ctk.CTkFont(size=24, weight="bold"),
+        ).pack(anchor="w", padx=14, pady=(12, 4))
+        ctk.CTkLabel(
+            hero,
+            text=(
+                "Interface orientada por tarefas para EIS, Ciclagem e DRT. "
+                "Use o fluxo guiado abaixo para trabalhar como em uma suíte de análise."
+            ),
+            text_color="gray",
+            justify="left",
+            wraplength=1020,
+        ).pack(anchor="w", padx=14, pady=(0, 12))
+        ctk.CTkButton(
+            hero,
+            text="Iniciar wizard de projeto",
+            command=self._open_project_wizard,
+            width=220,
+        ).pack(anchor="w", padx=14, pady=(0, 14))
+
+        flow = ctk.CTkFrame(home_frame)
+        flow.pack(fill="x", padx=6, pady=(0, 10))
+        ctk.CTkLabel(
+            flow, text="Fluxo Guiado", font=ctk.CTkFont(size=16, weight="bold")
+        ).pack(anchor="w", padx=12, pady=(10, 8))
+
+        steps = [
+            (
+                "1) Importar Dados",
+                "Escolha arquivos EIS e de Ciclagem.",
+                lambda: self._import_files(
+                    target_dir="data/raw", label="Selecione arquivos EIS", eis_mode=True
+                ),
+            ),
+            (
+                "2) Processar",
+                "Execute EIS, Ciclagem, DRT ou todos juntos.",
+                self._run_both_clicked,
+            ),
+            (
+                "3) Explorar",
+                "Veja gráficos, tabelas e comparações.",
+                lambda: self._set_main_tab("plots"),
+            ),
+            (
+                "4) Validar",
+                "Execute validação KK e diagnósticos de fitting.",
+                self._run_kk_validation_clicked,
+            ),
+            (
+                "5) Relatar",
+                "Gere relatório técnico e exportações.",
+                self._generate_report_clicked,
+            ),
+        ]
+        for title, subtitle, cmd in steps:
+            card = ctk.CTkFrame(flow, fg_color=("#f8fafc", "#1f2937"))
+            card.pack(fill="x", padx=12, pady=5)
+            ctk.CTkLabel(
+                card, text=title, font=ctk.CTkFont(size=14, weight="bold")
+            ).pack(anchor="w", padx=12, pady=(8, 2))
+            ctk.CTkLabel(card, text=subtitle, text_color="gray").pack(
+                anchor="w", padx=12
+            )
+            ctk.CTkButton(card, text="Abrir", width=100, command=cmd).pack(
+                anchor="e", padx=12, pady=(4, 8)
+            )
+
+        quick = ctk.CTkFrame(home_frame)
+        quick.pack(fill="x", padx=6, pady=(0, 10))
+        ctk.CTkLabel(
+            quick, text="Acesso Rápido", font=ctk.CTkFont(size=16, weight="bold")
+        ).pack(anchor="w", padx=12, pady=(10, 8))
+        buttons = ctk.CTkFrame(quick, fg_color="transparent")
+        buttons.pack(fill="x", padx=10, pady=(0, 10))
+        ctk.CTkButton(
+            buttons, text="📊 Tabelas", command=lambda: self._set_main_tab("tables")
+        ).pack(side="left", padx=4)
+        ctk.CTkButton(
+            buttons, text="📈 Gráficos", command=lambda: self._set_main_tab("plots")
+        ).pack(side="left", padx=4)
+        ctk.CTkButton(buttons, text="🔄 Comparar", command=self._open_compare_tab).pack(
+            side="left", padx=4
+        )
+        ctk.CTkButton(
+            buttons, text="📝 Logs", command=lambda: self._set_main_tab("logs")
+        ).pack(side="left", padx=4)
+        ctk.CTkButton(
+            buttons, text="⚙️ Config", command=lambda: self._set_main_tab("settings")
+        ).pack(side="left", padx=4)
+
+        ctk.CTkLabel(
+            home_frame,
+            text="Dica: use Visualizar > Mostrar/Ocultar Painel Lateral para modo foco.",
+            text_color="gray",
+            font=ctk.CTkFont(size=11),
+        ).pack(anchor="w", padx=10, pady=(0, 8))
+
+    def _open_project_wizard(self):
+        presets = {
+            "Diagnóstico EIS": {
+                "description": "Analisa impedância, ajusta circuitos e prepara ranking e gráficos EIS.",
+                "drt": "Balanceado",
+                "scan_rate": None,
+                "pipeline": "eis",
+                "steps": "EIS → fitting → ranking → gráficos",
+            },
+            "Desempenho de Ciclagem": {
+                "description": "Calcula energia, potência, retenção e evolução por ciclo.",
+                "drt": None,
+                "scan_rate": "0.1",
+                "pipeline": "cycling",
+                "steps": "leitura → energia/potência → gráficos → tabela",
+            },
+            "Caracterização Completa": {
+                "description": "Executa o fluxo integrado de EIS e Ciclagem para uma visão geral da amostra.",
+                "drt": "Balanceado",
+                "scan_rate": "0.1",
+                "pipeline": "both",
+                "steps": "EIS → Ciclagem → resultados combinados",
+            },
+            "Validação DRT": {
+                "description": "Prioriza resolução espectral para investigar tempos de relaxação e picos DRT.",
+                "drt": "Alta resolução",
+                "scan_rate": None,
+                "pipeline": "drt",
+                "steps": "inversão DRT → picos → resumo → gráficos",
+            },
+            "Triagem rápida": {
+                "description": "Fluxo curto para verificar rapidamente se os arquivos estão legíveis e produzir os primeiros gráficos.",
+                "drt": "Rápido",
+                "scan_rate": "0.1",
+                "pipeline": "both",
+                "steps": "leitura → processamento rápido → gráficos básicos",
+            },
+            "Relatório publicável": {
+                "description": "Prepara resultados completos para validação, comparação e geração de relatório técnico.",
+                "drt": "Balanceado",
+                "scan_rate": "0.1",
+                "pipeline": "both",
+                "steps": "EIS → Ciclagem → validação → relatório",
+            },
+        }
+
+        win = ctk.CTkToplevel(self)
+        win.title("Wizard de Projeto | IonFlow")
+        win.geometry("700x540")
+        win.minsize(620, 480)
+        win.grab_set()
+
+        body = ctk.CTkFrame(win, fg_color="transparent")
+        body.pack(fill="both", expand=True, padx=18, pady=(14, 4))
+        body.grid_columnconfigure(0, weight=1)
+        body.grid_rowconfigure(1, weight=1)
+
+        title = ctk.CTkLabel(
+            body,
+            text="Novo projeto guiado",
+            font=ctk.CTkFont(size=22, weight="bold"),
+            anchor="w",
+        )
+        title.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+
+        pages = ctk.CTkFrame(body)
+        pages.grid(row=1, column=0, sticky="nsew")
+        pages.grid_columnconfigure(0, weight=1)
+        pages.grid_rowconfigure(0, weight=1)
+
+        page_objective = ctk.CTkScrollableFrame(pages)
+        page_summary = ctk.CTkScrollableFrame(pages)
+        for page in (page_objective, page_summary):
+            page.grid(row=0, column=0, sticky="nsew")
+            page.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(
+            page_objective,
+            text="1. Qual é o objetivo deste projeto?",
+            font=ctk.CTkFont(size=16, weight="bold"),
+            anchor="w",
+        ).grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 4))
+        ctk.CTkLabel(
+            page_objective,
+            text="Escolha um preset. Você poderá ajustar os parâmetros depois.",
+            text_color="gray",
+            anchor="w",
+        ).grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 12))
+
+        objective_var = tk.StringVar(value="Caracterização Completa")
+        for row, (name, preset) in enumerate(presets.items(), start=2):
+            card = ctk.CTkFrame(page_objective)
+            card.grid(row=row, column=0, sticky="ew", padx=10, pady=5)
+            card.grid_columnconfigure(0, weight=1)
+            radio = ctk.CTkRadioButton(
+                card,
+                text=name,
+                variable=objective_var,
+                value=name,
+                font=ctk.CTkFont(size=14, weight="bold"),
+            )
+            radio.grid(row=0, column=0, sticky="w", padx=12, pady=(10, 2))
+            ctk.CTkLabel(
+                card,
+                text=preset["description"],
+                text_color="gray",
+                anchor="w",
+                wraplength=560,
+            ).grid(row=1, column=0, sticky="ew", padx=12, pady=(0, 10))
+
+        summary_title = ctk.CTkLabel(
+            page_summary,
+            text="2. Confira o projeto",
+            font=ctk.CTkFont(size=16, weight="bold"),
+            anchor="w",
+        )
+        summary_title.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 8))
+        summary_label = ctk.CTkLabel(
+            page_summary,
+            text="",
+            justify="left",
+            anchor="nw",
+            wraplength=600,
+        )
+        summary_label.grid(row=1, column=0, sticky="new", padx=10, pady=8)
+
+        execute_var = tk.BooleanVar(value=True)
+        ctk.CTkCheckBox(
+            page_summary,
+            text="Executar o pipeline ao concluir",
+            variable=execute_var,
+        ).grid(row=2, column=0, sticky="w", padx=10, pady=(18, 4))
+        ctk.CTkLabel(
+            page_summary,
+            text="Desmarque para apenas preparar os parâmetros e continuar manualmente.",
+            text_color="gray",
+            anchor="w",
+        ).grid(row=3, column=0, sticky="ew", padx=10, pady=(0, 10))
+
+        footer = ctk.CTkFrame(win, fg_color="transparent")
+        footer.pack(fill="x", padx=18, pady=(4, 14))
+        footer.grid_columnconfigure(1, weight=1)
+        step_label = ctk.CTkLabel(footer, text="Etapa 1 de 2", text_color="gray")
+        step_label.grid(row=0, column=0, padx=(0, 8), sticky="w")
+        back_button = ctk.CTkButton(footer, text="Voltar", width=100, state="disabled")
+        back_button.grid(row=0, column=2, padx=4)
+        next_button = ctk.CTkButton(footer, text="Revisar", width=120)
+        next_button.grid(row=0, column=3, padx=4)
+
+        def update_summary():
+            selected = presets[objective_var.get()]
+            drt_text = selected["drt"] or "não alterado"
+            scan_text = selected["scan_rate"] or "não alterada"
+            summary_label.configure(
+                text=(
+                    f"Objetivo: {objective_var.get()}\n\n"
+                    f"{selected['description']}\n\n"
+                    f"Fluxo: {selected['steps']}\n"
+                    f"Preset DRT: {drt_text}\n"
+                    f"Scan rate: {scan_text}\n"
+                    f"Pipeline sugerido: {selected['pipeline'].upper()}"
+                )
+            )
+
+        def finish():
+            selected = presets[objective_var.get()]
+            if selected["drt"]:
+                self._apply_drt_preset(selected["drt"], persist=True)
+            if selected["scan_rate"]:
+                self.scan_rate_entry.delete(0, "end")
+                self.scan_rate_entry.insert(0, selected["scan_rate"])
+            self.gui_settings["project_objective"] = objective_var.get()
+            self._save_gui_settings()
+            self._append_log(f"Wizard: projeto preparado para {objective_var.get()}.")
+            win.destroy()
+            if execute_var.get():
+                {
+                    "eis": self._run_eis_clicked,
+                    "cycling": self._run_ciclagem_clicked,
+                    "both": self._run_both_clicked,
+                    "drt": self._run_drt_clicked,
+                }[selected["pipeline"]]()
+            else:
+                self._set_main_tab("home")
+
+        current_page = [0]
+
+        def show_page(page_index: int):
+            current_page[0] = page_index
+            target = page_objective if page_index == 0 else page_summary
+            target.lift()
+            target.tkraise()
+            if page_index == 0:
+                step_label.configure(text="Etapa 1 de 2")
+                back_button.configure(state="disabled")
+                next_button.configure(text="Revisar", command=lambda: show_page(1))
+            else:
+                update_summary()
+                step_label.configure(text="Etapa 2 de 2")
+                back_button.configure(state="normal", command=lambda: show_page(0))
+                next_button.configure(text="Concluir", command=finish)
+            win.update_idletasks()
+
+        next_button.configure(command=lambda: show_page(1))
+        back_button.configure(command=lambda: show_page(0))
+        show_page(0)
+
+    def _build_inspector_panel(self):
+        self._inspector_outer = ctk.CTkFrame(self, corner_radius=12, width=300)
+        self._inspector_outer.grid(
+            row=1, column=2, sticky="nse", padx=(0, 16), pady=(8, 16)
+        )
+        self._inspector_outer.grid_propagate(False)
+        self._inspector_outer.grid_rowconfigure(1, weight=1)
+        self._inspector_outer.grid_columnconfigure(0, weight=1)
+
+        header = ctk.CTkFrame(self._inspector_outer, fg_color="transparent")
+        header.grid(row=0, column=0, sticky="ew", padx=12, pady=(12, 4))
+        ctk.CTkLabel(
+            header,
+            text="Inspector",
+            font=ctk.CTkFont(size=18, weight="bold"),
+        ).pack(anchor="w")
+        ctk.CTkLabel(
+            header,
+            text="Painel de contexto e ações rápidas",
+            text_color="gray",
+            font=ctk.CTkFont(size=11),
+        ).pack(anchor="w")
+
+        self._inspector_scroll = ctk.CTkScrollableFrame(
+            self._inspector_outer,
+            orientation="vertical",
+            scrollbar_button_color=("#3b82f6", "#2563eb"),
+            scrollbar_button_hover_color=("#2563eb", "#1d4ed8"),
+        )
+        self._inspector_scroll.grid(
+            row=1, column=0, sticky="nsew", padx=(8, 4), pady=(2, 10)
+        )
+        self._inspector_scroll.grid_columnconfigure(0, weight=1)
+
+        stats = ctk.CTkFrame(self._inspector_scroll)
+        stats.pack(fill="x", padx=2, pady=(2, 8))
+        self.inspector_stats_label = ctk.CTkLabel(
+            stats,
+            text="EIS: 0 | Ciclagem: 0 | DRT: 0",
+            justify="left",
+            anchor="w",
+        )
+        self.inspector_stats_label.pack(fill="x", padx=10, pady=(8, 4))
+        self.inspector_mode_label = ctk.CTkLabel(
+            stats,
+            text="Modo: Avançado | Layout: Studio",
+            justify="left",
+            anchor="w",
+            text_color="gray",
+            font=ctk.CTkFont(size=11),
+        )
+        self.inspector_mode_label.pack(fill="x", padx=10, pady=(0, 8))
+
+        quick = ctk.CTkFrame(self._inspector_scroll)
+        quick.pack(fill="x", padx=2, pady=(0, 8))
+        ctk.CTkLabel(
+            quick, text="Navegação", font=ctk.CTkFont(size=14, weight="bold")
+        ).pack(anchor="w", padx=10, pady=(8, 6))
+        ctk.CTkButton(
+            quick, text="Workspace", command=lambda: self._set_main_tab("home")
+        ).pack(fill="x", padx=10, pady=3)
+        ctk.CTkButton(
+            quick, text="Gráficos", command=lambda: self._set_main_tab("plots")
+        ).pack(fill="x", padx=10, pady=3)
+        ctk.CTkButton(
+            quick, text="Tabelas", command=lambda: self._set_main_tab("tables")
+        ).pack(fill="x", padx=10, pady=3)
+        ctk.CTkButton(
+            quick, text="Logs", command=lambda: self._set_main_tab("logs")
+        ).pack(fill="x", padx=10, pady=(3, 10))
+
+        actions = ctk.CTkFrame(self._inspector_scroll)
+        actions.pack(fill="x", padx=2, pady=(0, 8))
+        ctk.CTkLabel(
+            actions, text="Ações", font=ctk.CTkFont(size=14, weight="bold")
+        ).pack(anchor="w", padx=10, pady=(8, 6))
+        ctk.CTkButton(actions, text="Rodar Ambos", command=self._run_both_clicked).pack(
+            fill="x", padx=10, pady=3
+        )
+        ctk.CTkButton(actions, text="Comparar", command=self._open_compare_tab).pack(
+            fill="x", padx=10, pady=3
+        )
+        ctk.CTkButton(
+            actions, text="Relatório", command=self._generate_report_clicked
+        ).pack(fill="x", padx=10, pady=(3, 10))
+
+        support = ctk.CTkFrame(self._inspector_scroll)
+        support.pack(fill="x", padx=2, pady=(0, 8))
+        ctk.CTkLabel(
+            support,
+            text="Suporte",
+            font=ctk.CTkFont(size=14, weight="bold"),
+        ).pack(anchor="w", padx=10, pady=(8, 6))
+        ctk.CTkButton(
+            support,
+            text="Diagnósticos",
+            command=self._show_about_window,
+        ).pack(fill="x", padx=10, pady=3)
+        ctk.CTkButton(
+            support,
+            text="Configurações",
+            command=lambda: self._set_main_tab("settings"),
+        ).pack(fill="x", padx=10, pady=(3, 10))
+
+    def _refresh_inspector_summary(self):
+        if not hasattr(self, "inspector_stats_label"):
+            return
+        n_eis = len(self.raw_eis or {})
+        n_cyc = len(self.cic_results or {})
+        n_drt = len(self.drt_results or {})
+        self.inspector_stats_label.configure(
+            text=f"EIS: {n_eis} | Ciclagem: {n_cyc} | DRT: {n_drt}"
+        )
+        mode_name = "Básico" if self._user_mode == "basic" else "Avançado"
+        self.inspector_mode_label.configure(
+            text=f"Modo: {mode_name} | Layout: {self._workspace_layout}"
+        )
+        with contextlib.suppress(Exception):
+            self._set_ribbon_context(self._ribbon_context)
+
     def _build_layout(self):
         self.grid_columnconfigure(1, weight=1)
-        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(2, weight=0)
+        self.grid_rowconfigure(0, weight=0)
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(2, weight=0)
+
+        self._build_menu_bar()
+        self._build_top_toolbar()
 
         self._sidebar_outer = ctk.CTkFrame(self, corner_radius=12, width=290)
-        self._sidebar_outer.grid(row=0, column=0, sticky="nsw", padx=16, pady=16)
+        self._sidebar_outer.grid(row=1, column=0, sticky="nsw", padx=16, pady=(8, 16))
         self._sidebar_outer.grid_propagate(False)
         self._sidebar_scroll = ctk.CTkScrollableFrame(
             self._sidebar_outer,
@@ -1196,18 +2419,18 @@ class PipelineApp(ctk.CTk):
         self.btn_drt.grid(row=9, column=0, padx=16, pady=8, sticky="ew")
         self._sidebar_buttons.append(self.btn_drt)
 
-        drt_param_frame = ctk.CTkFrame(sidebar)
-        drt_param_frame.grid(row=10, column=0, padx=16, pady=(6, 8), sticky="ew")
-        drt_param_frame.grid_columnconfigure((0, 1), weight=1)
+        self.drt_param_frame = ctk.CTkFrame(sidebar)
+        self.drt_param_frame.grid(row=10, column=0, padx=16, pady=(6, 8), sticky="ew")
+        self.drt_param_frame.grid_columnconfigure((0, 1), weight=1)
 
-        ctk.CTkLabel(drt_param_frame, text=tr("λ DRT")).grid(
+        ctk.CTkLabel(self.drt_param_frame, text=tr("λ DRT")).grid(
             row=0, column=0, padx=(8, 4), pady=(6, 2), sticky="w"
         )
-        ctk.CTkLabel(drt_param_frame, text=tr("n_taus")).grid(
+        ctk.CTkLabel(self.drt_param_frame, text=tr("n_taus")).grid(
             row=0, column=1, padx=(4, 8), pady=(6, 2), sticky="w"
         )
 
-        self.drt_lambda_entry = ctk.CTkEntry(drt_param_frame)
+        self.drt_lambda_entry = ctk.CTkEntry(self.drt_param_frame)
         self.drt_lambda_entry.insert(0, "1e-3")
         self.drt_lambda_entry.grid(
             row=1,
@@ -1217,7 +2440,7 @@ class PipelineApp(ctk.CTk):
             sticky="ew",
         )
 
-        self.drt_n_taus_entry = ctk.CTkEntry(drt_param_frame)
+        self.drt_n_taus_entry = ctk.CTkEntry(self.drt_param_frame)
         self.drt_n_taus_entry.insert(0, "50")
         self.drt_n_taus_entry.grid(
             row=1,
@@ -1229,7 +2452,7 @@ class PipelineApp(ctk.CTk):
         self.drt_lambda_entry.bind("<KeyRelease>", self._mark_drt_preset_custom)
         self.drt_n_taus_entry.bind("<KeyRelease>", self._mark_drt_preset_custom)
 
-        ctk.CTkLabel(drt_param_frame, text=tr("Preset DRT")).grid(
+        ctk.CTkLabel(self.drt_param_frame, text=tr("Preset DRT")).grid(
             row=2,
             column=0,
             padx=(8, 4),
@@ -1237,7 +2460,7 @@ class PipelineApp(ctk.CTk):
             sticky="w",
         )
         self.drt_preset_selector = ctk.CTkOptionMenu(
-            drt_param_frame,
+            self.drt_param_frame,
             values=["Custom", "Rápido", "Balanceado", "Alta resolução"],
             fg_color="#e2e8f0",
             button_color="#0b84ff",
@@ -1257,7 +2480,7 @@ class PipelineApp(ctk.CTk):
         )
 
         self.btn_drt_apply_preset = ctk.CTkButton(
-            drt_param_frame,
+            self.drt_param_frame,
             text=tr("Aplicar preset"),
             width=120,
             command=lambda: self._apply_drt_preset(
@@ -1274,7 +2497,7 @@ class PipelineApp(ctk.CTk):
         )
 
         self.btn_drt_reset = ctk.CTkButton(
-            drt_param_frame,
+            self.drt_param_frame,
             text=tr("Reset DRT"),
             width=120,
             command=self._reset_drt_defaults,
@@ -1288,7 +2511,7 @@ class PipelineApp(ctk.CTk):
         )
 
         ctk.CTkLabel(
-            drt_param_frame,
+            self.drt_param_frame,
             text=tr("Rápido:30 | Balanceado:50 | Alta:80"),
             font=ctk.CTkFont(size=10),
             anchor="w",
@@ -1370,7 +2593,7 @@ class PipelineApp(ctk.CTk):
         self.progress_label = ctk.CTkLabel(sidebar, text=tr("Pronto"), anchor="w")
         self.progress_label.grid(row=24, column=0, padx=16, pady=(0, 4), sticky="ew")
 
-        self.progress_bar = ctk.CTkProgressBar(sidebar, mode="indeterminate")
+        self.progress_bar = ctk.CTkProgressBar(sidebar, mode="determinate")
         self.progress_bar.grid(row=25, column=0, padx=16, pady=(0, 12), sticky="ew")
         self.progress_bar.set(0)
 
@@ -1442,8 +2665,11 @@ class PipelineApp(ctk.CTk):
         self.language_selector.set(self._language_labels_full[0])
 
         self.tabs = ctk.CTkTabview(self)
-        self.tabs.grid(row=0, column=1, sticky="nsew", padx=16, pady=16)
+        self.tabs.grid(row=1, column=1, sticky="nsew", padx=16, pady=(8, 16))
 
+        self._build_inspector_panel()
+
+        self.tab_home = self.tabs.add(self._main_tab_label("home"))
         self.tab_plots = self.tabs.add(self._main_tab_label("plots"))
         self.tab_tables = self.tabs.add(self._main_tab_label("tables"))
         self.tab_logs = self.tabs.add(self._main_tab_label("logs"))
@@ -1455,6 +2681,8 @@ class PipelineApp(ctk.CTk):
         self.tab_orientador = self.tabs.add(self._main_tab_label("orientador"))
         self.tab_lab = self.tabs.add(self._main_tab_label("lab"))
         self.tab_settings = self.tabs.add(self._main_tab_label("settings"))
+
+        self._build_home_tab()
 
         # ── AI Analysis tab content ──────────────────────────────
         ai_frame = ctk.CTkFrame(self.tab_ai)
@@ -1720,9 +2948,9 @@ class PipelineApp(ctk.CTk):
         self._status_bar_state = StatusBarState(version=_app_version)
         self.status_bar_frame = ctk.CTkFrame(self, height=28, corner_radius=0)
         self.status_bar_frame.grid(
-            row=1,
+            row=2,
             column=0,
-            columnspan=2,
+            columnspan=3,
             sticky="ew",
             padx=0,
             pady=0,
@@ -1734,7 +2962,19 @@ class PipelineApp(ctk.CTk):
             anchor="w",
         )
         self.status_bar_label.pack(fill="x", padx=12, pady=2)
-        self.grid_rowconfigure(1, weight=0)
+        self.grid_rowconfigure(2, weight=0)
+
+        self._basic_mode_hidden_widgets = [
+            self.btn_drt,
+            self.drt_param_frame,
+            self.btn_batch,
+            self.btn_compose,
+            self.btn_gen_synthetic,
+            self.btn_del_synthetic,
+            self.btn_train_classifier,
+        ]
+        self._apply_user_mode()
+        self._refresh_inspector_summary()
 
     def _create_table(self, parent, table_key: str) -> ttk.Treeview:
         frame = ctk.CTkFrame(parent)
@@ -2298,16 +3538,23 @@ class PipelineApp(ctk.CTk):
         self.log_text.insert("end", msg + "\n")
         self.log_text.see("end")
 
-    def _start_progress(self, text: str):
-        self.progress_label.configure(text=text)
-        self.progress_bar.start()
+    def _start_progress(self, text: str, percent: float = 0.0):
+        self.progress_bar.stop()
+        self.progress_bar.set(max(0.0, min(1.0, percent / 100.0)))
+        self.progress_label.configure(text=f"{percent:.0f}% · {text}")
 
-    def _update_progress(self, text: str):
-        self.progress_label.configure(text=text)
+    def _update_progress(self, text: str, percent: Optional[float] = None):
+        if percent is not None:
+            self.progress_bar.set(max(0.0, min(1.0, percent / 100.0)))
+            self.progress_label.configure(text=f"{percent:.0f}% · {text}")
+        else:
+            self.progress_label.configure(text=text)
 
     def _stop_progress(self, text: str = "Pronto"):
         self.progress_bar.stop()
-        self.progress_label.configure(text=text)
+        completed = text != "Erro"
+        self.progress_bar.set(1.0 if completed else 0.0)
+        self.progress_label.configure(text=f"{'100%' if completed else '0%'} · {text}")
 
     def _clear_plots(self):
         for widget in self.plots_frame.winfo_children():
@@ -6401,18 +7648,18 @@ class PipelineApp(ctk.CTk):
         self._update_status_bar(pipeline_status="running: EIS")
         self._disable_buttons()
         self._set_status("rodando EIS")
-        self._start_progress("Identificando amostras EIS...")
+        self._start_progress("Preparando análise EIS", 5)
         self._clear_plots()
 
         def worker():
             qwriter = QueueWriter(self.log_queue)
             try:
-                self.log_queue.put(("stage", "Calculando valores EIS..."))
+                self.log_queue.put(("progress", 15, "Calculando valores EIS"))
                 with contextlib.redirect_stdout(qwriter), contextlib.redirect_stderr(
                     qwriter
                 ):
                     result = run_eis_pipeline()
-                self.log_queue.put(("stage", "Gerando tabelas e gráficos..."))
+                self.log_queue.put(("progress", 85, "Gerando tabelas e gráficos"))
                 self.log_queue.put(("eis_done", result))
             except Exception:
                 self.log_queue.put(("log", traceback.format_exc()))
@@ -6425,19 +7672,23 @@ class PipelineApp(ctk.CTk):
         self._update_status_bar(pipeline_status="running: Cycling")
         self._disable_buttons()
         self._set_status("rodando Ciclagem")
-        self._start_progress("Identificando ciclos...")
+        self._start_progress("Preparando análise de ciclagem", 5)
         self._clear_plots()
 
         def worker():
             qwriter = QueueWriter(self.log_queue)
             try:
                 scan_rate = float(self.scan_rate_entry.get().strip())
-                self.log_queue.put(("stage", "Calculando valores de energia..."))
+                self.log_queue.put(
+                    ("progress", 15, "Calculando energia e potência por ciclo")
+                )
                 with contextlib.redirect_stdout(qwriter), contextlib.redirect_stderr(
                     qwriter
                 ):
                     result = run_ciclagem_pipeline(scan_rate, show_plots=False)
-                self.log_queue.put(("stage", "Gerando gráficos e tabelas..."))
+                self.log_queue.put(
+                    ("progress", 85, "Gerando gráficos e tabelas de ciclagem")
+                )
                 self.log_queue.put(("cic_done", result))
             except Exception:
                 self.log_queue.put(("log", traceback.format_exc()))
@@ -6450,7 +7701,7 @@ class PipelineApp(ctk.CTk):
         self._update_status_bar(pipeline_status="running: EIS+Cycling")
         self._disable_buttons()
         self._set_status("rodando ambos")
-        self._start_progress("Identificando dados EIS e ciclos...")
+        self._start_progress("Preparando análise combinada", 5)
         self._clear_plots()
 
         def worker():
@@ -6459,17 +7710,17 @@ class PipelineApp(ctk.CTk):
             cic_result = None
             try:
                 scan_rate = float(self.scan_rate_entry.get().strip())
-                self.log_queue.put(("stage", "Calculando EIS..."))
+                self.log_queue.put(("progress", 15, "Calculando EIS"))
                 with contextlib.redirect_stdout(qwriter), contextlib.redirect_stderr(
                     qwriter
                 ):
                     eis_result = run_eis_pipeline()
-                self.log_queue.put(("stage", "Calculando ciclagem..."))
+                self.log_queue.put(("progress", 55, "Calculando ciclagem"))
                 with contextlib.redirect_stdout(qwriter), contextlib.redirect_stderr(
                     qwriter
                 ):
                     cic_result = run_ciclagem_pipeline(scan_rate, show_plots=False)
-                self.log_queue.put(("stage", "Gerando gráficos e tabelas..."))
+                self.log_queue.put(("progress", 85, "Finalizando gráficos e tabelas"))
             except Exception:
                 self.log_queue.put(("log", traceback.format_exc()))
             finally:
@@ -6485,7 +7736,7 @@ class PipelineApp(ctk.CTk):
         self._update_status_bar(pipeline_status="running: DRT")
         self._disable_buttons()
         self._set_status("rodando DRT")
-        self._start_progress("Calculando DRT...")
+        self._start_progress("Preparando inversão DRT", 5)
         self._clear_plots()
 
         def worker():
@@ -6494,7 +7745,7 @@ class PipelineApp(ctk.CTk):
                 lambda_reg, n_taus = self._read_drt_params()
                 preset_name = self.drt_preset_selector.get()
 
-                self.log_queue.put(("stage", "Executando inversão DRT..."))
+                self.log_queue.put(("progress", 20, "Executando inversão DRT"))
                 self.log_queue.put(
                     (
                         "log",
@@ -6511,7 +7762,7 @@ class PipelineApp(ctk.CTk):
                         n_taus=n_taus,
                         show_plots=False,
                     )
-                self.log_queue.put(("stage", "Organizando resultados DRT..."))
+                self.log_queue.put(("progress", 85, "Organizando resultados DRT"))
                 self.log_queue.put(("drt_done", result))
             except Exception:
                 self.log_queue.put(("log", traceback.format_exc()))
@@ -6527,11 +7778,19 @@ class PipelineApp(ctk.CTk):
                 break
 
             try:
+                if isinstance(item, str):
+                    self._append_log(item)
+                    continue
+                if not isinstance(item, tuple) or not item:
+                    self._append_log(str(item))
+                    continue
                 msg_type = item[0]
                 if msg_type == "log":
                     self._append_log(item[1])
                 elif msg_type == "stage":
                     self._update_progress(item[1])
+                elif msg_type == "progress":
+                    self._update_progress(item[2], float(item[1]))
                 elif msg_type == "eis_done":
                     self._handle_eis_done(item[1])
                 elif msg_type == "cic_done":
@@ -6582,6 +7841,7 @@ class PipelineApp(ctk.CTk):
             self._set_status("erro no EIS")
             self._stop_progress("Erro")
             self._enable_buttons()
+            self._refresh_inspector_summary()
             return
 
         self.last_eis_result = result
@@ -6629,6 +7889,7 @@ class PipelineApp(ctk.CTk):
                     f"(use 'Diagnóstico Fitting' > 'Resumo Metrológico' para detalhes)"
                 )
         self._refresh_compare_sample_list()
+        self._refresh_inspector_summary()
         # Atualiza janela interativa se estiver aberta
         if self.interactive_win is not None and self.interactive_win.winfo_exists():
             self._open_interactive_window()
@@ -6638,6 +7899,7 @@ class PipelineApp(ctk.CTk):
             self._set_status("erro na Ciclagem")
             self._stop_progress("Erro")
             self._enable_buttons()
+            self._refresh_inspector_summary()
             return
 
         self.last_cycling_result = result
@@ -6660,6 +7922,7 @@ class PipelineApp(ctk.CTk):
         self._set_status("Ciclagem concluída")
         self._stop_progress("Ciclagem concluída")
         self._enable_buttons()
+        self._refresh_inspector_summary()
         if self.interactive_win is not None and self.interactive_win.winfo_exists():
             self._open_interactive_window(
                 preferred_tab="Energia × Potência",
@@ -6670,6 +7933,7 @@ class PipelineApp(ctk.CTk):
             self._set_status("erro ao rodar ambos")
             self._stop_progress("Erro")
             self._enable_buttons()
+            self._refresh_inspector_summary()
             return
 
         eis_result, cic_result = result
@@ -6708,6 +7972,7 @@ class PipelineApp(ctk.CTk):
         self._stop_progress("Ambos concluídos")
         self._enable_buttons()
         self._refresh_compare_sample_list()
+        self._refresh_inspector_summary()
         if self.interactive_win is not None and self.interactive_win.winfo_exists():
             self._open_interactive_window()
 
@@ -6716,6 +7981,7 @@ class PipelineApp(ctk.CTk):
             self._set_status("erro no DRT")
             self._stop_progress("Erro")
             self._enable_buttons()
+            self._refresh_inspector_summary()
             return
 
         self.last_drt_result = result
@@ -6766,6 +8032,7 @@ class PipelineApp(ctk.CTk):
         self._set_status("DRT concluído")
         self._stop_progress("DRT concluído")
         self._enable_buttons()
+        self._refresh_inspector_summary()
         if self.interactive_win is not None and self.interactive_win.winfo_exists():
             self._open_interactive_window(preferred_tab="DRT")
 
@@ -7824,6 +9091,352 @@ class PipelineApp(ctk.CTk):
             )
 
     # ── v0.3.0: Help > Referências ─────────────────────────────────────
+
+    def _open_external_link(self, url: str) -> None:
+        import webbrowser
+
+        try:
+            webbrowser.open(url)
+        except Exception as exc:
+            self._append_log(f"Falha ao abrir link {url}: {exc}")
+
+    def _open_local_resource(self, rel_path: str) -> None:
+        target = Path(__file__).resolve().parent / rel_path
+        if not target.exists():
+            self._append_log(f"Recurso não encontrado: {target}")
+            return
+
+        try:
+            if sys.platform.startswith("win"):
+                os.startfile(str(target))  # type: ignore[attr-defined]
+            else:
+                import webbrowser
+
+                webbrowser.open(target.as_uri())
+        except Exception as exc:
+            self._append_log(f"Falha ao abrir recurso local {target}: {exc}")
+
+    def _build_support_diagnostics_text(self) -> str:
+        """Build a plain-text diagnostics snapshot for support and bug reports."""
+        import platform
+        from datetime import datetime
+
+        from src import __version__ as _app_version
+
+        app_root = Path(__file__).resolve().parent
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        lines = [
+            "IonFlow Pipeline — Diagnostics Snapshot",
+            "=" * 52,
+            f"Generated at: {now}",
+            f"Version: v{_app_version}",
+            f"Python: {platform.python_version()}",
+            f"Platform: {platform.platform()}",
+            f"Executable: {sys.executable}",
+            f"Working directory: {os.getcwd()}",
+            f"App root: {app_root}",
+            f"User mode: {getattr(self, '_user_mode', 'unknown')}",
+            f"Workspace layout: {getattr(self, '_workspace_layout', 'unknown')}",
+            f"Sidebar visible: {getattr(self, '_sidebar_visible', False)}",
+            f"Inspector visible: {getattr(self, '_inspector_visible', False)}",
+            f"Main tab: {self.tabs.get() if hasattr(self, 'tabs') else 'n/a'}",
+            f"Last pipeline: {getattr(self, '_last_pipeline', 'n/a')}",
+            "",
+            "Data summary",
+            "-" * 52,
+            f"EIS loaded: {len(getattr(self, 'raw_eis', {}) or {})}",
+            f"Cycling loaded: {len(getattr(self, 'cic_results', {}) or {})}",
+            f"DRT loaded: {len(getattr(self, 'drt_results', {}) or {})}",
+            "",
+            "Important paths",
+            "-" * 52,
+            f"README: {app_root / 'README.md'}",
+            f"CHANGELOG: {app_root / 'CHANGELOG.md'}",
+            f"Logs dir: {app_root / 'logs'}",
+            f"Outputs dir: {app_root / 'outputs'}",
+            f"Raw data dir: {app_root / 'data' / 'raw'}",
+            f"Processed data dir: {app_root / 'data' / 'processed'}",
+        ]
+        return "\n".join(lines)
+
+    def _copy_support_diagnostics(self) -> None:
+        text = self._build_support_diagnostics_text()
+        try:
+            self.clipboard_clear()
+            self.clipboard_append(text)
+            self.update_idletasks()
+            messagebox.showinfo(
+                "Diagnóstico copiado",
+                "Informações de suporte copiadas para a área de transferência.",
+            )
+            self._append_log("Diagnóstico copiado para clipboard.")
+        except Exception as exc:
+            messagebox.showerror(
+                "Falha ao copiar", f"Não foi possível copiar o diagnóstico.\n\n{exc}"
+            )
+            self._append_log(f"Falha ao copiar diagnóstico: {exc}")
+
+    def _export_support_diagnostics(self) -> None:
+        from datetime import datetime
+
+        app_root = Path(__file__).resolve().parent
+        support_dir = app_root / "outputs" / "support"
+        support_dir.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        out_path = support_dir / f"ionflow_support_{stamp}.txt"
+        try:
+            out_path.write_text(
+                self._build_support_diagnostics_text(), encoding="utf-8"
+            )
+            messagebox.showinfo(
+                "Relatório exportado", f"Relatório de suporte salvo em:\n{out_path}"
+            )
+            self._append_log(f"Relatório de suporte exportado: {out_path}")
+        except Exception as exc:
+            messagebox.showerror(
+                "Falha ao exportar", f"Não foi possível exportar o relatório.\n\n{exc}"
+            )
+            self._append_log(f"Falha ao exportar relatório de suporte: {exc}")
+
+    def _show_about_window(self) -> None:
+        """Open a complete About dialog with metadata, links and tutorials."""
+        import platform
+
+        if (
+            hasattr(self, "_about_win")
+            and self._about_win is not None
+            and self._about_win.winfo_exists()
+        ):
+            self._about_win.lift()
+            self._about_win.focus_force()
+            return
+
+        app_root = Path(__file__).resolve().parent
+        creator = "Emanuel"
+        urls = {
+            "Homepage": "https://emanuel-963.github.io/ubiquitous-jougen/",
+            "Repository": "https://github.com/Emanuel-963/ubiquitous-jougen",
+            "Documentation": "https://github.com/Emanuel-963/ubiquitous-jougen#readme",
+            "Bug Tracker": "https://github.com/Emanuel-963/ubiquitous-jougen/issues",
+            "Changelog": "https://github.com/Emanuel-963/ubiquitous-jougen/blob/main/CHANGELOG.md",
+        }
+
+        # Try to read creator/URLs from pyproject so About stays in sync.
+        with contextlib.suppress(Exception):
+            import tomllib
+
+            pyproject_path = app_root / "pyproject.toml"
+            pyproject_data = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
+            project_meta = pyproject_data.get("project", {})
+            authors = project_meta.get("authors") or []
+            if authors and isinstance(authors[0], dict) and authors[0].get("name"):
+                creator = str(authors[0]["name"])
+            project_urls = project_meta.get("urls") or {}
+            if isinstance(project_urls, dict):
+                for key, value in project_urls.items():
+                    if isinstance(value, str):
+                        urls[str(key)] = value
+
+        from src import __version__ as _app_version
+
+        win = ctk.CTkToplevel(self)
+        win.title(f"Sobre — IonFlow Pipeline v{_app_version}")
+        win.geometry("980x760")
+        win.resizable(True, True)
+        self._about_win = win
+
+        sc = ctk.CTkScrollableFrame(win)
+        sc.pack(fill="both", expand=True, padx=12, pady=12)
+
+        ctk.CTkLabel(
+            sc,
+            text="IonFlow Pipeline",
+            font=ctk.CTkFont(size=26, weight="bold"),
+        ).pack(anchor="w", padx=8, pady=(4, 2))
+        ctk.CTkLabel(
+            sc,
+            text="Plataforma profissional de análise eletroquímica: EIS, Ciclagem, DRT, IA e Relatórios.",
+            text_color="gray",
+            wraplength=900,
+            justify="left",
+        ).pack(anchor="w", padx=8, pady=(0, 10))
+
+        info = ctk.CTkFrame(sc)
+        info.pack(fill="x", padx=6, pady=(0, 8))
+        ctk.CTkLabel(
+            info,
+            text=(
+                f"Versão: v{_app_version}    |    Criador: {creator}    |    "
+                f"Python: {platform.python_version()}    |    Plataforma: {platform.system()}"
+            ),
+            anchor="w",
+        ).pack(fill="x", padx=10, pady=10)
+
+        links_sec = ctk.CTkFrame(sc)
+        links_sec.pack(fill="x", padx=6, pady=(0, 8))
+        ctk.CTkLabel(
+            links_sec,
+            text="Links Oficiais",
+            font=ctk.CTkFont(size=16, weight="bold"),
+        ).pack(anchor="w", padx=10, pady=(8, 6))
+
+        links_row = ctk.CTkFrame(links_sec, fg_color="transparent")
+        links_row.pack(fill="x", padx=8, pady=(0, 8))
+        for label in [
+            "Homepage",
+            "Repository",
+            "Documentation",
+            "Bug Tracker",
+            "Changelog",
+        ]:
+            url = urls.get(label)
+            if not url:
+                continue
+            ctk.CTkButton(
+                links_row,
+                text=label,
+                width=140,
+                command=lambda u=url: self._open_external_link(u),
+            ).pack(side="left", padx=4, pady=3)
+
+        updates_sec = ctk.CTkFrame(sc)
+        updates_sec.pack(fill="x", padx=6, pady=(0, 8))
+        ctk.CTkLabel(
+            updates_sec,
+            text="Atualizações e Novidades",
+            font=ctk.CTkFont(size=16, weight="bold"),
+        ).pack(anchor="w", padx=10, pady=(8, 6))
+
+        changelog_path = app_root / "CHANGELOG.md"
+        body_excerpt = "Sem changelog local disponível."
+        with contextlib.suppress(Exception):
+            full_text = changelog_path.read_text(encoding="utf-8")
+            body_excerpt = (
+                (full_text[:1800] + "...") if len(full_text) > 1800 else full_text
+            )
+
+        changelog_tb = ctk.CTkTextbox(
+            updates_sec,
+            height=150,
+            wrap="word",
+            font=ctk.CTkFont(size=12),
+        )
+        changelog_tb.insert("1.0", body_excerpt)
+        changelog_tb.configure(state="disabled")
+        changelog_tb.pack(fill="x", padx=10, pady=(0, 8))
+
+        upd_row = ctk.CTkFrame(updates_sec, fg_color="transparent")
+        upd_row.pack(fill="x", padx=8, pady=(0, 8))
+        ctk.CTkButton(
+            upd_row,
+            text="Verificar atualizações agora",
+            command=self._check_for_updates_async,
+        ).pack(side="left", padx=4)
+        ctk.CTkButton(
+            upd_row,
+            text="Abrir CHANGELOG local",
+            command=lambda: self._open_local_resource("CHANGELOG.md"),
+        ).pack(side="left", padx=4)
+
+        docs_sec = ctk.CTkFrame(sc)
+        docs_sec.pack(fill="x", padx=6, pady=(0, 8))
+        ctk.CTkLabel(
+            docs_sec,
+            text="Ajuda, Docs e Tutoriais",
+            font=ctk.CTkFont(size=16, weight="bold"),
+        ).pack(anchor="w", padx=10, pady=(8, 6))
+
+        docs_row = ctk.CTkFrame(docs_sec, fg_color="transparent")
+        docs_row.pack(fill="x", padx=8, pady=(0, 8))
+        ctk.CTkButton(
+            docs_row,
+            text="README",
+            width=120,
+            command=lambda: self._open_local_resource("README.md"),
+        ).pack(side="left", padx=4, pady=3)
+        ctk.CTkButton(
+            docs_row,
+            text="ROADMAP",
+            width=120,
+            command=lambda: self._open_local_resource("docs/ROADMAP_commercial.md"),
+        ).pack(side="left", padx=4, pady=3)
+        ctk.CTkButton(
+            docs_row,
+            text="Validação Científica",
+            width=160,
+            command=lambda: self._open_local_resource("docs/SCIENTIFIC_VALIDATION.md"),
+        ).pack(side="left", padx=4, pady=3)
+        ctk.CTkButton(
+            docs_row,
+            text="Abrir pasta tutoriais",
+            width=160,
+            command=lambda: self._open_local_resource("tutoriais"),
+        ).pack(side="left", padx=4, pady=3)
+
+        tutorial_box = ctk.CTkFrame(docs_sec)
+        tutorial_box.pack(fill="x", padx=10, pady=(0, 8))
+        ctk.CTkLabel(
+            tutorial_box,
+            text="Tutoriais recomendados:",
+            font=ctk.CTkFont(size=13, weight="bold"),
+        ).pack(anchor="w", padx=8, pady=(8, 6))
+
+        tutorials_dir = app_root / "tutoriais"
+        tutorial_files: List[str] = []
+        with contextlib.suppress(Exception):
+            tutorial_files = sorted([p.name for p in tutorials_dir.glob("*.txt")])
+
+        tut_grid = ctk.CTkFrame(tutorial_box, fg_color="transparent")
+        tut_grid.pack(fill="x", padx=6, pady=(0, 8))
+        for i, name in enumerate(tutorial_files[:10]):
+            ctk.CTkButton(
+                tut_grid,
+                text=name,
+                width=220,
+                command=lambda n=name: self._open_local_resource(f"tutoriais/{n}"),
+            ).grid(row=i // 3, column=i % 3, padx=4, pady=3, sticky="w")
+
+        license_sec = ctk.CTkFrame(sc)
+        license_sec.pack(fill="x", padx=6, pady=(0, 8))
+        ctk.CTkLabel(
+            license_sec,
+            text="Licença e Créditos",
+            font=ctk.CTkFont(size=16, weight="bold"),
+        ).pack(anchor="w", padx=10, pady=(8, 6))
+        ctk.CTkLabel(
+            license_sec,
+            text=(
+                "Licença: MIT\n"
+                "Projeto: IonFlow Pipeline\n"
+                "Criado e mantido por: Emanuel\n"
+                "Se precisar de suporte, use Bug Tracker ou os tutoriais locais."
+            ),
+            justify="left",
+            anchor="w",
+        ).pack(fill="x", padx=10, pady=(0, 10))
+
+        bottom = ctk.CTkFrame(sc, fg_color="transparent")
+        bottom.pack(fill="x", padx=6, pady=(0, 6))
+        ctk.CTkButton(
+            bottom,
+            text="Copiar diagnóstico",
+            command=self._copy_support_diagnostics,
+        ).pack(side="left", padx=4)
+        ctk.CTkButton(
+            bottom,
+            text="Exportar diagnóstico (.txt)",
+            command=self._export_support_diagnostics,
+        ).pack(side="left", padx=4)
+        ctk.CTkButton(
+            bottom,
+            text="Abrir Referências Bibliográficas",
+            command=self._show_references_window,
+        ).pack(side="left", padx=4)
+        ctk.CTkButton(
+            bottom,
+            text="Fechar",
+            command=win.destroy,
+        ).pack(side="right", padx=4)
 
     def _show_references_window(self) -> None:
         """Open the offline bibliographic references browser window."""

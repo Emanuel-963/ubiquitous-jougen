@@ -4,6 +4,7 @@
 > preditor de circuitos do IonFlow Pipeline.
 >
 > **Estrutura do sistema**
+>
 > - **Todos os 37 circuitos** estão registados em `src/circuit_registry.py` (fitting real)
 >   **e** em `scripts/gen_synthetic_eis.py` (dados sintéticos para treino do classificador ML).
 > - **11 circuitos base** — núcleo histórico do sistema; incluem os casos de uso mais comuns
@@ -133,6 +134,7 @@ Rs ──┬──── W ────
 **Parâmetros:** Rs, L, Rp, Q, n (5 parâmetros)
 
 **Significado físico:**
+
 - **L** — indutância em série devida a cabos/conectores ou a intermediários adsorvidos (processo de adsorção em baixas frequências).
 
 **Sistemas típicos:** metais em corrosão com intermediários adsorvidos, sistemas com cabos longos, PEM a altas frequências.
@@ -148,6 +150,7 @@ Rs ──┬──── W ────
 **Parâmetros:** Rs, Rcoat, Qcoat, ncoat, Rct, Qdl, ndl (7 parâmetros)
 
 **Significado físico:**
+
 - **Rcoat / CPEcoat** — resposta capacitiva-resistiva do revestimento (poros de elétrolito + capacitância dielétrica do filme).
 - **Rct / CPEdl** — interface metal/eletrólito subjacente (transferência de carga + dupla camada).
 
@@ -164,6 +167,7 @@ Rs ──┬──── W ────
 **Parâmetros:** Rs, Rp, Q, n, Rd, Td (6 parâmetros)
 
 **Significado físico:**
+
 - **Rd** — resistência de difusão (Ω); proporcional à espessura da camada difusiva.
 - **Td** — constante de tempo de difusão (s) = L²/D; L = espessura, D = difusividade.
 
@@ -204,6 +208,7 @@ Rs ──┬──── W ────
 **Parâmetros:** Rs, Q, n (3 parâmetros)
 
 **Significado físico:**
+
 - **Q** — pseudo-capacitância; n → 1 ⇒ capacitor ideal (EDLC perfeito); n = 0,85–0,95 ⇒ EDLC real de carbono ativado.
 - **Rs** — ESR (Equivalent Series Resistance).
 
@@ -234,6 +239,7 @@ $$Z_{Ger} = \frac{R_g}{\sqrt{1 + j\omega T_g}}$$
 **Parâmetros:** Rs, Rp, Q, n, Rg, Tg (6 parâmetros)
 
 **Significado físico:**
+
 - **Rg** — amplitude da impedância da reação distribuída.
 - **Tg** = k_f/D — taxa de reação homogênea dividida pela difusividade.
 
@@ -250,6 +256,7 @@ $$Z_{Ger} = \frac{R_g}{\sqrt{1 + j\omega T_g}}$$
 **Parâmetros:** Rs, R1, Q1, n1, R2, Q2, n2, R3, Q3, n3 (10 parâmetros)
 
 **Física dos arcos:**
+
 - **ZARC₁** (alta frequência) — condução no bulk do grão.
 - **ZARC₂** (frequência média) — resistência de contorno de grão.
 - **ZARC₃** (baixa frequência) — polarização eletrodo/interface.
@@ -286,6 +293,7 @@ $$Z_{Ger} = \frac{R_g}{\sqrt{1 + j\omega T_g}}$$
 **Parâmetros:** Rs, Rsei, Qsei, n_sei, Rct, Qdl, n_dl, AW, tau_d (9 parâmetros)
 
 **Física das três regiões:**
+
 - Alta ω: camada de terminações superficiais (=O, −OH, −F) → SEI do MXene.
 - Média ω: transferência de carga na interface MXene/eletrólito.
 - Baixa ω: difusão finita de H⁺/Na⁺ no espaçamento interlamelar 2D.
@@ -582,6 +590,7 @@ quando o classificador ML prediz um circuito EXT.
 **Problema atual:** o classificador RandomForest trata todos os 33 circuitos como classes independentes. Circuitos muito similares (e.g. `Warburg-Finite` vs. `Warburg-Short`, ou `EXT-02` vs. `EXT-03`) têm EIS quase idêntico para muitas combinações de parâmetros, causando confusão no classificador.
 
 **Melhoria proposta:** implementar classificação em dois estágios:
+
 1. **Família** (6–8 grupos): Randles simples / ZARC múltiplo / com difusão / indutivo / poroso / Gerischer.
 2. **Circuito específico** dentro da família.
 
@@ -629,6 +638,7 @@ pelo método `predict()` somam 1.0 e são calibradas (Platt scaling).
 ### ✅ 8. Exportar os metadados de circuito no relatório PDF *(concluído — v0.4.10)*
 
 Secção "Equivalent Circuit" adicionada ao `ReportGenerator` (PDF e Markdown):
+
 - Diagrama ASCII do circuito (`template.diagram`).
 - Tabela de significado físico dos parâmetros (`template.physical_meaning`).
 - Sistemas típicos (`template.typical_systems`).
