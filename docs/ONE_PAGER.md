@@ -1,4 +1,4 @@
-# IonFlow Pipeline v0.3.0 — One-page Summary
+# IonFlow Pipeline v0.5.0 — One-page Summary
 
 ## What it is
 
@@ -8,7 +8,7 @@ Relaxation Times (DRT)** analysis. It features an AI-powered interpretation agen
 PDF reporting, parallel processing, and an interactive GUI — all in a single installable
 desktop application.
 
-## Key Features (v0.3.0)
+## Key Features (v0.5.0)
 
 | Category | Capabilities |
 |----------|-------------|
@@ -18,9 +18,9 @@ desktop application.
 | **AI Agent** | 50+ electrochemical rules, inference engine, performance predictor, process advisor, optional LLM enrichment (OpenAI/Ollama) |
 | **Visualisation** | Nyquist, Bode, PCA 2D/3D, correlation heatmaps, production heatmaps (material × synthesis), boxplots |
 | **Reporting** | Automated PDF with cover, EIS/Cycling/DRT/AI sections, images, tables |
-| **GUI** | MVC architecture, 6 tab modules, keyboard shortcuts, 3 languages (PT/EN/ES), accessibility settings |
+| **GUI** | Workspace V3, guided project wizard with objective presets, contextual Ribbon, Command Palette (`Ctrl+K`), scrollable Inspector, 3 languages |
 | **CLI** | `ionflow-cli eis / cycling / drt / analyze / validate / config` |
-| **Quality** | 220+ new automated tests (v0.3.0), 1782 (v0.2.0), GitHub Actions CI, structured logging |
+| **Quality** | Automated tests, GitHub Actions CI, structured logging, determinate GUI progress with stage and percentage |
 
 ## Quick Start
 
@@ -41,17 +41,20 @@ python gui_app.py
 
 ## For Researchers
 
-1. Place your EIS `.csv` files in `data/raw/`
-2. Launch the GUI or CLI
-3. The pipeline automatically: loads → validates (Kramers-Kronig) → fits 7 circuits → ranks by BIC → runs PCA → generates heatmaps
-4. The AI agent interprets results and recommends process improvements
-5. Export a complete PDF report with one click
+1. Launch the GUI and open **Iniciar wizard de projeto** in the Workspace
+2. Choose a preset: quick triage, EIS diagnosis, cycling performance, complete characterization, DRT validation, or publishable report
+3. Place your EIS `.csv` files in `data/raw/` and cycling files in `data/processed/`
+4. Review the preset and execute the suggested pipeline
+5. Follow the percentage and current stage in the GUI; detailed messages remain in Logs
+6. The AI agent interprets results and recommends process improvements
+7. Export a complete PDF report with one click
 
 ## Architecture
 
 - **35+ Python modules** with typed dataclasses and structured logging
 - **`src/ai/`** — Knowledge base (50+ rules), inference engine, performance predictor, process advisor, LLM adapter
 - **`src/gui/`** — MVC pattern with modular tab system
+- **Windows distribution** — Inno Setup installer with silent in-place updates from GitHub Releases
 - **`src/config.py`** — Single `PipelineConfig` dataclass (zero magic numbers)
 
 ## Links

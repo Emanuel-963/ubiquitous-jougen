@@ -1,7 +1,7 @@
 # IonFlow Pipeline — Commercial Roadmap
 **Objetivo: tornar o IonFlow a referência de mercado em análise de EIS, com fabricantes de potenciostatos querendo acoplar ou licenciar o software.**
 
-> Versão atual: **v0.4.0** — Market Edition lançada.
+> Versão atual: **v0.5.0** — Lab Edition inicial lançada.
 
 ---
 
@@ -59,9 +59,22 @@ Fluxo de ativação:
 
 ---
 
-## v0.5.0 — "Lab Edition" _(6–9 meses)_
+## v0.5.0 — "Lab Edition" _(entregue em 24/08/2026)_
 
 **Foco:** multi-usuário, colaboração, integração com sistemas de gestão de laboratório (LIMS).
+
+### Entregue nesta versão
+
+- Wizard de projeto guiado com presets por objetivo para novos usuários.
+- Workspace V3 com Ribbon contextual, Command Palette (`Ctrl+K`) e Inspector com rolagem.
+- Progresso determinístico na GUI, com percentual e etapa atual do processamento.
+- Atualização automática pelo instalador Windows e release empacotada via Inno Setup.
+- Correção do acúmulo de figuras de ciclagem durante execuções repetidas.
+
+### Próximo ciclo
+
+Os itens de colaboração, LIMS, sincronização e integração web abaixo permanecem
+planejados para os próximos incrementos da série `0.5.x` e para a `v0.6.0`.
 
 | ID | Feature | Impacto |
 |----|---------|---------|
@@ -203,7 +216,7 @@ report.save("analysis.pdf")
 
 ## Próximos 30 dias — Ações imediatas
 
-- [x] v0.3.1 lançado com GitHub Release e auto-updater
+- [x] v0.5.0 lançado com GitHub Release, instalador Windows e auto-updater
 - [x] Branding PDF (logo + instituição) implementado na Settings tab
 - [x] `galvani` adicionado como dependência opcional `[biologic]`
 - [ ] Criar landing page no GitHub Pages (1 dia de trabalho)
@@ -214,4 +227,4 @@ report.save("analysis.pdf")
 
 ---
 
-*Documento criado em: v0.3.1+ | Revisar a cada release minor*
+*Documento atualizado para v0.5.0 em 24/08/2026 | Revisar a cada release minor*

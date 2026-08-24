@@ -1,6 +1,6 @@
 # Auditoria de Validação Científica — IonFlow Pipeline
 
-> Versão auditada: **v0.4.10**  
+> Versão auditada: **v0.5.0**
 > Data: 2025-07  
 > Objetivo: Responder "como sabemos que cada módulo está correto?" com honestidade científica.
 

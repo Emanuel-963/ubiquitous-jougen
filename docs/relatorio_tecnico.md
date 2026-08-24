@@ -1,5 +1,9 @@
 # IonFlow Pipeline — Relatório Técnico
 
+> Relatório técnico histórico, originalmente preparado para a v0.1.0. Os
+> resultados e a metodologia descritos aqui não representam automaticamente a
+> implementação completa da v0.5.0; consulte `CHANGELOG.md` para as mudanças.
+
 **Software de Análise Eletroquímica Integrada: EIS · Ciclagem · DRT**
 
 Versão 0.1.0 · Abril 2026

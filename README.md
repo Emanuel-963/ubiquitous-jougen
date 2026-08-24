@@ -3,7 +3,7 @@
 **Plataforma profissional de análise eletroquímica** — EIS, ciclagem galvanostática, DRT — com agente IA, relatórios PDF, CLI e GUI interativa.
 
 [![CI](https://github.com/Emanuel-963/ubiquitous-jougen/actions/workflows/ci.yml/badge.svg)](https://github.com/Emanuel-963/ubiquitous-jougen/actions/workflows/ci.yml)
-![Version](https://img.shields.io/badge/version-0.4.10-blue)
+![Version](https://img.shields.io/badge/version-0.5.0-blue)
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License MIT](https://img.shields.io/badge/license-MIT-green)
 ![Tests](https://img.shields.io/badge/tests-2263%2B%20passing-brightgreen)
@@ -34,7 +34,7 @@ ionflow analyze --all --ai --export-pdf report.pdf
 
 ---
 
-## ✨ Funcionalidades (v0.4.10)
+## ✨ Funcionalidades (v0.5.0)
 
 > **Legenda de maturidade:**  
 > 🟢 **Estável** — testado, comportamento previsível, adequado para produção científica.  
@@ -51,7 +51,7 @@ ionflow analyze --all --ai --export-pdf report.pdf
 | **Incerteza paramétrica** | Monte Carlo + Bootstrap sobre parâmetros do fitting | 🟡 |
 | **Importação nativa** | Parsers Gamry (.dta), BioLogic (.mpr/.mpt), Autolab, Zahner (.isc) | 🟡 |
 | **Exportação científica** | ZView, LaTeX booktabs, OriginPro, MEISP | 🟢 |
-| **GUI** | MVC, 9 abas, atalhos teclado, 3 idiomas (PT/EN/ES) | 🟢 |
+| **GUI** | Workspace V3, wizard guiado, Ribbon contextual, Command Palette (Ctrl+K), Inspector com rolagem, 3 idiomas | 🟢 |
 | **CLI** | `ionflow eis / cycling / drt / analyze / preprocess / validate / config` | 🟢 |
 | **📄 PDF Reports** | Relatório automático com capa, secções EIS/Ciclagem/DRT/IA | 🟢 |
 | **Batch** | Processamento paralelo com `ProcessPoolExecutor` | 🟢 |
@@ -61,26 +61,28 @@ ionflow analyze --all --ai --export-pdf report.pdf
 | **Predição de performance** | ML para energia/potência/retenção (treinado em dados sintéticos) | 🔴 |
 | **Base de dados** | SQLite local: amostras, EIS, DRT, ciclagem, histórico ML | 🟢 |
 | **Dashboard web** | Streamlit — 7 páginas em `localhost:8501` | 🔴 |
-| **Auto-update** | Verificação e download de novas versões pelo GitHub | 🔴 |
+| **Auto-update** | Verificação e download do instalador Windows pelo GitHub | 🟡 |
 
 ---
 
 ## 🔬 Para Pesquisadores
 
-### Fluxo típico de análise (v0.4.10 — estilo Orazem & Tribollet 2026)
+### Fluxo típico de análise (v0.5.0 — estilo Orazem & Tribollet 2026)
 
-1. **Preparar dados** — Colocar ficheiros EIS (`.csv`/`.txt`) em `data/raw/`
-2. **Pré-processar** (recomendado):
+1. **Iniciar projeto** — No Workspace, abra o wizard e escolha um preset por objetivo.
+2. **Preparar dados** — Colocar ficheiros EIS (`.csv`/`.txt`) em `data/raw/` e ciclagem em `data/processed/`
+3. **Pré-processar** (recomendado):
    ```bash
    ionflow preprocess --data-dir data/raw --output data/clean
    ```
    Remove ponto HF, filtra 50/100 Hz, opcionalmente trunca em fc.
-3. **Executar** — `python gui_app.py` ou `ionflow eis --data-dir data/clean`
-4. **Pipeline automático:**
+4. **Executar** — `python gui_app.py` ou `ionflow eis --data-dir data/clean`
+5. **Pipeline automático:**
    - Carregamento → Validação (KK + powerline check) → Fitting ponderado por σ(f)
    - χ²/ν + IC 95% por parâmetro → Ranking por BIC → PCA → Heatmaps
-5. **Análise IA** — Clique em "🤖 Análise IA" ou `ionflow analyze --all --ai`
-6. **Exportar** — PDF com 1 clique, ou `ionflow analyze --export-pdf report.pdf`
+6. **Acompanhar** — A barra mostra percentual e etapa atual; detalhes continuam na aba Logs.
+7. **Análise IA** — Clique em "🤖 Análise IA", use `Ctrl+K` ou `ionflow analyze --all --ai`
+8. **Exportar** — PDF com 1 clique, ou `ionflow analyze --export-pdf report.pdf`
 
 ### Métricas extraídas
 
@@ -179,7 +181,7 @@ Escolha **uma** das três formas abaixo.
 > Não requer Python, Git nem terminal.  O auto-update cuida de versões futuras.
 
 1. Acesse a última versão em <https://github.com/Emanuel-963/ubiquitous-jougen/releases/latest>
-2. Baixe o arquivo `IonFlow_Pipeline_Setup_X.Y.Z.exe`
+2. Para a versão atual, baixe [`IonFlow_Pipeline_Setup_0.5.0.exe`](https://github.com/Emanuel-963/ubiquitous-jougen/releases/download/v0.5.0/IonFlow_Pipeline_Setup_0.5.0.exe)
 3. Execute o instalador e siga os passos (não requer permissão de administrador)
 4. Abra pelo atalho na área de trabalho ou pelo menu Iniciar
 
@@ -216,6 +218,10 @@ pip install -e .
 python gui_app.py
 ```
 
+Ao abrir pela primeira vez, use **Iniciar wizard de projeto** no Workspace. Os
+presets disponíveis são: Triagem rápida, Diagnóstico EIS, Desempenho de
+Ciclagem, Caracterização Completa, Validação DRT e Relatório publicável.
+
 > **Nota Windows:** Se o PowerShell bloquear a ativação, rode primeiro:
 > ```powershell
 > Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
@@ -239,7 +245,7 @@ Ou use o script automático:
 **Verificar se está tudo OK:**
 
 ```powershell
-python -c "import src; print(src.__version__)"   # deve mostrar 0.4.10 ou superior
+python -c "import src; print(src.__version__)"   # deve mostrar 0.5.0 ou superior
 python -m pytest tests/ -q --tb=no               # deve passar todos os testes
 ```
 

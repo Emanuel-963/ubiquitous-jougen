@@ -1,11 +1,11 @@
-# Entrega ao Orientador — IonFlow Pipeline v0.4.10
+# Entrega ao Orientador — IonFlow Pipeline v0.5.0
 
 | Campo | Informação |
 |-------|-----------|
 | **Autor** | Emanuel de Souza Silva Oliveira |
 | **Instituição** | UNIVAP — FEAU / IAE — Laboratório de Materiais (AMR) |
 | **Data** | Maio de 2026 |
-| **Versão do software** | v0.4.10 (branch `main`) |
+| **Versão do software** | v0.5.0 (branch `main`) |
 | **Repositório** | <https://github.com/Emanuel-963/ubiquitous-jougen> |
 | **ORCID** | [0009-0007-2573-9628](https://orcid.org/0009-0007-2573-9628) |
 | **Licença** | MIT |
@@ -77,7 +77,7 @@ Arquivo EIS (.txt/.csv/.dta/.mpr)
 | DRT (Tikhonov) | ✅ Funciona | γ ≥ 0; R_inf ±0.5Ω do verdadeiro; τ monótono |
 | Energia armazenada E = ½CV² | ✅ Correto | Teste com `math.isclose` vs valor analítico |
 | Pipeline EIS end-to-end | ✅ Funciona | Teste de integração: carga → KK → fitting → relatório |
-| GUI (9 abas, 3 idiomas) | ✅ Funciona | Uso manual; sem testes automatizados de UI |
+| GUI V3 (wizard, Ribbon, Command Palette, Inspector, 3 idiomas) | ✅ Funciona | Uso manual; sem testes automatizados de UI |
 | CLI (7 sub-comandos) | ✅ Funciona | Testes de smoke |
 | PDF automático | ✅ Funciona | Gerado corretamente em testes de integração |
 | Ciclagem (lógica por ciclo) | ⚠️ Parcial | 5 testes básicos; sem validação quantitativa de energia |
@@ -110,7 +110,18 @@ Esta secção é a mais importante para a avaliação científica:
 
 ## 5. Como reproduzir um resultado
 
-### Instalação (5 minutos, Windows)
+### 5.1 Execução pelo instalador Windows
+
+Para usuários sem ambiente Python, baixe o instalador da release `v0.5.0`:
+
+<https://github.com/Emanuel-963/ubiquitous-jougen/releases/tag/v0.5.0>
+
+Depois da instalação, abra o **Workspace**, selecione **Iniciar wizard de
+projeto** e escolha o objetivo da análise. O wizard oferece presets para
+triagem rápida, EIS, ciclagem, caracterização completa, DRT e relatório
+publicável.
+
+### 5.2 Instalação pelo código-fonte (5 minutos, Windows)
 
 ```powershell
 git clone https://github.com/Emanuel-963/ubiquitous-jougen.git

@@ -1,5 +1,8 @@
 # Apresentação: IonFlow Pipeline v0.3.0
 
+> Documento histórico da v0.3.0. Para o estado atual do projeto, consulte o
+> [README da v0.5.0](../README.md), o [One-Pager](ONE_PAGER.md) e o changelog.
+
 ## Slide 1 — Título
 - **IonFlow Pipeline v0.3.0** — Plataforma de Análise Eletroquímica com IA
 - Autor(es), orientador, afiliação

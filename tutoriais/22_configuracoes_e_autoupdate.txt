@@ -1,9 +1,9 @@
 ================================================================================
-    TUTORIAL 22 — PAINEL DE CONFIGURAÇÕES E AUTO-UPDATE (IONFLOW v0.4.10)
+    TUTORIAL 22 — PAINEL DE CONFIGURAÇÕES E AUTO-UPDATE (IONFLOW v0.5.0)
 ================================================================================
 
-Versão: 0.4.10
-Última atualização: Maio 2026
+Versão: 0.5.0
+Última atualização: Agosto 2026
 
 --------------------------------------------------------------------------------
 O QUE HÁ DE NOVO?
@@ -17,7 +17,7 @@ versões disponíveis e permite descarregá-las com um clique.
   ✅ Guardar / Carregar configurações de ficheiro JSON
   ✅ Repor valores padrão
   ✅ Auto-update: verificação automática no arranque
-  ✅ NOVO v0.4.10: atualização silenciosa e automática (instala na mesma pasta,
+  ✅ v0.5.0: atualização silenciosa e automática (instala na mesma pasta,
      sem mover arquivos do pesquisador)
 
 --------------------------------------------------------------------------------
@@ -171,15 +171,17 @@ recente disponível no repositório GitHub:
 
 Se houver uma versão nova:
   → Aparece uma janela de notificação com o número da versão e changelog
-  → Três opções: "Descarregar", "Ver no GitHub", "Mais tarde"
+  → Para instalações Windows: "Instalar agora (automático)", "Ver no GitHub"
+    ou "Mais tarde"
+  → Para código-fonte: "Ver instruções", "Ver no GitHub" ou "Mais tarde"
 
 5.2. JANELA DE NOTIFICAÇÃO DE UPDATE
 ──────────────────────────────────────
 
   ┌──────────────────────────────────────────────────────────────────────────┐
-  │  ⚡ Nova versão disponível: v0.4.10                                       │
+  │  ⚡ Nova versão disponível: v0.5.0                                        │
   │  ────────────────────────────────────────────────────────────────────    │
-  │  Versão atual: 0.4.9                                                     │
+  │  Versão atual: 0.4.x                                                      │
   │                                                                          │
   │  O que há de novo:  (primeiras linhas do CHANGELOG)                     │
   │  • Auto-update silencioso — instala sem mover dados do pesquisador       │
@@ -246,7 +248,7 @@ Se houver uma versão nova:
 Exemplo de config.json (todos os campos):
 
   {
-    "version": "0.3.0",
+    "version": "0.5.0",
     "check_updates_on_start": true,
     "language": "pt",
     "theme": "dark",
