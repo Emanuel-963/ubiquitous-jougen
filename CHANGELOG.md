@@ -2,6 +2,26 @@
 
 All notable changes to the IonFlow Pipeline are documented here.
 
+## [0.5.1] — 2026-08-27  _(Scientific Protocol configurável)_
+
+### Added
+
+- Módulo independente **Scientific Protocol** com CV/Dunn, GCD, EIS, DRT e
+  ranking multicritério baseado na planilha experimental de referência.
+- Wizard gráfico para configurar projetos, eletrólitos, células e replicatas
+  sem edição manual de JSON.
+- Persistência `schema_version: "2.0"`, migração do schema legado, caminhos
+  relativos e metadados de reprodutibilidade.
+- Exportação de ranking em CSV compatível com Excel, figura de classificação,
+  critérios/pesos, JSON completo e resumo científico.
+- Escolha de resolução das figuras no wizard, com padrão de 300 DPI.
+
+### Fixed
+
+- Saídas do ranking alinhadas à planilha de classificação experimental.
+- Etiquetas do gráfico Ragone reposicionadas para evitar conflitos com pontos e
+  legenda.
+
 ## [0.5.0] — 2026-08-24  _(Fluxo guiado e processamento observável)_
 
 ### Added

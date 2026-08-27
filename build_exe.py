@@ -26,6 +26,7 @@ _ctk_path = Path(importlib.import_module("customtkinter").__file__).parent
 DATA_ITEMS = [
     (ROOT / "data", "data"),
     (ROOT / "themes", "themes"),
+    (ROOT / "Scripts Adicionais", "Scripts Adicionais"),
     (ROOT / "src" / "i18n_strings", "src/i18n_strings"),
     (_ctk_path, "customtkinter"),  # theme JSONs + assets
 ]

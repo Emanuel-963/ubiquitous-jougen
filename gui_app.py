@@ -1228,6 +1228,10 @@ class PipelineApp(ctk.CTk):
             label="Validação KK", command=self._run_kk_validation_clicked
         )
         tools_menu.add_command(
+            label="Protocolo Científico Multicritério",
+            command=self._open_scientific_protocol_dialog,
+        )
+        tools_menu.add_command(
             label="Configurações", command=lambda: self._set_main_tab("settings")
         )
         menubar.add_cascade(label="Ferramentas", menu=tools_menu)
@@ -1634,6 +1638,12 @@ class PipelineApp(ctk.CTk):
                 "action": self._run_fitting_diagnostics_clicked,
             },
             {
+                "label": "Protocolo Científico Multicritério",
+                "category": "Análises",
+                "keywords": "ranking electrolytes multicriteria scientific protocol",
+                "action": self._open_scientific_protocol_dialog,
+            },
+            {
                 "label": "Gerar Relatório",
                 "category": "Saída",
                 "keywords": "report pdf",
@@ -1907,6 +1917,14 @@ class PipelineApp(ctk.CTk):
             text="Iniciar wizard de projeto",
             command=self._open_project_wizard,
             width=220,
+        ).pack(anchor="w", padx=14, pady=(0, 14))
+        ctk.CTkButton(
+            hero,
+            text="Abrir protocolo científico multicritério",
+            command=self._open_scientific_protocol_dialog,
+            width=300,
+            fg_color="#1769aa",
+            hover_color="#125487",
         ).pack(anchor="w", padx=14, pady=(0, 14))
 
         flow = ctk.CTkFrame(home_frame)
@@ -2193,6 +2211,282 @@ class PipelineApp(ctk.CTk):
         next_button.configure(command=lambda: show_page(1))
         back_button.configure(command=lambda: show_page(0))
         show_page(0)
+
+    def _open_scientific_protocol_legacy_dialog(self):
+        """Open the GUI launcher for the independent scientific protocol."""
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Protocolo Científico Multicritério")
+        dialog.geometry("700x430")
+        dialog.minsize(620, 380)
+        dialog.grab_set()
+
+        ctk.CTkLabel(
+            dialog,
+            text="Protocolo Científico Multicritério",
+            font=ctk.CTkFont(size=20, weight="bold"),
+        ).pack(anchor="w", padx=18, pady=(16, 4))
+        ctk.CTkLabel(
+            dialog,
+            text="Executa CV/Dunn, GCD, EIS, DRT e o ranking dos eletrólitos.",
+            text_color="gray",
+            anchor="w",
+        ).pack(anchor="w", padx=18, pady=(0, 14))
+
+        form = ctk.CTkFrame(dialog)
+        form.pack(fill="both", expand=True, padx=18, pady=(0, 12))
+        form.grid_columnconfigure(1, weight=1)
+
+        data_var = tk.StringVar(value="")
+        output_var = tk.StringVar(value="results")
+
+        def choose_data():
+            selected = filedialog.askdirectory(
+                parent=dialog,
+                title="Selecionar dados experimentais",
+                initialdir=data_var.get() or ".",
+            )
+            if selected:
+                data_var.set(selected)
+                manifest = Path(selected) / "protocol.json"
+                manifest_label.configure(
+                    text=(
+                        "Manifesto protocol.json encontrado"
+                        if manifest.is_file()
+                        else "Nenhum protocol.json: use subpastas por eletrólito"
+                    ),
+                    text_color="#38a169" if manifest.is_file() else "gray",
+                )
+
+        def choose_output():
+            selected = filedialog.askdirectory(
+                parent=dialog,
+                title="Selecionar pasta de resultados",
+                initialdir=output_var.get() or ".",
+            )
+            if selected:
+                output_var.set(selected)
+
+        ctk.CTkLabel(form, text="Dados experimentais", anchor="w").grid(
+            row=0, column=0, padx=12, pady=(18, 6), sticky="w"
+        )
+        ctk.CTkEntry(form, textvariable=data_var).grid(
+            row=0, column=1, padx=8, pady=(18, 6), sticky="ew"
+        )
+        ctk.CTkButton(form, text="Selecionar", width=110, command=choose_data).grid(
+            row=0, column=2, padx=12, pady=(18, 6)
+        )
+
+        manifest_label = ctk.CTkLabel(
+            form,
+            text="Recomendado: a pasta deve conter protocol.json",
+            text_color="gray",
+            anchor="w",
+        )
+        manifest_label.grid(
+            row=1, column=1, columnspan=2, padx=8, pady=(0, 12), sticky="w"
+        )
+
+        ctk.CTkLabel(form, text="Pasta de resultados", anchor="w").grid(
+            row=2, column=0, padx=12, pady=6, sticky="w"
+        )
+        ctk.CTkEntry(form, textvariable=output_var).grid(
+            row=2, column=1, padx=8, pady=6, sticky="ew"
+        )
+        ctk.CTkButton(form, text="Selecionar", width=110, command=choose_output).grid(
+            row=2, column=2, padx=12, pady=6
+        )
+
+        ctk.CTkLabel(
+            form,
+            text=(
+                "A configuração padrão usa os nove critérios e pesos da planilha "
+                "Classificacao_Melhor_Eletrolito_IonFlow_atualizada.xlsx."
+            ),
+            text_color="gray",
+            justify="left",
+            wraplength=620,
+            anchor="w",
+        ).grid(row=3, column=0, columnspan=3, padx=12, pady=(18, 6), sticky="ew")
+
+        progress = ctk.CTkLabel(form, text="Pronto", anchor="w")
+        progress.grid(row=4, column=0, columnspan=3, padx=12, pady=(8, 12), sticky="ew")
+
+        buttons = ctk.CTkFrame(dialog, fg_color="transparent")
+        buttons.pack(fill="x", padx=18, pady=(0, 16))
+
+        def run():
+            data_dir = data_var.get().strip()
+            output_dir = output_var.get().strip() or "results"
+            if not data_dir or not Path(data_dir).is_dir():
+                messagebox.showwarning(
+                    "Dados não selecionados",
+                    "Selecione uma pasta válida de dados experimentais.",
+                    parent=dialog,
+                )
+                return
+            run_button.configure(state="disabled")
+            progress.configure(text="Executando protocolo científico...")
+            self._set_status("rodando protocolo científico")
+
+            def worker():
+                try:
+                    from src.scientific_protocol import run_scientific_protocol
+
+                    result = run_scientific_protocol(data_dir, output_dir, "default")
+                    self.log_queue.put(("scientific_protocol_result", result))
+                except Exception as exc:
+                    self.log_queue.put(("scientific_protocol_error", str(exc)))
+
+            threading.Thread(target=worker, daemon=True).start()
+
+        def close():
+            with contextlib.suppress(Exception):
+                dialog.grab_release()
+            dialog.destroy()
+
+        run_button = ctk.CTkButton(
+            buttons,
+            text="Executar protocolo",
+            width=190,
+            command=run,
+        )
+        run_button.pack(side="right", padx=4)
+        ctk.CTkButton(
+            buttons,
+            text="Fechar",
+            width=110,
+            fg_color="gray40",
+            command=close,
+        ).pack(side="right", padx=4)
+        dialog.protocol("WM_DELETE_WINDOW", close)
+
+    def _open_scientific_protocol_dialog(self):
+        """Open the project hub for new or existing scientific analyses."""
+        from src.scientific_protocol.gui import ScientificProtocolWizard
+        from src.scientific_protocol.project_store import load_project
+
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Scientific Protocol")
+        dialog.geometry("620x360")
+        dialog.resizable(False, False)
+        dialog.grab_set()
+
+        ctk.CTkLabel(
+            dialog,
+            text="IonFlow Scientific Protocol",
+            font=ctk.CTkFont(size=22, weight="bold"),
+        ).pack(anchor="w", padx=24, pady=(24, 6))
+        ctk.CTkLabel(
+            dialog,
+            text="Configure projetos, eletrólitos, células e replicatas sem editar JSON.",
+            text_color="gray",
+        ).pack(anchor="w", padx=24, pady=(0, 22))
+
+        def close():
+            with contextlib.suppress(Exception):
+                dialog.grab_release()
+            dialog.destroy()
+
+        def open_wizard(project_root, project=None):
+            close()
+            ScientificProtocolWizard(
+                self,
+                project_root=project_root,
+                project=project,
+                on_saved=self._on_scientific_project_saved,
+            )
+
+        def new_analysis():
+            root = filedialog.askdirectory(
+                parent=dialog,
+                title="Escolha a pasta do projeto científico",
+            )
+            if root:
+                open_wizard(root)
+
+        def load_analysis():
+            path = filedialog.askopenfilename(
+                parent=dialog,
+                title="Abrir projeto científico",
+                filetypes=[
+                    ("Projeto IonFlow", "project.json protocol.json"),
+                    ("JSON", "*.json"),
+                ],
+            )
+            if not path:
+                return
+            try:
+                project = load_project(path)
+            except Exception as exc:
+                messagebox.showerror(
+                    "Projeto inválido",
+                    f"Não foi possível abrir o projeto:\n{exc}",
+                    parent=dialog,
+                )
+                return
+            project_path = Path(path).resolve()
+            if (
+                project_path.name == "project.json"
+                and project_path.parent.parent.name == "scientific_protocol_projects"
+            ):
+                project_root = project_path.parent.parent.parent
+            else:
+                project_root = project_path.parent
+            open_wizard(project_root, project)
+
+        body = ctk.CTkFrame(dialog, fg_color="transparent")
+        body.pack(fill="both", expand=True, padx=24)
+        ctk.CTkButton(body, text="Nova análise", height=48, command=new_analysis).pack(
+            fill="x", pady=6
+        )
+        ctk.CTkButton(
+            body, text="Carregar análise existente", height=48, command=load_analysis
+        ).pack(fill="x", pady=6)
+        ctk.CTkButton(
+            body,
+            text="Gerenciar análises",
+            height=42,
+            fg_color="gray40",
+            command=load_analysis,
+        ).pack(fill="x", pady=6)
+        ctk.CTkLabel(
+            body,
+            text="O projeto salvo usa project.json internamente e pode ser movido com seus dados.",
+            text_color="gray",
+            wraplength=550,
+        ).pack(anchor="w", pady=(18, 0))
+        ctk.CTkButton(
+            dialog, text="Cancelar", width=110, fg_color="gray40", command=close
+        ).pack(anchor="e", padx=24, pady=18)
+        dialog.protocol("WM_DELETE_WINDOW", close)
+
+    def _on_scientific_project_saved(
+        self, project_path: Path, execute: bool, status_callback=None, dpi: int = 300
+    ):
+        """Handle a wizard save and optionally run the existing executor."""
+        self._append_log(f"Projeto científico salvo: {project_path}")
+        if execute:
+            from src.scientific_protocol import run_scientific_protocol
+
+            output_dir = project_path.parent / "results"
+            self._set_status("rodando protocolo científico")
+            if callable(status_callback):
+                status_callback("Projeto salvo · executando protocolo...")
+
+            def worker():
+                try:
+                    result = run_scientific_protocol(
+                        project_path.parent, output_dir, {"dpi": dpi}
+                    )
+                    self.log_queue.put(
+                        ("scientific_protocol_result", (result, status_callback))
+                    )
+                except Exception as exc:
+                    self.log_queue.put(
+                        ("scientific_protocol_error", (str(exc), status_callback))
+                    )
+
+            threading.Thread(target=worker, daemon=True).start()
 
     def _build_inspector_panel(self):
         self._inspector_outer = ctk.CTkFrame(self, corner_radius=12, width=300)
@@ -7817,6 +8111,25 @@ class PipelineApp(ctk.CTk):
                 elif msg_type == "lab_result":
                     self.lab_textbox.delete("1.0", "end")
                     self.lab_textbox.insert("1.0", item[1])
+                elif msg_type == "scientific_protocol_result":
+                    payload = item[1]
+                    if isinstance(payload, tuple) and len(payload) == 2:
+                        result, status_callback = payload
+                    else:
+                        result, status_callback = payload, None
+                    if callable(status_callback):
+                        status_callback("Concluído · resultados salvos")
+                    self._handle_scientific_protocol_result(result)
+                elif msg_type == "scientific_protocol_error":
+                    payload = item[1]
+                    if isinstance(payload, tuple) and len(payload) == 2:
+                        error_message, status_callback = payload
+                    else:
+                        error_message, status_callback = payload, None
+                    if callable(status_callback):
+                        status_callback("Erro · consulte os Logs")
+                    self._set_status("erro no protocolo científico")
+                    self._append_log(f"Erro no protocolo científico: {error_message}")
                 elif msg_type == "status_update":
                     self._update_status_bar(**item[1])
                 elif msg_type == "update_available":
@@ -7835,6 +8148,19 @@ class PipelineApp(ctk.CTk):
                 traceback.print_exc()
 
         self._after_queue_id = self.after(100, self._process_queue)
+
+    def _handle_scientific_protocol_result(self, result: dict):
+        """Publish protocol summary and generated output paths in the GUI log."""
+        self._set_status("protocolo científico concluído")
+        self._set_main_tab("logs")
+        self._append_log("Protocolo científico multicritério concluído.")
+        self._append_log(result.get("summary", "Sem resumo disponível."))
+        output_files = result.get("output_files", {})
+        if output_files:
+            self._append_log(
+                "Saídas principais: "
+                + "; ".join(f"{key}={value}" for key, value in output_files.items())
+            )
 
     def _handle_eis_done(self, result: Optional[dict]):
         if result is None:

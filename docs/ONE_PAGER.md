@@ -1,4 +1,4 @@
-# IonFlow Pipeline v0.5.0 — One-page Summary
+# IonFlow Pipeline v0.5.1 — One-page Summary
 
 ## What it is
 
@@ -8,7 +8,7 @@ Relaxation Times (DRT)** analysis. It features an AI-powered interpretation agen
 PDF reporting, parallel processing, and an interactive GUI — all in a single installable
 desktop application.
 
-## Key Features (v0.5.0)
+## Key Features (v0.5.1)
 
 | Category | Capabilities |
 |----------|-------------|

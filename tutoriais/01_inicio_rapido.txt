@@ -2,7 +2,7 @@
           TUTORIAL 1 — INÍCIO RÁPIDO: COMO USAR O IONFLOW PIPELINE
 ================================================================================
 
-Versão: 0.5.0
+Versão: 0.5.1
 Última atualização: Agosto 2026
 
 --------------------------------------------------------------------------------
@@ -26,7 +26,7 @@ Com ele você pode:
 --------------------------------------------------------------------------------
 
 OPÇÃO A — Instalador Windows (.exe):
-  1. Baixe e execute "IonFlow_Pipeline_Setup_0.5.0.exe" na release do GitHub
+  1. Baixe e execute "IonFlow_Pipeline_Setup_0.5.1.exe" na release do GitHub
   2. Siga o assistente de instalação
   3. O atalho aparecerá no Menu Iniciar e/ou Área de Trabalho
 
@@ -90,7 +90,7 @@ PASSO 5: Exportar
   • Excel de ciclagem: salvo em outputs/excel/
   • Relatórios de circuito: salvos em outputs/circuit_reports/ (JSON)
 
-FLUXO GUIADO — NOVO NA v0.5.0:
+FLUXO GUIADO — NOVO NA v0.5.1:
   • No Workspace, clique em "Iniciar wizard de projeto"
   • Escolha um objetivo: Triagem rápida, Diagnóstico EIS, Desempenho de
     Ciclagem, Caracterização Completa, Validação DRT ou Relatório publicável

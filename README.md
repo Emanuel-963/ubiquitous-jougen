@@ -3,7 +3,7 @@
 **Plataforma profissional de análise eletroquímica** — EIS, ciclagem galvanostática, DRT — com agente IA, relatórios PDF, CLI e GUI interativa.
 
 [![CI](https://github.com/Emanuel-963/ubiquitous-jougen/actions/workflows/ci.yml/badge.svg)](https://github.com/Emanuel-963/ubiquitous-jougen/actions/workflows/ci.yml)
-![Version](https://img.shields.io/badge/version-0.5.0-blue)
+![Version](https://img.shields.io/badge/version-0.5.1-blue)
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License MIT](https://img.shields.io/badge/license-MIT-green)
 ![Tests](https://img.shields.io/badge/tests-2263%2B%20passing-brightgreen)
@@ -34,7 +34,7 @@ ionflow analyze --all --ai --export-pdf report.pdf
 
 ---
 
-## ✨ Funcionalidades (v0.5.0)
+## ✨ Funcionalidades (v0.5.1)
 
 > **Legenda de maturidade:**  
 > 🟢 **Estável** — testado, comportamento previsível, adequado para produção científica.  
@@ -67,7 +67,7 @@ ionflow analyze --all --ai --export-pdf report.pdf
 
 ## 🔬 Para Pesquisadores
 
-### Fluxo típico de análise (v0.5.0 — estilo Orazem & Tribollet 2026)
+### Fluxo típico de análise (v0.5.1 — estilo Orazem & Tribollet 2026)
 
 1. **Iniciar projeto** — No Workspace, abra o wizard e escolha um preset por objetivo.
 2. **Preparar dados** — Colocar ficheiros EIS (`.csv`/`.txt`) em `data/raw/` e ciclagem em `data/processed/`
@@ -129,6 +129,76 @@ O circuito Randles-CPE-W foi selecionado com 78% de confiança (BIC=45.2)."
 
 ---
 
+## 🧪 Protocolo Científico Multicritério (v0.5.1)
+
+O módulo independente `src/scientific_protocol/` automatiza o protocolo
+experimental multicritério usando como referência primária os quatro scripts
+em `Scripts Adicionais/` e a planilha
+`Classificacao_Melhor_Eletrolito_IonFlow_atualizada.xlsx`.
+
+### Configuração pelo GUI
+
+No GUI principal, abra **Ferramentas > Protocolo Científico Multicritério**
+ou use `Ctrl+K` e pesquise esse comando. Escolha **Nova análise** para abrir o
+wizard gráfico. O wizard guia a identificação do projeto, arquivos CV/GCD/EIS,
+massas, área, eletrodos e sequência GCD. Ao final, use **Salvar e executar** ou
+**Salvar sem executar**.
+
+Para continuar um trabalho, escolha **Carregar análise existente**. As células
+e replicatas podem ser adicionadas, duplicadas sem copiar arquivos experimentais
+ou excluídas após confirmação. O arquivo `project.json` é criado internamente;
+o pesquisador não precisa editá-lo.
+
+O formato novo usa `schema_version: "2.0"`, agrupa células por eletrólito e
+guarda metadados de reprodutibilidade. Arquivos antigos no formato simples de
+`electrolytes` continuam sendo carregados e migrados automaticamente para uma
+célula `cell_001`.
+Ele reutiliza as rotinas validadas para:
+
+- CV/Dunn: capacitância específica, `b-value` e contribuição capacitiva;
+- GCD: `Cs`, eficiência coulômbica, retenção, energia, potência e `IR drop`;
+- EIS: `Rs`, `Rct/Rp`, Nyquist e ajuste equivalente nos estados inicial,
+  pós-CV e final;
+- DRT: curva-L, picos confiáveis e `area_drt_lenta` para `tau >= 0.1 s`.
+
+O ranking segue exatamente os pesos da planilha: `20/15/10/15/10/5/10/10/5`,
+com normalização min-max, pesos renormalizados para métricas disponíveis,
+`N/D` preservado como ausente, cobertura e status `Completo`/`Parcial`.
+
+### Entrada recomendada
+
+Use um arquivo `protocol.json` em `data_dir`; há um modelo em
+[docs/scientific_protocol_example.json](docs/scientific_protocol_example.json).
+Os caminhos podem ser relativos ao diretório que contém o manifesto. Para cada
+eletrólito, informe `cv`, `gcd`, `eis`, `mass_g` e `current_sequence_a_g` quando
+esses ensaios existirem. A retenção GCD fica `N/D` quando não há bloco de
+retorno à mesma corrente.
+
+### Uso
+
+```python
+from src.scientific_protocol import run_scientific_protocol
+
+result = run_scientific_protocol(
+   data_dir="dados_experimentais",
+   output_dir="results",
+   config="default",
+)
+print(result["ranking"][["electrolyte", "score_available", "coverage_pct", "protocol_status"]])
+print(result["summary"])
+```
+
+As saídas são organizadas em `results/cv`, `results/gcd`, `results/eis`,
+`results/drt`, `results/ranking` e `results/report`, incluindo PNGs, CSVs,
+`classificacao_multicriterio.csv`, `classificacao.png`,
+`metricas_completas.json` e `resumo_cientifico.txt`.
+
+O módulo permanece desacoplado da GUI e dos pipelines existentes. Resultados
+DRT com picos lentos não confiáveis são tratados como ausentes no ranking, não
+como zero; a interpretação final ainda requer validação experimental.
+
+---
+
 ## 📁 Estrutura do Projeto
 
 ```
@@ -181,7 +251,7 @@ Escolha **uma** das três formas abaixo.
 > Não requer Python, Git nem terminal.  O auto-update cuida de versões futuras.
 
 1. Acesse a última versão em <https://github.com/Emanuel-963/ubiquitous-jougen/releases/latest>
-2. Para a versão atual, baixe [`IonFlow_Pipeline_Setup_0.5.0.exe`](https://github.com/Emanuel-963/ubiquitous-jougen/releases/download/v0.5.0/IonFlow_Pipeline_Setup_0.5.0.exe)
+2. Para a versão atual, baixe [`IonFlow_Pipeline_Setup_0.5.1.exe`](https://github.com/Emanuel-963/ubiquitous-jougen/releases/download/v0.5.1/IonFlow_Pipeline_Setup_0.5.1.exe)
 3. Execute o instalador e siga os passos (não requer permissão de administrador)
 4. Abra pelo atalho na área de trabalho ou pelo menu Iniciar
 
@@ -245,7 +315,7 @@ Ou use o script automático:
 **Verificar se está tudo OK:**
 
 ```powershell
-python -c "import src; print(src.__version__)"   # deve mostrar 0.5.0 ou superior
+ python -c "import src; print(src.__version__)"   # deve mostrar 0.5.1 ou superior
 python -m pytest tests/ -q --tb=no               # deve passar todos os testes
 ```
 

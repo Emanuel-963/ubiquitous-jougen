@@ -51,7 +51,7 @@ projects.
 ## Evidence of Quality
 
 - GitHub: <https://github.com/Emanuel-963/ubiquitous-jougen>
-- Latest release: v0.5.0 (Windows installer + source package)
+- Latest release: v0.5.1 (Windows installer + source package)
 - JOSS paper draft submitted / in preparation
 
 I would be happy to arrange a 30-minute video call to demonstrate the tool

@@ -1,11 +1,11 @@
-# Entrega ao Orientador — IonFlow Pipeline v0.5.0
+# Entrega ao Orientador — IonFlow Pipeline v0.5.1
 
 | Campo | Informação |
 |-------|-----------|
 | **Autor** | Emanuel de Souza Silva Oliveira |
 | **Instituição** | UNIVAP — FEAU / IAE — Laboratório de Materiais (AMR) |
 | **Data** | Maio de 2026 |
-| **Versão do software** | v0.5.0 (branch `main`) |
+| **Versão do software** | v0.5.1 (branch `main`) |
 | **Repositório** | <https://github.com/Emanuel-963/ubiquitous-jougen> |
 | **ORCID** | [0009-0007-2573-9628](https://orcid.org/0009-0007-2573-9628) |
 | **Licença** | MIT |
@@ -112,9 +112,9 @@ Esta secção é a mais importante para a avaliação científica:
 
 ### 5.1 Execução pelo instalador Windows
 
-Para usuários sem ambiente Python, baixe o instalador da release `v0.5.0`:
+Para usuários sem ambiente Python, baixe o instalador da release `v0.5.1`:
 
-<https://github.com/Emanuel-963/ubiquitous-jougen/releases/tag/v0.5.0>
+<https://github.com/Emanuel-963/ubiquitous-jougen/releases/tag/v0.5.1>
 
 Depois da instalação, abra o **Workspace**, selecione **Iniciar wizard de
 projeto** e escolha o objetivo da análise. O wizard oferece presets para
@@ -224,7 +224,7 @@ Os seguintes passos fariam a diferença mais imediata na credibilidade científi
 | Circuitos equivalentes | 33 (11 base + 22 compostos) |
 | Idiomas GUI | 3 (PT / EN / ES) |
 | Formatos de importação | 5+ (CSV, Gamry, BioLogic, Autolab, Zahner) |
-| Versões desde início | 0.1.0 → 0.4.10 (20+ releases) |
+| Versões desde início | 0.1.0 → 0.5.1 (releases incrementais) |
 | CI status | [![CI](https://github.com/Emanuel-963/ubiquitous-jougen/actions/workflows/ci.yml/badge.svg)](https://github.com/Emanuel-963/ubiquitous-jougen/actions) |
 
 ---

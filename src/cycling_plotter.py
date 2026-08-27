@@ -225,7 +225,7 @@ def plot_energy_power_vs_cycle(
             os.makedirs(out_dir, exist_ok=True)
             stem = Path(filename).stem
             filepath = os.path.join(out_dir, f"{stem}_energy_power.png")
-            fig.savefig(filepath, dpi=160, bbox_inches="tight")
+            fig.savefig(filepath, dpi=300, bbox_inches="tight")
         if show:
             plt.show()
         plt.close(fig)

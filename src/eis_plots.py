@@ -16,15 +16,16 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
 # ── colour palette ──────────────────────────────────────────────────
-_C_Z = "#1b4f72"          # impedance magnitude
-_C_PHASE = "#c0392b"      # phase angle
-_C_SCATTER = "#0ea5e9"    # Ragone scatter
+_C_Z = "#1b4f72"  # impedance magnitude
+_C_PHASE = "#c0392b"  # phase angle
+_C_SCATTER = "#0ea5e9"  # Ragone scatter
 _C_HIGHLIGHT = "#ef4444"  # selected sample marker
 
 
 # =====================================================================
 #  NYQUIST  (Z_real  vs  -Z_imag)
 # =====================================================================
+
 
 def plot_nyquist(
     df: pd.DataFrame,
@@ -50,16 +51,21 @@ def plot_nyquist(
     d = df.sort_values("frequency", ascending=False).copy()
     freq = d["frequency"].values
     zr = d["zreal"].values
-    zi = -d["zimag"].values          # plot as positive -Z''
+    zi = -d["zimag"].values  # plot as positive -Z''
 
     standalone = ax is None
     if standalone:
         fig, ax = plt.subplots(figsize=(6, 5.4), dpi=120)
 
     sc = ax.scatter(
-        zr, zi, c=np.log10(freq + 1e-30),
-        cmap="viridis", s=26, edgecolors="black",
-        linewidths=0.3, zorder=3,
+        zr,
+        zi,
+        c=np.log10(freq + 1e-30),
+        cmap="viridis",
+        s=26,
+        edgecolors="black",
+        linewidths=0.3,
+        zorder=3,
     )
     ax.plot(zr, zi, "-", color="#adb5bd", linewidth=0.8, zorder=2)
 
@@ -79,7 +85,7 @@ def plot_nyquist(
             os.makedirs(out_dir, exist_ok=True)
             stem = Path(sample_name).stem
             filepath = os.path.join(out_dir, f"{stem}_nyquist.png")
-            fig.savefig(filepath, dpi=160, bbox_inches="tight")
+            fig.savefig(filepath, dpi=300, bbox_inches="tight")
         if show:
             plt.show()
         else:
@@ -90,6 +96,7 @@ def plot_nyquist(
 # =====================================================================
 #  BODE  ( |Z| and phase  vs  frequency )
 # =====================================================================
+
 
 def plot_bode(
     df: pd.DataFrame,
@@ -133,9 +140,7 @@ def plot_bode(
     d = df.sort_values("frequency").copy()
     freq = d["frequency"].values
     z_mag = np.sqrt(d["zreal"].values ** 2 + d["zimag"].values ** 2)
-    phase = np.degrees(
-        np.arctan2(-d["zimag"].values, d["zreal"].values)
-    )
+    phase = np.degrees(np.arctan2(-d["zimag"].values, d["zreal"].values))
 
     standalone = ax is None
     if standalone:
@@ -144,14 +149,22 @@ def plot_bode(
     ax2 = ax.twinx()
 
     ln1 = ax.loglog(
-        freq, z_mag,
-        "o-", color=_C_Z, markersize=3.2,
-        linewidth=1.4, label="|Z| (Ω)",
+        freq,
+        z_mag,
+        "o-",
+        color=_C_Z,
+        markersize=3.2,
+        linewidth=1.4,
+        label="|Z| (Ω)",
     )
     ln2 = ax2.semilogx(
-        freq, phase,
-        "s-", color=_C_PHASE, markersize=3.2,
-        linewidth=1.4, label="Fase (°)",
+        freq,
+        phase,
+        "s-",
+        color=_C_PHASE,
+        markersize=3.2,
+        linewidth=1.4,
+        label="Fase (°)",
     )
 
     ax.set_xlabel("Frequência (Hz)", fontsize=11)
@@ -164,13 +177,18 @@ def plot_bode(
     lines = ln1 + ln2
     labels = [ln.get_label() for ln in lines]
     ax.legend(
-        lines, labels, loc="upper right",
-        fontsize=9, framealpha=0.85, edgecolor="#cccccc",
+        lines,
+        labels,
+        loc="upper right",
+        fontsize=9,
+        framealpha=0.85,
+        edgecolor="#cccccc",
     )
 
     ax.set_title(
         f"Bode — {sample_name}",
-        fontsize=12, fontweight="bold",
+        fontsize=12,
+        fontweight="bold",
     )
 
     if fig is not None:
@@ -182,7 +200,7 @@ def plot_bode(
             os.makedirs(out_dir, exist_ok=True)
             stem = Path(sample_name).stem
             filepath = os.path.join(out_dir, f"{stem}_bode.png")
-            fig.savefig(filepath, dpi=160, bbox_inches="tight")
+            fig.savefig(filepath, dpi=300, bbox_inches="tight")
         if show:
             plt.show()
         else:
@@ -193,6 +211,7 @@ def plot_bode(
 # =====================================================================
 #  RAGONE  ( Energy  vs  Power,  log-log )
 # =====================================================================
+
 
 def plot_ragone(
     export_tables: Dict[str, pd.DataFrame],
@@ -258,9 +277,14 @@ def plot_ragone(
         fig, ax = plt.subplots(figsize=(6.4, 5), dpi=120)
 
     ax.scatter(
-        all_e, all_p,
-        c=_C_SCATTER, s=64, edgecolors="black",
-        linewidths=0.4, alpha=0.85, zorder=3,
+        all_e,
+        all_p,
+        c=_C_SCATTER,
+        s=64,
+        edgecolors="black",
+        linewidths=0.4,
+        alpha=0.85,
+        zorder=3,
     )
 
     # Highlight specific sample
@@ -269,10 +293,15 @@ def plot_ragone(
         for idx, nm in enumerate(all_names):
             if _norm(nm) == norm_h:
                 ax.scatter(
-                    [all_e[idx]], [all_p[idx]],
-                    s=180, marker="*", c=_C_HIGHLIGHT,
-                    edgecolors="black", linewidths=0.8,
-                    zorder=5, label="Selecionada",
+                    [all_e[idx]],
+                    [all_p[idx]],
+                    s=180,
+                    marker="*",
+                    c=_C_HIGHLIGHT,
+                    edgecolors="black",
+                    linewidths=0.8,
+                    zorder=5,
+                    label="Selecionada",
                 )
                 ax.legend(loc="best", fontsize=9)
                 break
@@ -287,10 +316,15 @@ def plot_ragone(
     # ── Target point & reference zones ──────────────────────────
     if target_energy is not None and target_power is not None:
         ax.scatter(
-            [target_energy], [target_power],
-            s=220, marker="X", c="#e74c3c",
-            edgecolors="black", linewidths=1.0,
-            zorder=6, label="Target",
+            [target_energy],
+            [target_power],
+            s=220,
+            marker="X",
+            c="#e74c3c",
+            edgecolors="black",
+            linewidths=1.0,
+            zorder=6,
+            label="Target",
         )
         # Reference technology zones (approximate, log-log)
         _draw_reference_zones(ax)
@@ -305,7 +339,7 @@ def plot_ragone(
         if save:
             os.makedirs(out_dir, exist_ok=True)
             filepath = os.path.join(out_dir, "ragone_plot.png")
-            fig.savefig(filepath, dpi=160, bbox_inches="tight")
+            fig.savefig(filepath, dpi=300, bbox_inches="tight")
         if show:
             plt.show()
         else:
@@ -315,11 +349,13 @@ def plot_ragone(
 
 # ── helpers ─────────────────────────────────────────────────────────
 
+
 def _norm(text: str) -> str:
     return os.path.splitext(str(text).strip().lower())[0]
 
 
 # ── Reference technology zones for Ragone plot ─────────────────────
+
 
 def _draw_reference_zones(ax: Axes) -> None:
     """Draw approximate reference technology zones on a Ragone plot.
@@ -336,16 +372,26 @@ def _draw_reference_zones(ax: Axes) -> None:
     ]
     for x0, x1, y0, y1, label, colour in zones:
         ax.fill_between(
-            [x0, x1], y0, y1,
-            alpha=0.12, color=colour, zorder=0,
+            [x0, x1],
+            y0,
+            y1,
+            alpha=0.12,
+            color=colour,
+            zorder=0,
         )
         # Place label at geometric center
         cx = np.sqrt(x0 * x1)
         cy = np.sqrt(y0 * y1)
         ax.text(
-            cx, cy, label,
-            ha="center", va="center", fontsize=7,
-            color="#555555", fontstyle="italic", zorder=1,
+            cx,
+            cy,
+            label,
+            ha="center",
+            va="center",
+            fontsize=7,
+            color="#555555",
+            fontstyle="italic",
+            zorder=1,
         )
 
 
@@ -362,12 +408,12 @@ class RagoneGapResult:
     best_sample: str
     best_energy: float
     best_power: float
-    energy_error_pct: float      # relative error (%) to target energy
-    power_error_pct: float       # relative error (%) to target power
-    energy_gap: float            # absolute gap (Wh/kg)
-    power_gap: float             # absolute gap (W/kg)
-    energy_factor: float         # how many × improvement needed
-    power_factor: float          # how many × improvement needed
+    energy_error_pct: float  # relative error (%) to target energy
+    power_error_pct: float  # relative error (%) to target power
+    energy_gap: float  # absolute gap (Wh/kg)
+    power_gap: float  # absolute gap (W/kg)
+    energy_factor: float  # how many × improvement needed
+    power_factor: float  # how many × improvement needed
     recommendations: List[str]
 
 
@@ -494,9 +540,18 @@ def ragone_gap_analysis(
 # =====================================================================
 
 _PALETTE = [
-    "#0ea5e9", "#ef4444", "#22c55e", "#f59e0b",
-    "#8b5cf6", "#ec4899", "#14b8a6", "#f97316",
-    "#6366f1", "#84cc16", "#a855f7", "#06b6d4",
+    "#0ea5e9",
+    "#ef4444",
+    "#22c55e",
+    "#f59e0b",
+    "#8b5cf6",
+    "#ec4899",
+    "#14b8a6",
+    "#f97316",
+    "#6366f1",
+    "#84cc16",
+    "#a855f7",
+    "#06b6d4",
 ]
 
 
@@ -557,30 +612,42 @@ def plot_energy_cycle(
 
         if norm_hl and _norm(name) not in norm_hl:
             ax.plot(
-                x, y, "-",
-                color="#d1d5db", linewidth=0.7,
-                alpha=0.55, zorder=1,
+                x,
+                y,
+                "-",
+                color="#d1d5db",
+                linewidth=0.7,
+                alpha=0.55,
+                zorder=1,
             )
         else:
             ax.plot(
-                x, y, "o-",
-                color=colour, markersize=3.6,
-                linewidth=1.5, label=name, zorder=3,
+                x,
+                y,
+                "o-",
+                color=colour,
+                markersize=3.6,
+                linewidth=1.5,
+                label=name,
+                zorder=3,
             )
 
     ax.set_xlabel("Ciclo", fontsize=11)
     ax.set_ylabel(metric, fontsize=11)
     ax.set_title(
         f"{metric} vs Ciclo",
-        fontsize=12, fontweight="bold",
+        fontsize=12,
+        fontweight="bold",
     )
     ax.grid(True, alpha=0.25, linestyle="--", linewidth=0.6)
 
     handles, labels = ax.get_legend_handles_labels()
     if 0 < len(labels) <= 12:
         ax.legend(
-            fontsize=7.5, loc="best",
-            framealpha=0.85, edgecolor="#cccccc",
+            fontsize=7.5,
+            loc="best",
+            framealpha=0.85,
+            edgecolor="#cccccc",
             ncol=max(1, len(labels) // 6),
         )
 
@@ -593,9 +660,10 @@ def plot_energy_cycle(
             os.makedirs(out_dir, exist_ok=True)
             safe = metric.replace(" ", "_").replace("/", "-")
             filepath = os.path.join(
-                out_dir, f"{safe}_vs_cycle.png",
+                out_dir,
+                f"{safe}_vs_cycle.png",
             )
-            fig.savefig(filepath, dpi=160, bbox_inches="tight")
+            fig.savefig(filepath, dpi=300, bbox_inches="tight")
         if show:
             plt.show()
         else:
@@ -606,6 +674,7 @@ def plot_energy_cycle(
 # =====================================================================
 #  IMPEDANCE HEATMAP  ( |Z| across samples × frequency )
 # =====================================================================
+
 
 def plot_impedance_heatmap(
     raw_eis: Dict[str, pd.DataFrame],
@@ -643,7 +712,9 @@ def plot_impedance_heatmap(
         return None
 
     freq_edges = np.logspace(
-        np.log10(f_min), np.log10(f_max), n_bands + 1,
+        np.log10(f_min),
+        np.log10(f_max),
+        n_bands + 1,
     )
 
     names = sorted(raw_eis.keys())
@@ -656,12 +727,10 @@ def plot_impedance_heatmap(
         freq = tbl["frequency"].values
         zr = tbl["zreal"].values
         zi = tbl["zimag"].values
-        z_mag = np.sqrt(zr ** 2 + zi ** 2)
+        z_mag = np.sqrt(zr**2 + zi**2)
 
         for col_idx in range(n_bands):
-            mask = (freq >= freq_edges[col_idx]) & (
-                freq < freq_edges[col_idx + 1]
-            )
+            mask = (freq >= freq_edges[col_idx]) & (freq < freq_edges[col_idx + 1])
             if mask.sum() > 0:
                 matrix[row, col_idx] = np.log10(
                     np.median(z_mag[mask]) + 1e-30,
@@ -672,24 +741,27 @@ def plot_impedance_heatmap(
         fig, ax = plt.subplots(figsize=(8, 5.6), dpi=120)
 
     im = ax.imshow(
-        matrix, aspect="auto", origin="lower",
+        matrix,
+        aspect="auto",
+        origin="lower",
         cmap="inferno",
         extent=[
-            np.log10(f_min), np.log10(f_max),
-            -0.5, len(names) - 0.5,
+            np.log10(f_min),
+            np.log10(f_max),
+            -0.5,
+            len(names) - 0.5,
         ],
     )
     ax.set_yticks(range(len(names)))
     # Truncate long names for readability
-    short = [
-        (n[:22] + "…") if len(n) > 24 else n for n in names
-    ]
+    short = [(n[:22] + "…") if len(n) > 24 else n for n in names]
     ax.set_yticklabels(short, fontsize=7)
     ax.set_xlabel("log₁₀ f (Hz)", fontsize=11)
     ax.set_ylabel("Amostra", fontsize=11)
     ax.set_title(
         "Heatmap de Impedância — log₁₀|Z|",
-        fontsize=12, fontweight="bold",
+        fontsize=12,
+        fontweight="bold",
     )
 
     if fig is not None:
@@ -701,9 +773,10 @@ def plot_impedance_heatmap(
         if save:
             os.makedirs(out_dir, exist_ok=True)
             filepath = os.path.join(
-                out_dir, "impedance_heatmap.png",
+                out_dir,
+                "impedance_heatmap.png",
             )
-            fig.savefig(filepath, dpi=160, bbox_inches="tight")
+            fig.savefig(filepath, dpi=300, bbox_inches="tight")
         if show:
             plt.show()
         else:
@@ -716,9 +789,14 @@ def plot_impedance_heatmap(
 # =====================================================================
 
 _BOXPLOT_COLS = [
-    "Rs", "Rp", "C_mean", "C_max",
-    "Energy_mean", "Score",
-    "C_espec (F/g)", "Retenção (%)",
+    "Rs",
+    "Rp",
+    "C_mean",
+    "C_max",
+    "Energy_mean",
+    "Score",
+    "C_espec (F/g)",
+    "Retenção (%)",
 ]
 
 
@@ -751,17 +829,15 @@ def plot_boxplot_metrics(
     if standalone:
         fig, ax = plt.subplots(figsize=(7, 4.8), dpi=120)
 
-    has_subclass = (
-        "Subclass" in eis_df.columns
-        and eis_df["Subclass"].nunique() > 1
-    )
+    has_subclass = "Subclass" in eis_df.columns and eis_df["Subclass"].nunique() > 1
 
     if has_subclass:
         groups = []
         labels_list: List[str] = []
         for cls, grp in eis_df.groupby("Subclass"):
             v = pd.to_numeric(
-                grp[metric], errors="coerce",
+                grp[metric],
+                errors="coerce",
             ).dropna()
             if len(v) == 0:
                 continue
@@ -800,7 +876,8 @@ def plot_boxplot_metrics(
     ax.set_ylabel(metric, fontsize=11)
     ax.set_title(
         f"Box-plot — {metric}",
-        fontsize=12, fontweight="bold",
+        fontsize=12,
+        fontweight="bold",
     )
     ax.grid(True, axis="y", alpha=0.25, linestyle="--", linewidth=0.6)
 
@@ -813,9 +890,10 @@ def plot_boxplot_metrics(
             os.makedirs(out_dir, exist_ok=True)
             safe = metric.replace(" ", "_").replace("/", "-")
             filepath = os.path.join(
-                out_dir, f"boxplot_{safe}.png",
+                out_dir,
+                f"boxplot_{safe}.png",
             )
-            fig.savefig(filepath, dpi=160, bbox_inches="tight")
+            fig.savefig(filepath, dpi=300, bbox_inches="tight")
         if show:
             plt.show()
         else:
@@ -828,9 +906,14 @@ def plot_boxplot_metrics(
 # =====================================================================
 
 _RADAR_COLS = [
-    "Rs", "Rp", "C_mean", "C_max",
-    "Energy_mean", "Score",
-    "C_espec (F/g)", "Retenção (%)",
+    "Rs",
+    "Rp",
+    "C_mean",
+    "C_max",
+    "Energy_mean",
+    "Score",
+    "C_espec (F/g)",
+    "Retenção (%)",
 ]
 
 
@@ -868,22 +951,18 @@ def plot_radar(
         return None
 
     sub = eis_df[
-        eis_df[id_col].apply(lambda v: _norm(str(v))).isin(
-            [_norm(s) for s in samples]
-        )
+        eis_df[id_col].apply(lambda v: _norm(str(v))).isin([_norm(s) for s in samples])
     ]
     if sub.empty:
         return None
 
     # Determine axes
     if metrics is None:
-        metrics = [
-            c for c in _RADAR_COLS if c in eis_df.columns
-        ]
+        metrics = [c for c in _RADAR_COLS if c in eis_df.columns]
     cols = [
-        c for c in metrics
-        if c in sub.columns
-        and pd.to_numeric(sub[c], errors="coerce").notna().sum() > 0
+        c
+        for c in metrics
+        if c in sub.columns and pd.to_numeric(sub[c], errors="coerce").notna().sum() > 0
     ]
     if len(cols) < 3:
         return None
@@ -917,10 +996,14 @@ def plot_radar(
         colour = _PALETTE[row_idx % len(_PALETTE)]
         label = str(sub.loc[i, id_col]) if id_col else str(i)
         ax.plot(
-            angles, vals,
-            "o-", color=colour,
-            linewidth=1.8, markersize=5,
-            label=label, zorder=3,
+            angles,
+            vals,
+            "o-",
+            color=colour,
+            linewidth=1.8,
+            markersize=5,
+            label=label,
+            zorder=3,
         )
         ax.fill(angles, vals, color=colour, alpha=0.12)
 
@@ -928,11 +1011,16 @@ def plot_radar(
     ax.set_xticklabels(cols, fontsize=8)
     ax.set_title(
         "Radar — Comparação de Métricas",
-        fontsize=12, fontweight="bold", pad=20,
+        fontsize=12,
+        fontweight="bold",
+        pad=20,
     )
     ax.legend(
-        loc="upper right", bbox_to_anchor=(1.25, 1.12),
-        fontsize=8, framealpha=0.85, edgecolor="#cccccc",
+        loc="upper right",
+        bbox_to_anchor=(1.25, 1.12),
+        fontsize=8,
+        framealpha=0.85,
+        edgecolor="#cccccc",
     )
 
     if fig is not None:
@@ -943,7 +1031,7 @@ def plot_radar(
         if save:
             os.makedirs(out_dir, exist_ok=True)
             filepath = os.path.join(out_dir, "radar_metrics.png")
-            fig.savefig(filepath, dpi=160, bbox_inches="tight")
+            fig.savefig(filepath, dpi=300, bbox_inches="tight")
         if show:
             plt.show()
         else:
@@ -954,6 +1042,7 @@ def plot_radar(
 # =====================================================================
 #  RETENTION vs CYCLE  ( per-sample overlay )
 # =====================================================================
+
 
 def plot_retention_cycle(
     export_tables: Dict[str, pd.DataFrame],
@@ -1021,36 +1110,52 @@ def plot_retention_cycle(
         colour = _PALETTE[idx % len(_PALETTE)]
         if norm_hl and _norm(name) not in norm_hl:
             ax.plot(
-                x, retention, "-",
-                color="#d1d5db", linewidth=0.7,
-                alpha=0.55, zorder=1,
+                x,
+                retention,
+                "-",
+                color="#d1d5db",
+                linewidth=0.7,
+                alpha=0.55,
+                zorder=1,
             )
         else:
             ax.plot(
-                x, retention, "o-",
-                color=colour, markersize=3.6,
-                linewidth=1.5, label=name, zorder=3,
+                x,
+                retention,
+                "o-",
+                color=colour,
+                markersize=3.6,
+                linewidth=1.5,
+                label=name,
+                zorder=3,
             )
 
     # Reference line at 100 %
     ax.axhline(
-        100, color="#6b7280", linestyle="--",
-        linewidth=0.9, alpha=0.6, zorder=2,
+        100,
+        color="#6b7280",
+        linestyle="--",
+        linewidth=0.9,
+        alpha=0.6,
+        zorder=2,
     )
 
     ax.set_xlabel("Ciclo", fontsize=11)
     ax.set_ylabel("Retenção (%)", fontsize=11)
     ax.set_title(
         "Retenção vs Ciclo",
-        fontsize=12, fontweight="bold",
+        fontsize=12,
+        fontweight="bold",
     )
     ax.grid(True, alpha=0.25, linestyle="--", linewidth=0.6)
 
     handles, labels = ax.get_legend_handles_labels()
     if 0 < len(labels) <= 12:
         ax.legend(
-            fontsize=7.5, loc="best",
-            framealpha=0.85, edgecolor="#cccccc",
+            fontsize=7.5,
+            loc="best",
+            framealpha=0.85,
+            edgecolor="#cccccc",
             ncol=max(1, len(labels) // 6),
         )
 
@@ -1062,9 +1167,10 @@ def plot_retention_cycle(
         if save:
             os.makedirs(out_dir, exist_ok=True)
             filepath = os.path.join(
-                out_dir, "retention_vs_cycle.png",
+                out_dir,
+                "retention_vs_cycle.png",
             )
-            fig.savefig(filepath, dpi=160, bbox_inches="tight")
+            fig.savefig(filepath, dpi=300, bbox_inches="tight")
         if show:
             plt.show()
         else:

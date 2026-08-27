@@ -1,0 +1,24 @@
+{
+  "electrolytes": {
+    "H2SO4 1M": {
+      "cv": {
+        "0.005": "H2SO4 1M/cv/cv_0.005.txt",
+        "0.01": "H2SO4 1M/cv/cv_0.01.txt",
+        "0.02": "H2SO4 1M/cv/cv_0.02.txt"
+      },
+      "gcd": "H2SO4 1M/gcd.txt",
+      "mass_g": 0.0056,
+      "cell_area_cm2": 1.0,
+      "current_sequence_a_g": [1, 10, 7.5, 5, 2.5, 1],
+      "electrodes": {
+        "WE": {"mass_g": 0.0028, "potential_fraction": 0.5},
+        "CE": {"mass_g": 0.0028, "potential_fraction": 0.5}
+      },
+      "eis": {
+        "initial": "H2SO4 1M/eis/initial.txt",
+        "post_cv": "H2SO4 1M/eis/post_cv.txt",
+        "final": "H2SO4 1M/eis/final.txt"
+      }
+    }
+  }
+}

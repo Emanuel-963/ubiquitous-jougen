@@ -1,7 +1,7 @@
 # IonFlow Pipeline — Commercial Roadmap
 **Objetivo: tornar o IonFlow a referência de mercado em análise de EIS, com fabricantes de potenciostatos querendo acoplar ou licenciar o software.**
 
-> Versão atual: **v0.5.0** — Lab Edition inicial lançada.
+> Versão atual: **v0.5.1** — Scientific Protocol configurável lançado.
 
 ---
 
@@ -70,6 +70,17 @@ Fluxo de ativação:
 - Progresso determinístico na GUI, com percentual e etapa atual do processamento.
 - Atualização automática pelo instalador Windows e release empacotada via Inno Setup.
 - Correção do acúmulo de figuras de ciclagem durante execuções repetidas.
+
+## v0.5.1 — "Scientific Protocol" _(entregue em 27/08/2026)_
+
+**Foco:** configuração gráfica e reprodutível do protocolo multicritério.
+
+- Scientific Protocol independente integrado ao GUI principal.
+- Wizard gráfico para CV, GCD, EIS, DRT, ranking e resolução das figuras.
+- Projetos com eletrólitos, células e replicatas em schema `2.0`.
+- Migração segura do JSON legado e preservação de caminhos relativos.
+- CSV e figura de classificação alinhados à planilha experimental de referência.
+- Scripts científicos e planilha de referência incluídos na build Windows.
 
 ### Próximo ciclo
 
@@ -216,7 +227,7 @@ report.save("analysis.pdf")
 
 ## Próximos 30 dias — Ações imediatas
 
-- [x] v0.5.0 lançado com GitHub Release, instalador Windows e auto-updater
+- [x] v0.5.1 lançado com GitHub Release, instalador Windows e auto-updater
 - [x] Branding PDF (logo + instituição) implementado na Settings tab
 - [x] `galvani` adicionado como dependência opcional `[biologic]`
 - [ ] Criar landing page no GitHub Pages (1 dia de trabalho)
@@ -227,4 +238,4 @@ report.save("analysis.pdf")
 
 ---
 
-*Documento atualizado para v0.5.0 em 24/08/2026 | Revisar a cada release minor*
+*Documento atualizado para v0.5.1 em 27/08/2026 | Revisar a cada release minor*

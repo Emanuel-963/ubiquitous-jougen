@@ -100,7 +100,7 @@ def plot_drt_spectrum(result, stem, out_dir=None, *, ax=None, show=False, save=T
     if save:
         target_dir = _ensure_out_dir(out_dir)
         saved_path = str((target_dir / f"{stem}_drt.png").resolve())
-        fig.savefig(saved_path, dpi=150, bbox_inches="tight")
+        fig.savefig(saved_path, dpi=300, bbox_inches="tight")
 
     if show:
         plt.show()
@@ -176,7 +176,7 @@ def plot_drt_overlay(
         path = Path(out_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         saved_path = str(path.resolve())
-        fig.savefig(saved_path, dpi=150, bbox_inches="tight")
+        fig.savefig(saved_path, dpi=300, bbox_inches="tight")
 
     if show:
         plt.show()
@@ -295,7 +295,7 @@ def plot_drt_heatmap(
         path = Path(out_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         saved_path = str(path.resolve())
-        fig.savefig(saved_path, dpi=150, bbox_inches="tight")
+        fig.savefig(saved_path, dpi=300, bbox_inches="tight")
 
     if show:
         plt.show()

@@ -1,8 +1,8 @@
 ================================================================================
-    TUTORIAL 22 — PAINEL DE CONFIGURAÇÕES E AUTO-UPDATE (IONFLOW v0.5.0)
+    TUTORIAL 22 — PAINEL DE CONFIGURAÇÕES E AUTO-UPDATE (IONFLOW v0.5.1)
 ================================================================================
 
-Versão: 0.5.0
+Versão: 0.5.1
 Última atualização: Agosto 2026
 
 --------------------------------------------------------------------------------
@@ -17,7 +17,7 @@ versões disponíveis e permite descarregá-las com um clique.
   ✅ Guardar / Carregar configurações de ficheiro JSON
   ✅ Repor valores padrão
   ✅ Auto-update: verificação automática no arranque
-  ✅ v0.5.0: atualização silenciosa e automática (instala na mesma pasta,
+  ✅ v0.5.1: atualização silenciosa e automática (instala na mesma pasta,
      sem mover arquivos do pesquisador)
 
 --------------------------------------------------------------------------------
@@ -97,7 +97,7 @@ O painel está dividido em secções:
 ──────────────
   Tema                          — "dark" (padrão) ou "light"
   Idioma                        — "pt" (padrão), "en", "es"
-  DPI dos gráficos              — resolução das imagens exportadas (padrão: 150)
+  DPI dos gráficos              — resolução das imagens exportadas (padrão: 300)
   Escala da interface           — 0.8 a 2.0 (padrão: 1.0)
 
 --------------------------------------------------------------------------------
@@ -179,7 +179,7 @@ Se houver uma versão nova:
 ──────────────────────────────────────
 
   ┌──────────────────────────────────────────────────────────────────────────┐
-  │  ⚡ Nova versão disponível: v0.5.0                                        │
+  │  ⚡ Nova versão disponível: v0.5.1                                        │
   │  ────────────────────────────────────────────────────────────────────    │
   │  Versão atual: 0.4.x                                                      │
   │                                                                          │
@@ -248,11 +248,11 @@ Se houver uma versão nova:
 Exemplo de config.json (todos os campos):
 
   {
-    "version": "0.5.0",
+    "version": "0.5.1",
     "check_updates_on_start": true,
     "language": "pt",
     "theme": "dark",
-    "plot_dpi": 150,
+    "plot_dpi": 300,
     "ui_scale": 1.0,
     "directories": {
       "data_dir": "data/raw",
